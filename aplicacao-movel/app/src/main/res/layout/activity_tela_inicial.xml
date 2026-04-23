@@ -53,11 +53,11 @@
     <!-- ESPAÇO -->
     <Space
         android:layout_width="match_parent"
-        android:layout_height="200dp"/>
+        android:layout_height="150dp"/>
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btnRegistar"
-        android:layout_width="340dp"
+        android:layout_width="300dp"
         android:layout_height="60dp"
         android:layout_marginBottom="20dp"
         android:background="@drawable/btn_estilo"
@@ -69,7 +69,7 @@
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btnEntrar"
-        android:layout_width="340dp"
+        android:layout_width="300dp"
         android:layout_height="60dp"
         android:layout_marginBottom="20dp"
         android:background="@drawable/btn_estilo"
