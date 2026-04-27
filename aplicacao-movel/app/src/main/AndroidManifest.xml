@@ -12,16 +12,16 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Mobile">
         <activity
-            android:name=".DashboardActivity"
+            android:name=".ui.DashboardActivity"
             android:exported="false" />
         <activity
-            android:name=".LoginActivity"
+            android:name=".ui.LoginActivity"
             android:exported="false" />
         <activity
-            android:name=".CadastroActivity"
+            android:name=".ui.CadastroActivity"
             android:exported="false" />
         <activity
-            android:name=".telaInicial"
+            android:name=".ui.telaInicial"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
