@@ -10,10 +10,12 @@
     <LinearLayout
         android:id="@+id/linearLayout3"
         android:layout_width="0dp"
-        android:layout_height="230dp"
-        android:background="#FF9500"
+        android:layout_height="0dp"
+        android:layout_marginBottom="39dp"
+        android:background="@color/cor_app"
         android:elevation="8dp"
         android:gravity="center_vertical"
+        app:layout_constraintBottom_toTopOf="@+id/textView5"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
@@ -42,10 +44,11 @@
     <EditText
         android:id="@+id/editTextTextEmailAddress"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="20dp"
+        android:background="@drawable/corner"
         android:ems="10"
         android:hint="Seu@email.com"
         android:inputType="textEmailAddress"
@@ -56,24 +59,26 @@
     <EditText
         android:id="@+id/editTextTextPassword"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="36dp"
+        android:background="@drawable/corner"
         android:ems="10"
         android:hint="Palavra-chave"
         android:inputType="textPassword"
-        app:layout_constraintBottom_toTopOf="@+id/button"
+        app:layout_constraintBottom_toTopOf="@+id/buttonEntrar"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
     <Button
-        android:id="@+id/button"
+        android:id="@+id/buttonEntrar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="18dp"
+        android:background="@color/cor_app"
         android:text="Entrar"
         android:textSize="16sp"
         app:layout_constraintBottom_toTopOf="@+id/textView4"
@@ -97,6 +102,7 @@
         android:layout_marginStart="40dp"
         android:layout_marginBottom="60dp"
         android:text="Regista-se"
+        android:textColor="@color/cor_app"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toEndOf="@+id/textView" />
 
@@ -107,6 +113,7 @@
         android:layout_marginEnd="64dp"
         android:layout_marginBottom="148dp"
         android:text="Esqueceu a palavra-chave?"
+        android:textColor="@color/cor_app"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -114,18 +121,25 @@
         android:id="@+id/textView5"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="12dp"
         android:text="Bem-vindo de volta"
+        android:textColor="@color/black"
         android:textSize="16sp"
-        tools:layout_editor_absoluteX="16dp"
-        tools:layout_editor_absoluteY="269dp" />
+        app:layout_constraintBottom_toTopOf="@+id/textView6"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/linearLayout3" />
 
     <TextView
         android:id="@+id/textView6"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="409dp"
         android:text="Insira as suas credenciais para continuar"
-        tools:layout_editor_absoluteX="16dp"
-        tools:layout_editor_absoluteY="303dp" />
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView5" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

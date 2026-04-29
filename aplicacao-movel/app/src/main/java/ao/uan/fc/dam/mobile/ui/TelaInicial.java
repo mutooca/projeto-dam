@@ -5,36 +5,37 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 
 import ao.uan.fc.dam.mobile.R;
 
-public class telaInicial extends AppCompatActivity {
+public class TelaInicial extends AppCompatActivity {
 
+
+    private Button btnLogin;
+    private  Button btnRegistar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_tela_inicial);
 
-        Button btnRegistar = findViewById(R.id.btnRegistar);
-        Button btnEntrar = findViewById(R.id.btnEntrar);
+        btnRegistar = findViewById(R.id.btnRegistar);
+        btnLogin = findViewById(R.id.btnEntrar);
 
         // 2. Ação do botão Registar
         btnRegistar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(telaInicial.this, CadastroActivity.class);
+                Intent intent = new Intent(TelaInicial.this, CadastroActivity.class);
                 startActivity(intent);
             }
         });
 
-        btnEntrar.setOnClickListener(new View.OnClickListener(){
+        btnLogin.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v){
-                Intent intent = new Intent(telaInicial.this, LoginActivity.class);
+                Intent intent = new Intent(TelaInicial.this, LoginActivity.class);
                 startActivity(intent);
             }
         });
