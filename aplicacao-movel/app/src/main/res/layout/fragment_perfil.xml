@@ -101,7 +101,7 @@
         android:layout_marginTop="8dp"
         android:layout_marginEnd="40dp"
         android:layout_marginBottom="92dp"
-        app:layout_constraintBottom_toTopOf="@+id/recyclerView3"
+        app:layout_constraintBottom_toTopOf="@+id/recyclerViewPerfil"
         app:layout_constraintEnd_toStartOf="@+id/frameLayout5"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/frameLayout3">
@@ -127,7 +127,7 @@
         android:layout_marginTop="8dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="96dp"
-        app:layout_constraintBottom_toTopOf="@+id/recyclerView3"
+        app:layout_constraintBottom_toTopOf="@+id/recyclerViewPerfil"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/frameLayout4"
         app:layout_constraintTop_toBottomOf="@+id/frameLayout3">
@@ -146,7 +146,7 @@
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerView3"
+        android:id="@+id/recyclerViewPerfil"
         android:layout_width="380dp"
         android:layout_height="0dp"
         android:layout_marginStart="16dp"
