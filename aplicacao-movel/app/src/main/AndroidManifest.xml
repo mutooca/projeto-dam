@@ -12,6 +12,9 @@
         android:supportsRtl="false"
         android:theme="@style/Theme.Mobile">
         <activity
+            android:name=".ui.RecuperarSenha"
+            android:exported="false" />
+        <activity
             android:name=".ui.DashboardActivity"
             android:exported="false" />
         <activity
@@ -22,7 +25,8 @@
             android:exported="false" />
         <activity
             android:name=".ui.TelaInicial"
-            android:exported="true">
+            android:exported="true"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

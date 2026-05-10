@@ -2,6 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:background="@color/cor_app"
     android:gravity="center_horizontal"
     android:orientation="vertical">
@@ -9,25 +10,17 @@
     <LinearLayout
         android:layout_width="100dp"
         android:layout_height="100dp"
-<<<<<<< HEAD
-=======
-        android:background="@drawable/bg_circulo"
->>>>>>> d78d319 (adicionando Logo)
         android:layout_marginTop="60dp"
-        android:background="#FF9500"
+        android:background="@drawable/bg_circulo"
         android:elevation="8dp"
         android:gravity="center"
         android:radius="20dp">
 
         <ImageView
-            android:layout_width="80dp"
+            android:layout_width="match_parent"
             android:layout_height="80dp"
-<<<<<<< HEAD
-            android:src="@drawable/outline_3p_24" />
-=======
-            android:src="@drawable/outline_add_location_alt_24"
-            />
->>>>>>> d78d319 (adicionando Logo)
+            android:src="@drawable/location_on_icon"
+            app:tint="#FFFFFF"/>
     </LinearLayout>
 
     <LinearLayout
@@ -57,7 +50,7 @@
             />
     </LinearLayout>
 
-    <!-- ESPAÇO -->
+
     <Space
         android:layout_width="match_parent"
         android:layout_height="150dp" />

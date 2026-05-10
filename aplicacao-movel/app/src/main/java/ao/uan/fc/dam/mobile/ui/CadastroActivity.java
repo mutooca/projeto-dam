@@ -4,11 +4,11 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+
+
 
 import ao.uan.fc.dam.mobile.R;
 
@@ -25,9 +25,11 @@ public class CadastroActivity extends AppCompatActivity {
         criarConta.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(CadastroActivity.this, TelaInicial.class);
+                Intent intent = new Intent(CadastroActivity.this, LoginActivity.class);
                 startActivity(intent);
+
             }
+
         });
     }
 

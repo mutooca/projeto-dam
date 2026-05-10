@@ -23,7 +23,7 @@ public class TelaInicial extends AppCompatActivity {
         btnRegistar = findViewById(R.id.btnRegistar);
         btnLogin = findViewById(R.id.btnEntrar);
 
-        // 2. Ação do botão Registar
+
         btnRegistar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
