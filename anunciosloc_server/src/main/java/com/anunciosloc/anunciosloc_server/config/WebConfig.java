@@ -16,6 +16,12 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(kerberosAuthInterceptor)
             .addPathPatterns("/api/**")
-            .excludePathPatterns("/api/auth/registar", "/api/auth/login", "/kerberos/**");
+            .excludePathPatterns(
+                "/api/auth/registar", 
+                "/api/auth/login",
+                "/h2-console/**",
+                "/swagger-ui/**",
+                "/v3/api-docs/**"
+            );
     }
 }
