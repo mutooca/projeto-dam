@@ -12,16 +12,16 @@
         android:supportsRtl="false"
         android:theme="@style/Theme.Mobile">
         <activity
-            android:name=".ui.DashboardActivity"
+            android:name=".ui.activity.DashboardActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.LoginActivity"
+            android:name=".ui.activity.LoginActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.CadastroActivity"
+            android:name=".ui.activity.CadastroActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.TelaInicial"
+            android:name=".ui.activity.TelaInicial"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -30,5 +30,6 @@
             </intent-filter>
         </activity>
     </application>
+    <uses-permission android:name="android.permission.INTERNET"/>
 
 </manifest>

@@ -1,33 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/cor_app"
+    android:orientation="vertical"
     android:gravity="center_horizontal"
-    android:orientation="vertical">
+    android:background="#FF9500">
 
     <LinearLayout
         android:layout_width="100dp"
         android:layout_height="100dp"
-<<<<<<< HEAD
-=======
-        android:background="@drawable/bg_circulo"
->>>>>>> d78d319 (adicionando Logo)
-        android:layout_marginTop="60dp"
         android:background="#FF9500"
+        android:layout_marginTop="60dp"
         android:elevation="8dp"
-        android:gravity="center"
-        android:radius="20dp">
+        android:gravity="center">
 
         <ImageView
             android:layout_width="80dp"
             android:layout_height="80dp"
-<<<<<<< HEAD
             android:src="@drawable/outline_3p_24" />
-=======
-            android:src="@drawable/outline_add_location_alt_24"
-            />
->>>>>>> d78d319 (adicionando Logo)
     </LinearLayout>
 
     <LinearLayout
@@ -35,36 +26,33 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:layout_marginTop="10dp"
-        android:gravity="center_horizontal"
-        android:orientation="vertical">
-
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="center"
             android:text="AnuncioLoc"
-            android:textColor="#FFFFFF"
             android:textSize="25sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:gravity="center" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Anuncio baseado em localização"
-            android:textColor="#FFFFFF"
             android:textSize="20sp"
-
-            />
+            android:textColor="#FFFFFF" />
     </LinearLayout>
 
     <!-- ESPAÇO -->
     <Space
         android:layout_width="match_parent"
-        android:layout_height="150dp" />
+        android:layout_height="200dp"/>
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btnRegistar"
-        android:layout_width="300dp"
+        android:layout_width="340dp"
         android:layout_height="60dp"
         android:layout_marginBottom="20dp"
         android:background="@drawable/btn_estilo"
@@ -72,11 +60,11 @@
         android:text="Registar-se"
         android:textColor="#FF9500"
         android:textSize="18sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"/>
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btnEntrar"
-        android:layout_width="300dp"
+        android:layout_width="340dp"
         android:layout_height="60dp"
         android:layout_marginBottom="20dp"
         android:background="@drawable/btn_estilo"
@@ -84,7 +72,7 @@
         android:text="Iniciar secção"
         android:textColor="#FF9500"
         android:textSize="18sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"/>
 
 
 </LinearLayout>
