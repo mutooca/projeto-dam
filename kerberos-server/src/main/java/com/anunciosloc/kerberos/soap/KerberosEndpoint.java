@@ -10,15 +10,18 @@ import org.springframework.ws.server.endpoint.annotation.ResponsePayload;
 
 @Endpoint
 public class KerberosEndpoint {
-    
+
     private static final String NAMESPACE = "http://kerberos.anunciosloc.com/";
-    
+
     @Autowired
     private KerberosService kerberosService;
-    
-    @PayloadRoot(namespace = NAMESPACE, localPart = "RequestTicketRequest")
+
+    @PayloadRoot(namespace = NAMESPACE, localPart = "requestTicketRequest")
     @ResponsePayload
     public RequestTicketResponse requestTicket(@RequestPayload RequestTicketRequest request) {
+            System.out.println("Email recebido: " + request.getEmail());
+    System.out.println("ClientNonce recebido: " + request.getClientNonce());
+
         RequestTicketResponse response = new RequestTicketResponse();
         try {
             var ticketData = kerberosService.requestTicket(request.getEmail(), request.getClientNonce());
@@ -33,14 +36,14 @@ public class KerberosEndpoint {
         }
         return response;
     }
-    
-    @PayloadRoot(namespace = NAMESPACE, localPart = "ValidateTicketRequest")
+
+    @PayloadRoot(namespace = NAMESPACE, localPart = "validateTicketRequest")
     @ResponsePayload
     public ValidateTicketResponse validateTicket(@RequestPayload ValidateTicketRequest request) {
         ValidateTicketResponse response = new ValidateTicketResponse();
         try {
             boolean isValid = kerberosService.validateTicketAndAuthenticator(
-                request.getTicket(), 
+                request.getTicket(),
                 request.getAuthenticator()
             );
             response.setValid(isValid);
@@ -51,8 +54,8 @@ public class KerberosEndpoint {
         }
         return response;
     }
-    
-    @PayloadRoot(namespace = NAMESPACE, localPart = "LogoutRequest")
+
+    @PayloadRoot(namespace = NAMESPACE, localPart = "logoutRequest")
     @ResponsePayload
     public LogoutResponse logout(@RequestPayload LogoutRequest request) {
         LogoutResponse response = new LogoutResponse();
@@ -66,8 +69,8 @@ public class KerberosEndpoint {
         }
         return response;
     }
-    
-    @PayloadRoot(namespace = NAMESPACE, localPart = "VerifySessionRequest")
+
+    @PayloadRoot(namespace = NAMESPACE, localPart = "verifySessionRequest")
     @ResponsePayload
     public VerifySessionResponse verifySession(@RequestPayload VerifySessionRequest request) {
         VerifySessionResponse response = new VerifySessionResponse();

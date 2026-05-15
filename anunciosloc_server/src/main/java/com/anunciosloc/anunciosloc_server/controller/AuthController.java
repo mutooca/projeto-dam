@@ -1,8 +1,8 @@
 package com.anunciosloc.anunciosloc_server.controller;
 
-import com.anunciosloc.anunciosloc_server.client.TicketResponse;
 import com.anunciosloc.anunciosloc_server.dto.LoginRequest;
 import com.anunciosloc.anunciosloc_server.dto.RegistoRequest;
+import com.anunciosloc.anunciosloc_server.client.TicketResponse;
 import com.anunciosloc.anunciosloc_server.model.Utilizador;
 import com.anunciosloc.anunciosloc_server.service.AuthService;
 import lombok.RequiredArgsConstructor;
@@ -14,24 +14,19 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class AuthController {
-    
+
     private final AuthService authService;
-    
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         try {
-            // Verificar se clientNonce foi enviado
-            if (request.getClientNonce() == null) {
-                return ResponseEntity.badRequest().body("clientNonce é obrigatório");
-            }
-            
             TicketResponse response = authService.login(request.getEmail(), request.getClientNonce());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.status(401).body(e.getMessage());
         }
     }
-    
+
     @PostMapping("/registar")
     public ResponseEntity<?> registar(@RequestBody RegistoRequest request) {
         try {
