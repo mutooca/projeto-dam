@@ -52,12 +52,21 @@ public class AuthService {
         
         Utilizador user = new Utilizador();
         user.setEmail(email);
-        user.setPasswordHash(password);
+        user.setPalavraChave(password);
         user.setSaldo(10);
         user.setRole(role != null ? role : "USER");
-        user.setDataRegisto(LocalDateTime.now());
+        user.setDataCriacao(LocalDateTime.now());
         user.setAtivo(true);
         
         return utilizadorRepository.save(user);
     }
+
+
+    public void logout(String sessionId) {
+    try {
+        kerberosClient.logout(sessionId);
+    } catch (Exception e) {
+        throw new RuntimeException("Erro ao fazer logout: " + e.getMessage());
+    }
+}
 }

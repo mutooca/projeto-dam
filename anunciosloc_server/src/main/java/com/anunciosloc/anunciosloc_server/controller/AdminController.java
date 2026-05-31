@@ -9,6 +9,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -23,14 +24,14 @@ public class AdminController {
     public ResponseEntity<?> registarInfraestrutura(@RequestBody @NonNull Infraestrutura infra) {
         try {
             Infraestrutura saved = infraRepository.save(infra);
-            return ResponseEntity.ok("Infraestrutura registada com ID: " + saved.getId());
+            return ResponseEntity.ok("Infraestrutura registada com ID: " + saved.getIdInfraestrutura());
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
     
     @DeleteMapping("/infraestruturas/{id}")
-    public ResponseEntity<?> eliminarInfraestrutura(@PathVariable @NonNull Long id) {
+    public ResponseEntity<?> eliminarInfraestrutura(@PathVariable @NonNull UUID id) {
         try {
             infraRepository.deleteById(id);
             return ResponseEntity.ok("Infraestrutura eliminada");
