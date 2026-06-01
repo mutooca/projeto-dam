@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 
 @Entity
@@ -28,6 +29,9 @@ public class RegistoEstatistico {
     
     @Column(name = "data_registo")
     private LocalDate dataRegisto;
+
+    @Column(name = "actualizado_em")
+    private LocalDateTime actualizadoEm;
     
     
     @OneToOne

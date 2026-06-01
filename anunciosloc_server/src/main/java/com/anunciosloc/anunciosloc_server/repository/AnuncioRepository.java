@@ -19,7 +19,10 @@ public interface AnuncioRepository extends JpaRepository<Anuncio, UUID> {
     List<Anuncio> findByInfraestruturaAndEstado(Infraestrutura infra, String estado);
     List<Anuncio> findByLocalAndEstadoAndCategoriaIn(Local local, String estado, List<String> categorias);
     
+    
     @Query("SELECT a FROM Anuncio a WHERE a.local.idLocal = :localId AND a.idAnuncio NOT IN " +
            "(SELECT ea.anuncio.idAnuncio FROM EntregaAnuncio ea WHERE ea.utilizador.email = :email)")
     List<Anuncio> findNaoVisualizadosPorUtilizador(@Param("localId") UUID localId, @Param("email") String email);
+    List<Anuncio> findByInfraestruturaAndEstadoAndCategoriaIn(Infraestrutura infra, String string,
+            List<String> categorias);
 }

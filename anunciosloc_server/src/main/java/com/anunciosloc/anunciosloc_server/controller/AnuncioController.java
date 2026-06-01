@@ -31,10 +31,11 @@ public class AnuncioController {
 
     
     @GetMapping("/receber/{email}/{infraId}")
-    public ResponseEntity<?> receberAnuncios(@PathVariable String email, @PathVariable @NonNull UUID infraId) {
+    public ResponseEntity<?> receberAnuncios(@PathVariable String email, @PathVariable @NonNull UUID infraId,@RequestParam(required = false) Double lat,
+        @RequestParam(required = false) Double lon) {
         try {
-            List<Anuncio> anuncios = anuncioService.receberAnuncios(email, infraId);
-            return ResponseEntity.ok(anuncios);
+            return ResponseEntity.ok(
+                    anuncioService.receberAnuncios(email, infraId, lat, lon));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
