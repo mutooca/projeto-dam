@@ -2,7 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
     <application
+        android:name=".MobileApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -10,21 +16,39 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="false"
-        android:theme="@style/Theme.Mobile">
+        android:theme="@style/Theme.Mobile"
+        android:usesCleartextTraffic="true">
+        <provider
+            android:name=".provider.SessionProvider"
+            android:authorities="${applicationId}.provider.session"
+            android:exported="false" />
+
+        <receiver
+            android:name=".receiver.NetworkChangeReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".service.AnunciosSyncService"
+            android:exported="false" />
+
         <activity
-            android:name=".ui.RecuperarSenha"
+            android:name=".ui.activity.RecuperarSenha"
             android:exported="false" />
         <activity
-            android:name=".ui.DashboardActivity"
+            android:name=".ui.activity.DashboardActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.LoginActivity"
+            android:name=".ui.activity.LoginActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.CadastroActivity"
+            android:name=".ui.activity.CadastroActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.TelaInicial"
+            android:name=".ui.activity.TelaInicial"
             android:exported="true"
             android:screenOrientation="portrait">
             <intent-filter>

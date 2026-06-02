@@ -1,4 +1,4 @@
-package ao.uan.fc.dam.mobile.ui;
+package ao.uan.fc.dam.mobile.ui.activity;
 
 import android.os.Bundle;
 

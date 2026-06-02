@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/inicioFragment">
+
+    <fragment
+        android:id="@+id/inicioFragment"
+        android:name="ao.uan.fc.dam.mobile.ui.fragment.InicioFragment"
+        android:label="Inicio">
+
+        <action
+            android:id="@+id/action_inicioFragment_to_verAnuncioFragment"
+            app:destination="@id/verAnuncioFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/verAnuncioFragment"
+        android:name="ao.uan.fc.dam.mobile.ui.fragment.VerAnuncioFragment"
+        android:label="Ver anúncio">
+
+        <argument
+            android:name="anuncio"
+            app:argType="ao.uan.fc.dam.mobile.model.Anuncio" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/caixaFragment"
+        android:name="ao.uan.fc.dam.mobile.ui.fragment.CaixaFragment"
+        android:label="Caixa">
+
+        <action
+            android:id="@+id/action_caixaFragment_to_verAnuncioFragment"
+            app:destination="@id/verAnuncioFragment"/>
+    </fragment>
+
+</navigation>
