@@ -7,6 +7,9 @@ import com.anunciosloc.anunciosloc_server.client.TicketResponse;
 import com.anunciosloc.anunciosloc_server.model.Utilizador;
 import com.anunciosloc.anunciosloc_server.service.AuthService;
 import lombok.RequiredArgsConstructor;
+
+import java.util.UUID;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,7 +24,9 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         try {
-            TicketResponse response = authService.login(request.getEmail(), request.getClientNonce());
+
+            String clientNonce = UUID.randomUUID().toString();
+            TicketResponse response = authService.login(request.getEmail(),request.getPalavraChave() ,clientNonce);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.status(401).body(e.getMessage());

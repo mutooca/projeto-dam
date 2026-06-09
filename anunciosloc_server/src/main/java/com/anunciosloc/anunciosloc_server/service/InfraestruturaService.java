@@ -132,87 +132,87 @@ public class InfraestruturaService {
     }
 
 
-   @Cacheable(value = "infraestruturas", key = "#lat + ',' + #lon + ',' + #k")
-public List<InfraestruturaResponse> listarInfraestruturasProximas(
-        double lat, double lon, int k) {
+    @Cacheable(value = "infraestruturas", key = "#lat + ',' + #lon + ',' + #k")
+    public List<InfraestruturaResponse> listarInfraestruturasProximas(
+            double lat, double lon, int k) {
 
-    List<Infraestrutura> todas = infraRepository.findByAtivaTrue();
+        List<Infraestrutura> todas = infraRepository.findByAtivaTrue();
 
-    return todas.stream()
-        .map(infra -> {
+        return todas.stream()
+            .map(infra -> {
 
-            // Distância mínima a qualquer local GPS da infraestrutura
-            double distanciaMetros = infra.getLocais().stream()
-                .filter(l -> l.getCoordenadaGps() != null)
-                .mapToDouble(l -> HaversineUtil.calcularDistancia(
-                    lat, lon,
-                    l.getCoordenadaGps().getLatitude(),
-                    l.getCoordenadaGps().getLongitude()))
-                .min()
-                .orElse(Double.MAX_VALUE);
+                // Distância mínima a qualquer local GPS da infraestrutura
+                double distanciaMetros = infra.getLocais().stream()
+                    .filter(l -> l.getCoordenadaGps() != null)
+                    .mapToDouble(l -> HaversineUtil.calcularDistancia(
+                        lat, lon,
+                        l.getCoordenadaGps().getLatitude(),
+                        l.getCoordenadaGps().getLongitude()))
+                    .min()
+                    .orElse(Double.MAX_VALUE);
 
-            
-            int conexoesDisponiveis = infra.getCapacidade(); 
-            if (infraDisponibilidade.estaDisponivel(infra.getNome())) {
-                try {
-                    InfraProxy proxy = soapClient.obterClientePorNome(infra.getNome());
-                    conexoesDisponiveis = proxy.obterInfoInfraestrutura()
-                                            .getConexoesDisponiveis();
-                } catch (Exception e) {
-                    log.warn("Fallback para capacidade total: {}", e.getMessage());
+                
+                int conexoesDisponiveis = infra.getCapacidade(); 
+                if (infraDisponibilidade.estaDisponivel(infra.getNome())) {
+                    try {
+                        InfraProxy proxy = soapClient.obterClientePorNome(infra.getNome());
+                        conexoesDisponiveis = proxy.obterInfoInfraestrutura()
+                                                .getConexoesDisponiveis();
+                    } catch (Exception e) {
+                        log.warn("Fallback para capacidade total: {}", e.getMessage());
+                    }
                 }
-            }
-            
-            return InfraestruturaResponse.builder()
-                .id(infra.getIdInfraestrutura())
-                .nome(infra.getNome() != null ? infra.getNome() : "Sem nome")
-                .distanciaKm(distanciaMetros / 1000.0) 
-                .capacidade(infra.getCapacidade())
-                .bonusEntrega(infra.getBonusEntrega())
-                .custoPost(infra.getCustoPost())
-                .conexoesAtuais(conexoesDisponiveis)
-                .build();
-        })
-        .filter(r -> r.getDistanciaKm() < Double.MAX_VALUE)
-        .sorted(Comparator.comparingDouble(InfraestruturaResponse::getDistanciaKm))
-        .limit(k)
-        .collect(Collectors.toList());
-}
+                
+                return InfraestruturaResponse.builder()
+                    .id(infra.getIdInfraestrutura())
+                    .nome(infra.getNome() != null ? infra.getNome() : "Sem nome")
+                    .distanciaKm(distanciaMetros / 1000.0) 
+                    .capacidade(infra.getCapacidade())
+                    .bonusEntrega(infra.getBonusEntrega())
+                    .custoPost(infra.getCustoPost())
+                    .conexoesAtuais(conexoesDisponiveis)
+                    .build();
+            })
+            .filter(r -> r.getDistanciaKm() < Double.MAX_VALUE)
+            .sorted(Comparator.comparingDouble(InfraestruturaResponse::getDistanciaKm))
+            .limit(k)
+            .collect(Collectors.toList());
+    }
 
-    @Cacheable(value = "locais", key = "#infraId")
-    public List<Local> listarLocais(UUID infraId) {
-        return localRepository.findByInfraestruturaIdInfraestrutura(infraId);
-}
+    @SuppressWarnings("null")
+    @Cacheable(value = "locais", key = "#infraId + ',' + #lat + ',' + #lon")
+    public List<LocalResponse> listarLocais(UUID infraId, double lat, double lon) {
 
-   
-   /*  @Transactional
-    @CacheEvict(value = "locais", allEntries = true)
-    public Local criarLocal(@NonNull UUID infraId, CriarLocalRequest request) {
         Infraestrutura infra = infraRepository.findById(infraId)
             .orElseThrow(() -> new RuntimeException("Infraestrutura não encontrada"));
 
-        CoordenadaGps gps = null;
-        if (request.getLatitude() != null && request.getLongitude() != null) {
-            gps = new CoordenadaGps();
-            gps.setLatitude(request.getLatitude());
-            gps.setLongitude(request.getLongitude());
-            gps.setRaio(request.getRaio());
-            gps = gpsRepository.save(gps);
+        // Verifica se o utilizador está dentro do raio de pelo menos um local da infra
+        boolean dentroDeUmLocal = infra.getLocais().stream()
+            .filter(l -> l.getCoordenadaGps() != null)
+            .anyMatch(l -> HaversineUtil.calcularDistancia(
+                    lat, lon,
+                    l.getCoordenadaGps().getLatitude(),
+                    l.getCoordenadaGps().getLongitude())
+                <= l.getCoordenadaGps().getRaio());
+
+        if (!dentroDeUmLocal) {
+            throw new RuntimeException(
+                "Não está dentro do raio de nenhum local desta infraestrutura.");
         }
 
-        CoordenadaWifi wifi = null;
-        if (request.getSsidWifi() != null && !request.getSsidWifi().isEmpty()) {
-            wifi = new CoordenadaWifi();
-            wifi.setSsid(request.getSsidWifi());
-            wifi = wifiRepository.save(wifi);
-        }
+        // Devolve todos os locais da infra
+        return infra.getLocais().stream()
+                .filter(l -> l.getCoordenadaGps() != null)
+                .map(local -> LocalResponse.builder()
+                        .idLocal(local.getIdLocal().toString())
+                        .nome(local.getNome())
+                        .latitude(local.getCoordenadaGps().getLatitude())
+                        .longitude(local.getCoordenadaGps().getLongitude())
+                        .raio(local.getCoordenadaGps().getRaio())
+                        .build())
+                .toList();
+    }
 
-        Local local = new Local();
-        local.setNome(request.getNome());
-        local.setInfraestrutura(infra);
-        local.setCoordenadaGps(gps);
-        local.setCoordenadaWifi(wifi);
-
-        return localRepository.save(local);
-    }*/
+   
+   
 }

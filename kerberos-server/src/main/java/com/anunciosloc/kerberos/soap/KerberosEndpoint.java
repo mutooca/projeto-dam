@@ -32,7 +32,7 @@ public class KerberosEndpoint {
     @ResponsePayload
     public RequestTicketResponse requestTicket(@RequestPayload RequestTicketRequest request) {
             System.out.println("Email recebido: " + request.getEmail());
-    System.out.println("ClientNonce recebido: " + request.getClientNonce());
+            System.out.println("ClientNonce recebido: " + request.getClientNonce());
 
         RequestTicketResponse response = new RequestTicketResponse();
         try {
@@ -99,26 +99,45 @@ public class KerberosEndpoint {
 
 
        @PayloadRoot(namespace = NAMESPACE, localPart = "criarUtilizadorRequest")
-@ResponsePayload
-public CriarUtilizadorResponse criarUtilizador(@RequestPayload CriarUtilizadorRequest request) {
-    CriarUtilizadorResponse response = new CriarUtilizadorResponse();
-    try {
-        String kerberosKey = request.getPassword() + constante;
-        
-        Utilizador user = new Utilizador();
-        user.setEmail(request.getEmail());
-        user.setPalavraChave(request.getPassword());
-        user.setKerberosKey(kerberosKey);
-        user.setAtivo(true);
-        user.setDataRegisto(LocalDateTime.now());
-        utilizadorRepository.save(user);
-        
-        response.setSuccess(true);
-        response.setMessage("Utilizador criado no Kerberos com sucesso");
-    } catch (Exception e) {
-        response.setSuccess(false);
-        response.setMessage("Erro ao criar utilizador no Kerberos: " + e.getMessage());
+    @ResponsePayload
+    public CriarUtilizadorResponse criarUtilizador(@RequestPayload CriarUtilizadorRequest request) {
+        CriarUtilizadorResponse response = new CriarUtilizadorResponse();
+        try {
+            String kerberosKey = request.getPassword() + constante;
+            
+            Utilizador user = new Utilizador();
+            user.setEmail(request.getEmail());
+            user.setPalavraChave(request.getPassword());
+            user.setKerberosKey(kerberosKey);
+            user.setAtivo(true);
+            user.setDataRegisto(LocalDateTime.now());
+            utilizadorRepository.save(user);
+            
+            response.setSuccess(true);
+            response.setMessage("Utilizador criado no Kerberos com sucesso");
+        } catch (Exception e) {
+            response.setSuccess(false);
+            response.setMessage("Erro ao criar utilizador no Kerberos: " + e.getMessage());
+        }
+        return response;
     }
-    return response;
-}
+
+
+    @PayloadRoot(namespace = NAMESPACE, localPart = "verificarUtilizadorRequest")
+    @ResponsePayload
+    public VerificarUtilizadorResponse verificarUtilizador(@RequestPayload VerificarUtilizadorRequest request) {
+        VerificarUtilizadorResponse response = new VerificarUtilizadorResponse();
+        try {
+            boolean existe = utilizadorRepository.existsByEmail(request.getEmail());
+            response.setExiste(existe);
+            response.setMessage(existe ? "Utilizador existe" : "Utilizador não encontrado");
+        } catch (Exception e) {
+            response.setExiste(false);
+            response.setMessage(e.getMessage());
+        }
+        return response;
+    }
+
+
+    
 }

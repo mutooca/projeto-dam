@@ -154,41 +154,74 @@ public class KerberosSoapClient {
     }
 
     public String criarUtilizador(String email, String password) throws Exception {
-    MessageFactory messageFactory = MessageFactory.newInstance();
-    SOAPMessage soapMessage = messageFactory.createMessage();
-    SOAPPart soapPart = soapMessage.getSOAPPart();
+        MessageFactory messageFactory = MessageFactory.newInstance();
+        SOAPMessage soapMessage = messageFactory.createMessage();
+        SOAPPart soapPart = soapMessage.getSOAPPart();
 
-    SOAPEnvelope envelope = soapPart.getEnvelope();
-    envelope.addNamespaceDeclaration("kerb", "http://kerberos.anunciosloc.com/");
+        SOAPEnvelope envelope = soapPart.getEnvelope();
+        envelope.addNamespaceDeclaration("kerb", "http://kerberos.anunciosloc.com/");
 
-    SOAPBody soapBody = envelope.getBody();
-    SOAPElement criarUtilizador = soapBody.addChildElement("criarUtilizadorRequest", "kerb");
-    
-    SOAPElement emailElement = criarUtilizador.addChildElement("email", "kerb");
-    emailElement.addTextNode(email);
-    
-    SOAPElement passwordElement = criarUtilizador.addChildElement("password", "kerb");
-    passwordElement.addTextNode(password);
+        SOAPBody soapBody = envelope.getBody();
+        SOAPElement criarUtilizador = soapBody.addChildElement("criarUtilizadorRequest", "kerb");
+        
+        SOAPElement emailElement = criarUtilizador.addChildElement("email", "kerb");
+        emailElement.addTextNode(email);
+        
+        SOAPElement passwordElement = criarUtilizador.addChildElement("password", "kerb");
+        passwordElement.addTextNode(password);
 
-    soapMessage.saveChanges();
+        soapMessage.saveChanges();
 
-    SOAPConnectionFactory connectionFactory = SOAPConnectionFactory.newInstance();
-    SOAPConnection connection = connectionFactory.createConnection();
-    
-    SOAPMessage response = connection.call(soapMessage, kerberosUrl);
-    connection.close();
+        SOAPConnectionFactory connectionFactory = SOAPConnectionFactory.newInstance();
+        SOAPConnection connection = connectionFactory.createConnection();
+        
+        SOAPMessage response = connection.call(soapMessage, kerberosUrl);
+        connection.close();
 
-    return extractCriarUtilizadorResponse(response);
-}
+        return extractCriarUtilizadorResponse(response);
+    }
 
-private String extractCriarUtilizadorResponse(SOAPMessage response) throws Exception {
-    SOAPBody body = response.getSOAPBody();
-    SOAPElement criarUtilizadorResponse = (SOAPElement) body.getChildElements().next();
-    
-    String success = getElementValue(criarUtilizadorResponse, "success");
-    String message = getElementValue(criarUtilizadorResponse, "message");
-    
-    return String.format("{\"success\":%s,\"message\":\"%s\"}", success, message);
-}
+    private String extractCriarUtilizadorResponse(SOAPMessage response) throws Exception {
+        SOAPBody body = response.getSOAPBody();
+        SOAPElement criarUtilizadorResponse = (SOAPElement) body.getChildElements().next();
+        
+        String success = getElementValue(criarUtilizadorResponse, "success");
+        String message = getElementValue(criarUtilizadorResponse, "message");
+        
+        return String.format("{\"success\":%s,\"message\":\"%s\"}", success, message);
+    }
+
+    public boolean verificarUtilizador(String email) throws Exception {
+        MessageFactory messageFactory = MessageFactory.newInstance();
+        SOAPMessage soapMessage = messageFactory.createMessage();
+        SOAPPart soapPart = soapMessage.getSOAPPart();
+
+        SOAPEnvelope envelope = soapPart.getEnvelope();
+        envelope.addNamespaceDeclaration("kerb", "http://kerberos.anunciosloc.com/");
+
+        SOAPBody soapBody = envelope.getBody();
+        SOAPElement verificarUtilizador = soapBody.addChildElement("verificarUtilizadorRequest", "kerb");
+        
+        SOAPElement emailElement = verificarUtilizador.addChildElement("email", "kerb");
+        emailElement.addTextNode(email);
+
+        soapMessage.saveChanges();
+
+        SOAPConnectionFactory connectionFactory = SOAPConnectionFactory.newInstance();
+        SOAPConnection connection = connectionFactory.createConnection();
+        
+        SOAPMessage response = connection.call(soapMessage, kerberosUrl);
+        connection.close();
+
+        return extractVerificarUtilizadorResponse(response);
+    }
+
+    private boolean extractVerificarUtilizadorResponse(SOAPMessage response) throws Exception {
+        SOAPBody body = response.getSOAPBody();
+        SOAPElement verificarResponse = (SOAPElement) body.getChildElements().next();
+        
+        String existe = getElementValue(verificarResponse, "existe");
+        return Boolean.parseBoolean(existe);
+    }
     
 }

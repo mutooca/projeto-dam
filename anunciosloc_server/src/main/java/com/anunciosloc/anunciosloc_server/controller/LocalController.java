@@ -39,7 +39,8 @@ public class LocalController {
     }
 
     
-    @GetMapping("/{id}/locais")
+    
+    @GetMapping
     public ResponseEntity<?> listarLocaisProximos(
             @RequestParam Double lat,
             @RequestParam Double lon) {

@@ -42,13 +42,16 @@ public class InfraestruturaController {
         }
     }
 
-    /*@PostMapping("/{id}/locais")
-    public ResponseEntity<?> criarLocal(@PathVariable @NonNull UUID id, @RequestBody CriarLocalRequest request) {
+    @GetMapping("/{id}/locais")
+    public ResponseEntity<?> listarLocais(
+            @PathVariable UUID id,
+            @RequestParam Double lat,
+            @RequestParam Double lon) {
         try {
-            Local local = infraService.criarLocal(id, request);
-            return ResponseEntity.ok("Local criado: " + local.getNome());
+            List<LocalResponse> locais = infraService.listarLocais(id, lat, lon);
+            return ResponseEntity.ok(locais);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
-    }*/
+    }
 }
