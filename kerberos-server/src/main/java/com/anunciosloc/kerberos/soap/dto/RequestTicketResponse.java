@@ -26,7 +26,7 @@ public class RequestTicketResponse {
     @XmlElement(name = "message", namespace = "http://kerberos.anunciosloc.com/")
     private String message;
 
-    // Getters e Setters
+    
     public boolean isSuccess() { return success; }
     public void setSuccess(boolean success) { this.success = success; }
     public String getTicket() { return ticket; }

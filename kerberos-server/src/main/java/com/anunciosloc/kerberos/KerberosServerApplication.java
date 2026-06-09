@@ -9,7 +9,7 @@ public class KerberosServerApplication {
         SpringApplication.run(KerberosServerApplication.class, args);
         System.out.println("═══════════════════════════════════════════════════════");
         System.out.println("  Servidor Kerberos iniciado!");
-        System.out.println("  WSDL: http://localhost:8081/ws/kerberos?wsdl");
+        System.out.println("  WSDL: http://localhost:8085/ws/kerberos?wsdl");
         System.out.println("═══════════════════════════════════════════════════════");
     }
 }

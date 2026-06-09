@@ -1,8 +1,14 @@
 package com.anunciosloc.kerberos.soap;
 
+import com.anunciosloc.kerberos.model.Utilizador;
+import com.anunciosloc.kerberos.repository.UtilizadorRepository;
 import com.anunciosloc.kerberos.service.KerberosService;
 import com.anunciosloc.kerberos.soap.dto.*;
+
+import java.time.LocalDateTime;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.ws.server.endpoint.annotation.Endpoint;
 import org.springframework.ws.server.endpoint.annotation.PayloadRoot;
 import org.springframework.ws.server.endpoint.annotation.RequestPayload;
@@ -12,6 +18,12 @@ import org.springframework.ws.server.endpoint.annotation.ResponsePayload;
 public class KerberosEndpoint {
 
     private static final String NAMESPACE = "http://kerberos.anunciosloc.com/";
+
+    @Value("${kerberos.constante}")
+    private String constante;
+
+    @Autowired 
+    private UtilizadorRepository utilizadorRepository;
 
     @Autowired
     private KerberosService kerberosService;
@@ -84,4 +96,29 @@ public class KerberosEndpoint {
         }
         return response;
     }
+
+
+       @PayloadRoot(namespace = NAMESPACE, localPart = "criarUtilizadorRequest")
+@ResponsePayload
+public CriarUtilizadorResponse criarUtilizador(@RequestPayload CriarUtilizadorRequest request) {
+    CriarUtilizadorResponse response = new CriarUtilizadorResponse();
+    try {
+        String kerberosKey = request.getPassword() + constante;
+        
+        Utilizador user = new Utilizador();
+        user.setEmail(request.getEmail());
+        user.setPalavraChave(request.getPassword());
+        user.setKerberosKey(kerberosKey);
+        user.setAtivo(true);
+        user.setDataRegisto(LocalDateTime.now());
+        utilizadorRepository.save(user);
+        
+        response.setSuccess(true);
+        response.setMessage("Utilizador criado no Kerberos com sucesso");
+    } catch (Exception e) {
+        response.setSuccess(false);
+        response.setMessage("Erro ao criar utilizador no Kerberos: " + e.getMessage());
+    }
+    return response;
+}
 }
