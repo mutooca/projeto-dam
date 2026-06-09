@@ -1,10 +1,13 @@
 package com.anunciosloc.anunciosloc_server.util;
 
+import org.springframework.cache.annotation.Cacheable;
+
 public class HaversineUtil {
  
-    // Raio médio da Terra em metros
+    
     private static final double RAIO_TERRA_METROS = 6_371_000.0;
  
+    @Cacheable(value = "distancias", key = "#lat1 + ',' + #lon1 + ',' + #lat2 + ',' + #lon2")
     public static double calcularDistancia(double lat1, double lon1,
                                            double lat2, double lon2) {
         // Converter graus para radianos

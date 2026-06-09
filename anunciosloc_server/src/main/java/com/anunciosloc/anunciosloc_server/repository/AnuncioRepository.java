@@ -13,16 +13,21 @@ import java.util.UUID;
 public interface AnuncioRepository extends JpaRepository<Anuncio, UUID> {
 
     List<Anuncio> findByLocal(Local local);
-    List<Anuncio> findByLocalId(UUID localId);
+    List<Anuncio> findByLocalIdLocal(UUID idLocal);
+
     List<Anuncio> findByAutor(Utilizador autor);
     List<Anuncio> findByInfraestrutura(Infraestrutura infra);
     List<Anuncio> findByInfraestruturaAndEstado(Infraestrutura infra, String estado);
-    List<Anuncio> findByLocalAndEstadoAndCategoriaIn(Local local, String estado, List<String> categorias);
-    
-    
-    @Query("SELECT a FROM Anuncio a WHERE a.local.idLocal = :localId AND a.idAnuncio NOT IN " +
-           "(SELECT ea.anuncio.idAnuncio FROM EntregaAnuncio ea WHERE ea.utilizador.email = :email)")
-    List<Anuncio> findNaoVisualizadosPorUtilizador(@Param("localId") UUID localId, @Param("email") String email);
-    List<Anuncio> findByInfraestruturaAndEstadoAndCategoriaIn(Infraestrutura infra, String string,
-            List<String> categorias);
+    List<Anuncio> findByInfraestruturaAndEstadoAndCategoriaIn(
+            Infraestrutura infra, String estado, List<String> categorias);
+    List<Anuncio> findByLocalAndEstadoAndCategoriaIn(
+            Local local, String estado, List<String> categorias);
+
+    @Query("SELECT a FROM Anuncio a WHERE a.local.idLocal = :localId " +
+           "AND a.idAnuncio NOT IN " +
+           "(SELECT ea.anuncio.idAnuncio FROM EntregaAnuncio ea " +
+           "WHERE ea.utilizador.email = :email)")
+    List<Anuncio> findNaoVisualizadosPorUtilizador(
+            @Param("localId") UUID localId,
+            @Param("email") String email);
 }

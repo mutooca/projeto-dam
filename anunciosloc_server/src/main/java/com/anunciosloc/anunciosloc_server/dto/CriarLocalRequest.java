@@ -9,4 +9,6 @@ public class CriarLocalRequest {
     private Double longitude;
     private Integer raio;
     private String ssidWifi;
+    private Double latUtilizador; 
+    private Double lonUtilizador;
 }

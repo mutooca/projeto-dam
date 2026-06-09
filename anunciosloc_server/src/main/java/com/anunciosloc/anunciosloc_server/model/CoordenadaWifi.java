@@ -17,5 +17,5 @@ public class CoordenadaWifi {
     @Column(name = "id_coordenada_wifi",columnDefinition = "UUID")
     private UUID idCoordenadaWifi;
     
-    private String ssid;  // Nome da rede WiFi
+    private String ssid;
 }

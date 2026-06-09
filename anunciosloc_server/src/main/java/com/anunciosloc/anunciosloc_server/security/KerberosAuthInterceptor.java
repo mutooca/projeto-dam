@@ -4,6 +4,7 @@ import com.anunciosloc.anunciosloc_server.client.KerberosSoapClient;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -14,7 +15,7 @@ public class KerberosAuthInterceptor implements HandlerInterceptor {
     private KerberosSoapClient kerberosClient;
 
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+    public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler) {
         
         String path = request.getRequestURI();
         System.out.println(" Interceptor - Path: " + path);
@@ -45,6 +46,8 @@ public class KerberosAuthInterceptor implements HandlerInterceptor {
             System.out.println(" Validando ticket com Kerberos...");
             String validationJson = kerberosClient.validateTicket(ticket, authenticator);
             System.out.println(" Resposta do Kerberos: " + validationJson);
+            System.out.println("URL Kerberos: " + kerberosClient.toString());
+            System.out.println("Validation JSON completo: " + validationJson);
             
             if (validationJson != null && validationJson.contains("\"valid\":true")) {
                 System.out.println(" Autenticação válida!");

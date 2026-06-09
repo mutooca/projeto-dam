@@ -6,6 +6,7 @@ import com.anunciosloc.anunciosloc_server.model.Infraestrutura;
 import com.anunciosloc.anunciosloc_server.model.Utilizador;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface EntregaAnuncioRepository extends JpaRepository<EntregaAnuncio, UUID> {
@@ -13,4 +14,6 @@ public interface EntregaAnuncioRepository extends JpaRepository<EntregaAnuncio, 
     List<EntregaAnuncio> findByUtilizador(Utilizador utilizador);
     List<EntregaAnuncio> findByInfraestrutura(Infraestrutura infra);
     long countByAnuncio(Anuncio anuncio);
+    Optional<EntregaAnuncio> findByAnuncioAndUtilizador(Anuncio anuncio,
+                                                     Utilizador utilizador);
 }

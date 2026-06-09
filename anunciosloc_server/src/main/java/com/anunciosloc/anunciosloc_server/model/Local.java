@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -20,11 +22,18 @@ public class Local {
     private UUID idLocal;
     
     private String nome;
+
+    @ManyToOne
+    @JoinColumn(name = "id_criador")
+    private Utilizador criadoPor;
     
     
+    @JsonIgnoreProperties({"locais", "gestor", "saldos", "conexoes", 
+                            "restricoes", "registoEstatistico", "anuncios"})
     @ManyToOne
     @JoinColumn(name = "id_infraestrutura")
     private Infraestrutura infraestrutura;
+    
    
     @OneToOne
     @JoinColumn(name = "id_coordenada_wifi")

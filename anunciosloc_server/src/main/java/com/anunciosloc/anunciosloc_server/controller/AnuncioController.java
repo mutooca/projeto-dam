@@ -41,6 +41,18 @@ public class AnuncioController {
         }
     }
 
+    @PatchMapping("/{id}/lido")
+    public ResponseEntity<?> marcarComoLido(
+            @PathVariable UUID id,
+            @RequestParam String email) {
+        try {
+            anuncioService.marcarComoLido(id, email);
+            return ResponseEntity.ok("Anúncio marcado como lido");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @GetMapping("/local/{localId}")
     public ResponseEntity<?> listarPorLocal(@PathVariable @NonNull UUID localId) {
         try {
@@ -62,11 +74,13 @@ public class AnuncioController {
     }
 
    
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> removerAnuncio(@PathVariable @NonNull UUID id, @RequestParam String emailGestor) {
+        @DeleteMapping("/{id}")
+    public ResponseEntity<?> eliminarAnuncio(
+            @PathVariable UUID id,
+            @RequestParam String email) {
         try {
-            anuncioService.removerAnuncio(id, emailGestor);
-            return ResponseEntity.ok("Anúncio removido");
+            anuncioService.removerAnuncio(id, email);
+            return ResponseEntity.ok("Anúncio removido com sucesso");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

@@ -29,8 +29,6 @@ public class InfraestruturaController {
         }
     }
 
-    
-
     @GetMapping("/proximas")
     public ResponseEntity<?> listarInfraestruturasProximas(
             @RequestParam double lat,
@@ -44,7 +42,7 @@ public class InfraestruturaController {
         }
     }
 
-    @PostMapping("/{id}/locais")
+    /*@PostMapping("/{id}/locais")
     public ResponseEntity<?> criarLocal(@PathVariable @NonNull UUID id, @RequestBody CriarLocalRequest request) {
         try {
             Local local = infraService.criarLocal(id, request);
@@ -52,5 +50,5 @@ public class InfraestruturaController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
-    }
+    }*/
 }

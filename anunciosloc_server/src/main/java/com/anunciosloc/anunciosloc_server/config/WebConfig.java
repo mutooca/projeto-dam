@@ -12,6 +12,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Autowired
     private KerberosAuthInterceptor kerberosAuthInterceptor;
     
+    @SuppressWarnings("null")
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(kerberosAuthInterceptor)

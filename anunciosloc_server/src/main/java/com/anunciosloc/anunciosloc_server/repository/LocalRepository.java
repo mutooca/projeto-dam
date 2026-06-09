@@ -8,5 +8,7 @@ import java.util.UUID;
 
 public interface LocalRepository extends JpaRepository<Local, UUID> {
     List<Local> findByInfraestrutura(Infraestrutura infra);
-    List<Local> findByInfraestruturaId(UUID infraId);
+
+    
+    List<Local> findByInfraestruturaIdInfraestrutura(UUID idInfraestrutura);
 }

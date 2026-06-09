@@ -3,12 +3,19 @@ package com.anunciosloc.anunciosloc_server.service;
 import com.anunciosloc.anunciosloc_server.dto.*;
 import com.anunciosloc.anunciosloc_server.model.*;
 import com.anunciosloc.anunciosloc_server.repository.*;
+import com.anunciosloc.anunciosloc_server.uddi.InfrastruturaSoapClient;
 import com.anunciosloc.anunciosloc_server.util.HaversineUtil;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+//import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.anunciosloc.anunciosloc_server.uddi.InfrastruturaSoapClient;
+import com.anunciosloc.anunciosloc_server.uddi.InfraProxy;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,6 +26,8 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
+//@EnableCaching
 public class InfraestruturaService {
 
     private final InfraestruturaRepository infraRepository;
@@ -27,9 +36,12 @@ public class InfraestruturaService {
     private final CoordenadaGpsRepository gpsRepository;
     private final CoordenadaWifiRepository wifiRepository;
     private final RegistoEstatisticoRepository estatisticoRepository;
+    private final InfrastruturaSoapClient soapClient;
+    private final InfraDisponibilidadeService infraDisponibilidade;
 
     
     @Transactional
+    @CacheEvict(value = "infraestruturas", allEntries = true)
     public Infraestrutura registarInfraestrutura(RegistarInfraRequest request) {
         Utilizador gestor = utilizadorRepository.findByEmail(request.getEmailGestor())
             .orElseThrow(() -> new RuntimeException("Gestor não encontrado"));
@@ -88,6 +100,7 @@ public class InfraestruturaService {
         return infraRepository.save(infra);
     }
 
+    @Cacheable(value = "infraestruturas", key = "#id")
     public InfraestruturaResponse obterInfoInfraestrutura(@NonNull UUID id) {
         Infraestrutura infra = infraRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Infraestrutura não encontrada"));
@@ -118,41 +131,62 @@ public class InfraestruturaService {
             .build();
     }
 
-    
-    public List<InfraestruturaResponse> listarInfraestruturasProximas(double lat, double lon, int k) {
-        List<Infraestrutura> todas = infraRepository.findByAtivaTrue();
 
-        return todas.stream()
-            .map(infra -> {
-                // Calcula a distância mínima entre o user(nesste caso app mobile) e qualquer local da infraestrutura
-                double distancia = infra.getLocais().stream()
-                    .filter(l -> l.getCoordenadaGps() != null)
-                    .mapToDouble(l -> HaversineUtil.calcularDistancia(
-                        lat, lon,
-                        l.getCoordenadaGps().getLatitude(),
-                        l.getCoordenadaGps().getLongitude()))
-                    .min()
-                    .orElse(Double.MAX_VALUE);
+   @Cacheable(value = "infraestruturas", key = "#lat + ',' + #lon + ',' + #k")
+public List<InfraestruturaResponse> listarInfraestruturasProximas(
+        double lat, double lon, int k) {
 
-                
-                return InfraestruturaResponse.builder()
-                    .id(infra.getIdInfraestrutura())
-                    .nome(infra.getNome() != null ? infra.getNome() : "Sem nome")
-                    .distanciaKm(distancia)
-                    .capacidade(infra.getCapacidade())
-                    .bonusEntrega(infra.getBonusEntrega())
-                    .custoPost(infra.getCustoPost())
-                    .conexoesAtuais(infra.getTotalConexoes())
-                    .build();
-            })
-            .filter(r -> r.getDistanciaKm() < Double.MAX_VALUE)
-            .sorted(Comparator.comparingDouble(InfraestruturaResponse::getDistanciaKm))
-            .limit(k)
-            .collect(Collectors.toList());
-    }
+    List<Infraestrutura> todas = infraRepository.findByAtivaTrue();
+
+    return todas.stream()
+        .map(infra -> {
+
+            // Distância mínima a qualquer local GPS da infraestrutura
+            double distanciaMetros = infra.getLocais().stream()
+                .filter(l -> l.getCoordenadaGps() != null)
+                .mapToDouble(l -> HaversineUtil.calcularDistancia(
+                    lat, lon,
+                    l.getCoordenadaGps().getLatitude(),
+                    l.getCoordenadaGps().getLongitude()))
+                .min()
+                .orElse(Double.MAX_VALUE);
+
+            
+            int conexoesDisponiveis = infra.getCapacidade(); 
+            if (infraDisponibilidade.estaDisponivel(infra.getNome())) {
+                try {
+                    InfraProxy proxy = soapClient.obterClientePorNome(infra.getNome());
+                    conexoesDisponiveis = proxy.obterInfoInfraestrutura()
+                                            .getConexoesDisponiveis();
+                } catch (Exception e) {
+                    log.warn("Fallback para capacidade total: {}", e.getMessage());
+                }
+            }
+            
+            return InfraestruturaResponse.builder()
+                .id(infra.getIdInfraestrutura())
+                .nome(infra.getNome() != null ? infra.getNome() : "Sem nome")
+                .distanciaKm(distanciaMetros / 1000.0) 
+                .capacidade(infra.getCapacidade())
+                .bonusEntrega(infra.getBonusEntrega())
+                .custoPost(infra.getCustoPost())
+                .conexoesAtuais(conexoesDisponiveis)
+                .build();
+        })
+        .filter(r -> r.getDistanciaKm() < Double.MAX_VALUE)
+        .sorted(Comparator.comparingDouble(InfraestruturaResponse::getDistanciaKm))
+        .limit(k)
+        .collect(Collectors.toList());
+}
+
+    @Cacheable(value = "locais", key = "#infraId")
+    public List<Local> listarLocais(UUID infraId) {
+        return localRepository.findByInfraestruturaIdInfraestrutura(infraId);
+}
 
    
-    @Transactional
+   /*  @Transactional
+    @CacheEvict(value = "locais", allEntries = true)
     public Local criarLocal(@NonNull UUID infraId, CriarLocalRequest request) {
         Infraestrutura infra = infraRepository.findById(infraId)
             .orElseThrow(() -> new RuntimeException("Infraestrutura não encontrada"));
@@ -180,5 +214,5 @@ public class InfraestruturaService {
         local.setCoordenadaWifi(wifi);
 
         return localRepository.save(local);
-    }
+    }*/
 }

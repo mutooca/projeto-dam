@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Table(name = "infraestrutura")
 @Data
@@ -35,7 +37,7 @@ public class Infraestrutura {
     
     private boolean ativa;
     
-    // Estatísticas
+   
     @Column(name = "total_anuncios")
     private Integer totalAnuncios = 0;
     
@@ -51,6 +53,7 @@ public class Infraestrutura {
     @JoinColumn(name = "id_gestor", referencedColumnName = "id_utilizador")
     private Utilizador gestor;
     
+    @JsonIgnore
     @OneToMany(mappedBy = "infraestrutura", cascade = CascadeType.ALL)
     private List<Local> locais = new ArrayList<>();
     

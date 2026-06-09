@@ -31,7 +31,7 @@ public class AuthController {
     @PostMapping("/registar")
     public ResponseEntity<?> registar(@RequestBody RegistarUtilizadorRequest request) {
         try {
-            Utilizador user = authService.registar(request.getEmail(), request.getPalavraChave(), request.getRole());
+           Utilizador user = authService.registar(request);
             return ResponseEntity.ok("Utilizador registado: " + user.getEmail() + " (Role: " + user.getRole() + ")");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());

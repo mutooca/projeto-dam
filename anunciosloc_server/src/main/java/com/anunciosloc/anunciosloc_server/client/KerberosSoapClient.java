@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class KerberosSoapClient {
 
-    @Value("${kerberos.soap.url:http://localhost:8081/ws/kerberos}")
+    @Value("${kerberos.soap.url:http://localhost:8085/ws/kerberos}")
     private String kerberosUrl;
 
     public String requestTicket(String email, String clientNonce) throws Exception {
@@ -47,6 +47,13 @@ public class KerberosSoapClient {
     }
 
      public String validateTicket(String ticket, String authenticator) throws Exception {
+        System.out.println(" KerberosSoapClient.validateTicket");
+        System.out.println("   Ticket: " + ticket);
+        System.out.println("   Authenticator: " + authenticator);
+        
+        
+        
+        
         MessageFactory messageFactory = MessageFactory.newInstance();
         SOAPMessage soapMessage = messageFactory.createMessage();
         SOAPPart soapPart = soapMessage.getSOAPPart();
@@ -145,4 +152,43 @@ public class KerberosSoapClient {
         }
         return "";
     }
+
+    public String criarUtilizador(String email, String password) throws Exception {
+    MessageFactory messageFactory = MessageFactory.newInstance();
+    SOAPMessage soapMessage = messageFactory.createMessage();
+    SOAPPart soapPart = soapMessage.getSOAPPart();
+
+    SOAPEnvelope envelope = soapPart.getEnvelope();
+    envelope.addNamespaceDeclaration("kerb", "http://kerberos.anunciosloc.com/");
+
+    SOAPBody soapBody = envelope.getBody();
+    SOAPElement criarUtilizador = soapBody.addChildElement("criarUtilizadorRequest", "kerb");
+    
+    SOAPElement emailElement = criarUtilizador.addChildElement("email", "kerb");
+    emailElement.addTextNode(email);
+    
+    SOAPElement passwordElement = criarUtilizador.addChildElement("password", "kerb");
+    passwordElement.addTextNode(password);
+
+    soapMessage.saveChanges();
+
+    SOAPConnectionFactory connectionFactory = SOAPConnectionFactory.newInstance();
+    SOAPConnection connection = connectionFactory.createConnection();
+    
+    SOAPMessage response = connection.call(soapMessage, kerberosUrl);
+    connection.close();
+
+    return extractCriarUtilizadorResponse(response);
+}
+
+private String extractCriarUtilizadorResponse(SOAPMessage response) throws Exception {
+    SOAPBody body = response.getSOAPBody();
+    SOAPElement criarUtilizadorResponse = (SOAPElement) body.getChildElements().next();
+    
+    String success = getElementValue(criarUtilizadorResponse, "success");
+    String message = getElementValue(criarUtilizadorResponse, "message");
+    
+    return String.format("{\"success\":%s,\"message\":\"%s\"}", success, message);
+}
+    
 }
