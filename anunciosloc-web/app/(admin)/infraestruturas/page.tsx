@@ -1,98 +1,258 @@
 'use client'
-import {useForm} from 'react-hook-form';
-import {z} from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-import {HiMiniMagnifyingGlass} from "react-icons/hi2";
-import { LuSettings2 , LuTrash2} from "react-icons/lu";
+import { useState } from "react";
+import toast from "react-hot-toast";
+import { HiMiniMagnifyingGlass } from "react-icons/hi2";
+import { LuSettings2, LuTrash2 } from "react-icons/lu";
 import { ImPencil } from "react-icons/im";
 
-
-
-const nomeShema = z.object({
-    nome:z.string().min(2, "O nome deve conter no minimo 2 caracteres."),
-})
-
-type nomeData = z.infer<typeof nomeShema>;
+import ModalInfraestrutura, {
+    Infraestrutura
+} from "@/app/components/infraestruturas/ModalInfraestrutura";
 
 export default function Infraestruturas(){
-   const  totalRedes = 4;   
-   const coordenada = {latitude:"192", longitude:"124", raio:"10m"}
 
-   const titulosInfraestruturas =["Infraestrutura", "Tipo", "Coordenada", "Ocupacao", "Premio", "Regras", "Açcões"];
+    const [modalOpen,setModalOpen] = useState(false);
 
-   const tabelasInfraestruturas =[
-    {infraestrutura:"Largo", tipo:"GPS", coordenada:coordenada, ocupacao:"47/20", premio:"5pts", regras:1, accaoEditar:"",  accaoDetetar:""},
-    {infraestrutura:"Belas" , tipo:"GPS", coordenada:coordenada, ocupacao:"47/20", premio:"5pts", regras:1, accaoEditar:"",  accaoDetetar:""},
-    {infraestrutura:"Mutamba", tipo:"wifi", coordenada:coordenada, ocupacao:"47/20", premio:"5pts", regras:1, accaoEditar:"",  accaoDetetar:""}
+    const [infraEditar,setInfraEditar] =
+        useState<Infraestrutura | null>(null);
 
-   ]
-       const { register, handleSubmit, formState: { errors, isSubmitting} }=useForm<nomeData>({
-       resolver: zodResolver(nomeShema)});
-       async function handleBuscarInfra(data:nomeData){
-           console.log(data);
-       }
+    const [infraestruturas,setInfraestruturas] =
+        useState<Infraestrutura[]>([
+            {
+                id:1,
+                nome:"Mercado do 30",
+                gps:true,
+                wifi:false,
+                latitude:"-8.8147",
+                longitude:"13.2302",
+                raio:"20",
+                capacidade:150,
+                premio:3,
+                regras:""
+            },
+            {
+                id:2,
+                nome:"FCN",
+                gps:true,
+                wifi:true,
+                latitude:"-8.8150",
+                longitude:"13.2400",
+                raio:"30",
+                ssids:"FCN_WIFI",
+                capacidade:300,
+                premio:4,
+                regras:"1"
+            }
+        ]);
+
+    const totalRedes = infraestruturas.length;
+
+    function salvarInfraestrutura(data:Infraestrutura){
+
+        if(infraEditar){
+
+            setInfraestruturas(prev =>
+                prev.map(item =>
+                    item.id === data.id
+                        ? data
+                        : item
+                )
+            );
+
+            return;
+        }
+
+        setInfraestruturas(prev => [...prev,data]);
+    }
+
+    function eliminarInfraestrutura(id:number){
+
+        setInfraestruturas(prev =>
+            prev.filter(item => item.id !== id)
+        );
+
+        toast.success("Infraestrutura removida");
+    }
+
     return(
-        <div className=" mt-28 max-w-5xl w-full gap-6 ">
-            
-            <section className="flex flex-col space-y-1 md:flex-row md:items-center md:justify-between p-2 md:max-w-5xl border-amber-300">
-                <div className="space-y-1">
-                    <h2 className="text-2xl md:text-4xl font-semibold">Infraestruturas</h2>
-                    <p className="text-gray-500 text-sm font-semibold">Registar, redimencionar e recolocar locais da rede AnunciosLoc.</p>
-                </div>
-                <button className=" text-sm sm:p-2 md:w-auto px-4 py-2 rounded-lg text-white font-semibold bg-amber-500 shadow cursor-pointer">+ Nova Infraestrutura</button>
-            </section>
-            <section className="max-w-5xl p-4 rounded-lg shadow border border-gray-100 mt-6">
-                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <div className="flex space-x-2 items-center ">
-                        <LuSettings2 size={20} className='text-[#F8960D] '/>
-                        <h2 className="text-base md:text-xl font-semibold">Redes  ({totalRedes})</h2>
+        <>
+            <div className="mt-28 max-w-5xl w-full">
+
+                <section className="flex flex-col space-y-1 md:flex-row md:items-center md:justify-between p-2 md:max-w-5xl border-amber-300">
+
+                    <div className="space-y-1">
+                        <h1 className="text-4xl font-semibold">
+                            Infraestruturas
+                        </h1>
+
+                        <p className="text-gray-500">
+                            Gestão das infraestruturas da rede
+                        </p>
                     </div>
-                    
-                    <form onSubmit={handleSubmit(handleBuscarInfra)} className="">
-                        <div className="relative">
-                            <HiMiniMagnifyingGlass className='absolute top-1/2 left-3 -translate-y-1/2 text-gray-400 font-semibold' size={14} />
-                            <input {...register('nome')} disabled={isSubmitting} type="text" className=" w-full md:w-64 font-semibold pl-8 px-8 text-gray-500 h-9 rounded-lg shadow border border-gray-100 text-sm outline-amber-500" placeholder="Listar Infraestrutura..."/>
-                        </div>
-                         {errors.nome &&  <p className="text-xs text-red-500">{errors.nome.message}</p>} 
-                    
-                    </form>
-                </div>
-            
 
+                    <button
+                        onClick={()=>{
+                            setInfraEditar(null);
+                            setModalOpen(true);
+                        }}
+                        className="text-sm sm:p-2 md:w-auto px-4 py-2 rounded-lg text-white font-semibold bg-amber-500 shadow cursor-pointer"
+                    >
+                        + Nova Infraestrutura
+                    </button>
 
-                <div className="overflow-x-auto">
-                    <div className="min-w-225">
-                      <div className="grid grid-cols-7 gap-4 p-2 mt-2 text-gray-600 font-semibold">
-                            {
-                                titulosInfraestruturas.map((titulo)=>(
-                                    <h2 key={titulo}>{titulo}</h2>
-                                ))
-                            }
-                        </div>
+                </section>
 
-                    <div className="flex flex-col ">
-                        {tabelasInfraestruturas.map((item, index)=>(
-                            <div key={index} className="grid grid-cols-7 gap-4 border-t border-gray-100 p-2 text-sm font-semibold">
-                                
-                                <h2 className="">{item.infraestrutura}</h2>
-                                <button className="justify-self-start self-center rounded-lg p-1 shadow border border-gray-100 ">{item.tipo}</button>
-                                <span className="">[{item.coordenada.latitude}, {item.coordenada.longitude}, {item.coordenada.raio}]</span>
-                                <span className="">{item.ocupacao}</span>
-                                <button className="justify-self-start self-center rounded-lg p-1 shadow bg-amber-100 border border-gray-100 text-amber-500 ">{item.premio}</button>
-                                <span >{item.regras}</span>
+                <section className="border border-gray-100 rounded-xl shadow p-4 mt-6">
 
-                                <div className="flex flex-col space-y-2 p-2">
-                                   <button className="cursor-pointer"><ImPencil size={16}/></button> 
-                                   <button className="cursor-pointer"><LuTrash2 size={16} className='text-red-500'/></button> 
-                                </div>
+                  <div className="overflow-x-auto mt-6">
+                        <table className="w-full min-w-[900px]">
 
-                            </div>
-                             ))}
-                         </div>
+                            <thead>
+                                <tr className="border-b border-gray-200 text-sm text-gray-500 bg-gray-50">
+
+                                    <th className="text-left py-4 px-3 font-semibold">
+                                        Infraestrutura
+                                    </th>
+
+                                    <th className="text-left py-4 px-3 font-semibold">
+                                        Tipo
+                                    </th>
+
+                                    <th className="text-left py-4 px-3 font-semibold">
+                                        Coordenadas
+                                    </th>
+
+                                    <th className="text-left py-4 px-3 font-semibold">
+                                        Capacidade
+                                    </th>
+
+                                    <th className="text-left py-4 px-3 font-semibold">
+                                        Prémio
+                                    </th>
+
+                                    <th className="text-left py-4 px-3 font-semibold">
+                                        Regras
+                                    </th>
+
+                                    <th className="text-left py-4 px-3 font-semibold">
+                                        Ações
+                                    </th>
+
+                                </tr>
+                            </thead>
+
+                            <tbody>
+
+                                {infraestruturas.map(item => (
+
+                                    <tr
+                                        key={item.id}
+                                        className="border-b border-gray-100 hover:bg-amber-50 transition-colors"
+                                    >
+
+                                        <td className="py-4 px-3 font-semibold text-gray-800">
+                                            {item.nome}
+                                        </td>
+
+                                        <td className="py-4 px-3">
+
+                                            <div className="flex gap-2 flex-wrap">
+
+                                                {item.gps && (
+                                                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                                                        GPS
+                                                    </span>
+                                                )}
+
+                                                {item.wifi && (
+                                                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                                                        WiFi
+                                                    </span>
+                                                )}
+
+                                            </div>
+
+                                        </td>
+
+                                        <td className="py-4 px-3 text-sm text-gray-600">
+
+                                            {item.gps
+                                                ? `[${item.latitude}, ${item.longitude}, ${item.raio}m]`
+                                                : "--"}
+
+                                        </td>
+
+                                        <td className="py-4 px-3 font-medium text-gray-700">
+                                            {item.capacidade}
+                                        </td>
+
+                                        <td className="py-4 px-3">
+
+                                            <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-sm font-semibold">
+                                                {item.premio} pts
+                                            </span>
+
+                                        </td>
+
+                                        <td className="py-4 px-3 text-gray-600">
+                                            {item.regras || "—"}
+                                        </td>
+
+                                        <td className="py-4 px-3">
+
+                                            <div className="flex gap-3">
+
+                                                <button
+                                                    onClick={()=>{
+                                                        setInfraEditar(item);
+                                                        setModalOpen(true);
+                                                    }}
+                                                    className="w-9 h-9 rounded-lg border border-gray-200 hover:bg-amber-100 transition flex items-center justify-center"
+                                                >
+                                                    <ImPencil
+                                                        size={15}
+                                                        className="text-gray-700"
+                                                    />
+                                                </button>
+
+                                                <button
+                                                    onClick={() =>
+                                                        eliminarInfraestrutura(item.id)
+                                                    }
+                                                    className="w-9 h-9 rounded-lg border border-red-200 hover:bg-red-50 transition flex items-center justify-center"
+                                                >
+                                                    <LuTrash2
+                                                        size={16}
+                                                        className="text-red-500"
+                                                    />
+                                                </button>
+
+                                            </div>
+
+                                        </td>
+
+                                    </tr>
+
+                                ))}
+
+                            </tbody>
+
+                        </table>
                     </div>
-                </div>
-            </section>
-        </div>
-      
-    )
+
+                </section>
+
+            </div>
+
+            <ModalInfraestrutura
+                open={modalOpen}
+                onClose={()=>{
+                    setModalOpen(false);
+                    setInfraEditar(null);
+                }}
+                infraestrutura={infraEditar}
+                onSave={salvarInfraestrutura}
+            />
+        </>
+    );
 }

@@ -44,7 +44,7 @@ export default function SidebarAdmin(){
             {menuOpen && ( <div onClick={() => setMenuOpen(false)}  className="fixed inset-0 bg-black/50 z-40 md:hidden "/>)}
 
             
-           <aside className={`fixed top-0 left-0 h-screen w-64 bg-white border-r border-zinc-200 z-50 transition-transform duration-300
+           <aside className={`fixed flex flex-col top-0 left-0 h-screen w-64 bg-white border-r border-zinc-200 z-50 transition-transform duration-300
            ${menuOpen? 'translate-x-0': '-translate-x-full' } md:translate-x-0`}>
 
             <div className="flex justify-end md:hidden p-2"><button onClick={()=>setMenuOpen(false)} className="p-2"><LuX size={24}/></button>
@@ -77,7 +77,6 @@ export default function SidebarAdmin(){
 
                 <div className="flex justify-center border-t border-zinc-100 p-4 ">
                     <div className="flex flex-col bg-amber-200 p-2 rounded-xl space-y-1 w-full">
-                        <span className="font-semibold text-amber-950 text-sm">Versão 1.0</span>
                         <span className="text-zinc-600 text-sm">Sistema baseado em localização</span>
                     </div>
                 </div>
