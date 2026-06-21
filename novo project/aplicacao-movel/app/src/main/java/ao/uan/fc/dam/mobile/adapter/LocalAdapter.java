@@ -14,7 +14,6 @@ import ao.uan.fc.dam.mobile.R;
 import ao.uan.fc.dam.mobile.model.Local;
 
 public class LocalAdapter extends RecyclerView.Adapter<LocalAdapter.LocalViewHolder> {
-
     private List<Local> localList;
 
     public LocalAdapter(List<Local> localList) {
@@ -24,26 +23,15 @@ public class LocalAdapter extends RecyclerView.Adapter<LocalAdapter.LocalViewHol
     @NonNull
     @Override
     public LocalViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-
-        View item_local = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.fragment_locais, parent, false);
-
+        View item_local = LayoutInflater.from(parent.getContext()).inflate(R.layout.fragment_locais, parent, false);
         return new LocalViewHolder(item_local);
     }
 
     @Override
     public void onBindViewHolder(@NonNull LocalViewHolder holder, int position) {
-
         Local local = localList.get(position);
-
         holder.nome_local.setText(local.getNome());
-
-        // Corrigido aqui
-        if (local.getCoordenada_gps() != null) {
-            holder.coordenada.setText(local.getCoordenada_gps().toString());
-        } else {
-            holder.coordenada.setText("Sem coordenada");
-        }
+        holder.coordenada.setText(local.getCoordenada_gps());
     }
 
     @Override
@@ -51,14 +39,13 @@ public class LocalAdapter extends RecyclerView.Adapter<LocalAdapter.LocalViewHol
         return localList.size();
     }
 
-    public static class LocalViewHolder extends RecyclerView.ViewHolder {
 
+    public static class LocalViewHolder extends RecyclerView.ViewHolder{
         private TextView nome_local;
         private TextView coordenada;
 
         public LocalViewHolder(@NonNull View itemView) {
             super(itemView);
-
             nome_local = itemView.findViewById(R.id.textView37);
             coordenada = itemView.findViewById(R.id.textView27);
         }

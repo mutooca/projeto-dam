@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item android:title="Inicio"
+        android:icon="@drawable/home_icon"
+        android:id="@+id/home"/>
+    <item android:title="Locais"
+        android:icon="@drawable/location_on_icon"
+        android:id="@+id/local"/>
+    <item android:title="Postar"
+        android:icon="@drawable/add_circle_icon"
+        android:id="@+id/post"/>
+    <item android:title="Caixa"
+        android:icon="@drawable/inbox_icon"
+        android:id="@+id/inbox"/>
+    <item android:title="Perfil"
+        android:icon="@drawable/person_icon"
+        android:id="@+id/profile"/>
+</menu>

@@ -4,7 +4,6 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 public class Anuncio {
-
     private UUID id_anuncio;
     private String titulo;
     private String conteudo;
@@ -12,19 +11,14 @@ public class Anuncio {
     private String estado_anuncio;
     private String nome_local;
     private int total_entrega;
+
     private int pontos;
     private String criador;
 
-    // Construtor vazio
-    public Anuncio() {
-    }
+    public Anuncio(){}
 
-    // Construtor com parâmetros
-    public Anuncio(UUID id_anuncio, String titulo, String conteudo,
-                   LocalDate data_publicacao, String estado_anuncio,
-                   String nome_local, int total_entrega,
-                   int pontos, String criador) {
-
+    public Anuncio(UUID id_anuncio, String titulo, String conteudo, LocalDate data_publicacao,
+                   String estado_anuncio, String nome_local, int total_entrega,int pontos, String criador) {
         this.id_anuncio = id_anuncio;
         this.titulo = titulo;
         this.conteudo = conteudo;
@@ -32,7 +26,7 @@ public class Anuncio {
         this.estado_anuncio = estado_anuncio;
         this.nome_local = nome_local;
         this.total_entrega = total_entrega;
-        this.pontos = pontos;
+        this.pontos  = pontos;
         this.criador = criador;
     }
 
