@@ -1,104 +1,85 @@
 package ao.uan.fc.dam.mobile.model;
 
-import java.time.LocalDate;
+import androidx.annotation.NonNull;
+import androidx.room.Entity;
+import androidx.room.Ignore;
+import androidx.room.PrimaryKey;
+import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
-public class Anuncio {
-    private UUID id_anuncio;
+@Entity(tableName = "anuncios")
+public class Anuncio implements Serializable {
+    @PrimaryKey
+    @NonNull
+    private UUID idAnuncio;
     private String titulo;
     private String conteudo;
-    private LocalDate data_publicacao;
-    private String estado_anuncio;
-    private String nome_local;
-    private int total_entrega;
-
+    private LocalDateTime dataPublicacao;
+    private String estado;
+    private String categoria; // Usado para "WHITELIST" ou "BLACKLIST" no modo P2P
+    private String modo_entrega;
     private int pontos;
-    private String criador;
+    private String restricaoPerfil; // Requisito 2.1.3: Lista de chaves de perfil
+    
+    @Ignore
+    private Local local;
+    @Ignore
+    private Utilizador autor;
 
-    public Anuncio(){}
+    private String usuarioEmail; // Email do utilizador que está a ver (cache context)
+    private String autorEmail;   // Email de quem criou o anúncio
 
-    public Anuncio(UUID id_anuncio, String titulo, String conteudo, LocalDate data_publicacao,
-                   String estado_anuncio, String nome_local, int total_entrega,int pontos, String criador) {
-        this.id_anuncio = id_anuncio;
-        this.titulo = titulo;
-        this.conteudo = conteudo;
-        this.data_publicacao = data_publicacao;
-        this.estado_anuncio = estado_anuncio;
-        this.nome_local = nome_local;
-        this.total_entrega = total_entrega;
-        this.pontos  = pontos;
-        this.criador = criador;
+    public Anuncio() {
+        this.idAnuncio = UUID.randomUUID();
     }
 
-    public UUID getId_anuncio() {
-        return id_anuncio;
+    @NonNull
+    public UUID getIdAnuncio() { return idAnuncio; }
+    public void setIdAnuncio(@NonNull UUID idAnuncio) { this.idAnuncio = idAnuncio; }
+
+    public void setId(UUID id) { this.idAnuncio = id; }
+
+    public String getTitulo() { return titulo; }
+    public void setTitulo(String titulo) { this.titulo = titulo; }
+
+    public String getConteudo() { return conteudo; }
+    public void setConteudo(String conteudo) { this.conteudo = conteudo; }
+
+    public LocalDateTime getDataPublicacao() { return dataPublicacao; }
+    public void setDataPublicacao(LocalDateTime dataPublicacao) { this.dataPublicacao = dataPublicacao; }
+
+    public String getEstado() { return estado; }
+    public void setEstado(String estado) { this.estado = estado; }
+
+    public String getCategoria() { return categoria; }
+    public void setCategoria(String categoria) { this.categoria = categoria; }
+
+    public String getModo_entrega() { return modo_entrega; }
+    public void setModo_entrega(String modo_entrega) { this.modo_entrega = modo_entrega; }
+
+    public int getPontos() { return pontos; }
+    public void setPontos(int pontos) { this.pontos = pontos; }
+
+    public String getRestricaoPerfil() { return restricaoPerfil; }
+    public void setRestricaoPerfil(String restricaoPerfil) { this.restricaoPerfil = restricaoPerfil; }
+
+    public Local getLocal() { return local; }
+    public void setLocal(Local local) { this.local = local; }
+
+    public Utilizador getAutor() { return autor; }
+    public void setAutor(Utilizador autor) { 
+        this.autor = autor;
+        if (autor != null) this.autorEmail = autor.getEmail();
     }
 
-    public void setId_anuncio(UUID id_anuncio) {
-        this.id_anuncio = id_anuncio;
-    }
+    public String getUsuarioEmail() { return usuarioEmail; }
+    public void setUsuarioEmail(String usuarioEmail) { this.usuarioEmail = usuarioEmail; }
 
-    public String getTitulo() {
-        return titulo;
-    }
-
-    public void setTitulo(String titulo) {
-        this.titulo = titulo;
-    }
-
-    public String getConteudo() {
-        return conteudo;
-    }
-
-    public void setConteudo(String conteudo) {
-        this.conteudo = conteudo;
-    }
-
-    public LocalDate getData_publicacao() {
-        return data_publicacao;
-    }
-
-    public void setData_publicacao(LocalDate data_publicacao) {
-        this.data_publicacao = data_publicacao;
-    }
-
-    public String getEstado_anuncio() {
-        return estado_anuncio;
-    }
-
-    public void setEstado_anuncio(String estado_anuncio) {
-        this.estado_anuncio = estado_anuncio;
-    }
+    public String getAutorEmail() { return autorEmail; }
+    public void setAutorEmail(String autorEmail) { this.autorEmail = autorEmail; }
 
     public String getNome_local() {
-        return nome_local;
-    }
-
-    public void setNome_local(String nome_local) {
-        this.nome_local = nome_local;
-    }
-
-    public int getTotal_entrega() {
-        return total_entrega;
-    }
-
-    public void setTotal_entrega(int total_entrega) {
-        this.total_entrega = total_entrega;
-    }
-
-    public int getPontos() {
-        return pontos;
-    }
-
-    public void setPontos(int pontos) {
-        this.pontos = pontos;
-    }
-
-    public String getCriador() {
-        return criador;
-    }
-
-    public void setCriador(String criador) {
-        this.criador = criador;
+        return local != null ? local.getNome() : "N/D";
     }
 }

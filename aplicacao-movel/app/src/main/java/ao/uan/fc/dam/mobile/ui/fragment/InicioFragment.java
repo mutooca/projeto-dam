@@ -1,57 +1,72 @@
 package ao.uan.fc.dam.mobile.ui.fragment;
 
-import static java.time.LocalDate.now;
-
 import android.os.Bundle;
-
-import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
+import android.widget.Toast;
 
-import java.time.LocalDate;
+import androidx.annotation.NonNull;
+import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
 import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 
 import ao.uan.fc.dam.mobile.R;
-import ao.uan.fc.dam.mobile.model.Anuncio;
 import ao.uan.fc.dam.mobile.adapter.AnuncioAdapter;
+import ao.uan.fc.dam.mobile.model.Anuncio;
+import ao.uan.fc.dam.mobile.ui.viewmodel.AnunciosViewModel;
+import ao.uan.fc.dam.mobile.ui.viewmodel.PerfilViewModel;
 
 public class InicioFragment extends Fragment {
-    private List<Anuncio> anuncios;
     private AnuncioAdapter adapter;
-    private RecyclerView inicioRecyclerView;
+    private AnunciosViewModel viewModel;
+    private PerfilViewModel perfilViewModel;
+    private TextView txtSaudacao;
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_inicio, container, false);
-        anuncios = geradorAnuncio();
-        inicioRecyclerView = view.findViewById(R.id.recyclerViewInicio);
-        inicioRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
-        inicioRecyclerView.setHasFixedSize(true);
-        adapter = new AnuncioAdapter(anuncios);
-        inicioRecyclerView.setAdapter(adapter);
+        viewModel = new ViewModelProvider(this).get(AnunciosViewModel.class);
+        perfilViewModel = new ViewModelProvider(this).get(PerfilViewModel.class);
 
+        txtSaudacao = view.findViewById(R.id.textView7);
+        RecyclerView recyclerView = view.findViewById(R.id.recyclerViewInicio);
+        recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
+        
+        adapter = new AnuncioAdapter(new ArrayList<>(), this::abrirDetalhesAnuncio);
+        recyclerView.setAdapter(adapter);
+
+        setupObservers();
         return view;
     }
 
-    private List<Anuncio> geradorAnuncio(){
-        List<Anuncio> anuncioList = new ArrayList<>();
-        anuncioList.add(new Anuncio(UUID.randomUUID(), "Arrenda-se uma casa", "Arrenda-se uma casa T3 com os seguintes compartimentos\n3 quartos, uma delas com suite\n uma sala vasta\n1 quintal\n1 WC\n1 cozinha\nContactos:924335100",
-                LocalDate.now(), "lido", "1º de Maio", 4, 2, "Maria"));
-        anuncioList.add(new Anuncio(UUID.randomUUID(), "Recrutamento", " Precisa-se de uma domestica\nContactos:952388771",
-                LocalDate.now(), "lido", "1º de Maio", 4, 2, "Osana"));
-        anuncioList.add(new Anuncio(UUID.randomUUID(), "Curso de Inglês", "Dá-se aulas de inglês ao domicilio\nContactos:924234100",
-                LocalDate.now(), "lido", "1º de Maio", 4, 2, "Kama"));
-        anuncioList.add(new Anuncio(UUID.randomUUID(), "Arrenda-se uma barbearia", "Arrenda-se uma barbeara nas imediações do catetão\nContactos:924335100",
-                LocalDate.now(), "lido", "1º de Maio", 4, 2, "Victor"));
+    private void setupObservers() {
+        // Observa Perfil para saudação personalizada
+        perfilViewModel.getProfile().observe(getViewLifecycleOwner(), user -> {
+            if (user != null && user.getNome() != null) {
+                txtSaudacao.setText("Olá, " + user.getNome());
+            }
+        });
 
-        return anuncioList;
+        // Observa Anúncios
+        viewModel.getMeusAnuncios().observe(getViewLifecycleOwner(), anuncios -> {
+            if (anuncios != null) adapter.atualizar(anuncios);
+        });
+
+        viewModel.getErrorMessage().observe(getViewLifecycleOwner(), error -> {
+            if (error != null) Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private void abrirDetalhesAnuncio(Anuncio anuncio) {
+        CaixaFragment fragment = CaixaFragment.novaInstancia(anuncio);
+        getParentFragmentManager().beginTransaction()
+                .replace(R.id.frameContainer, fragment)
+                .addToBackStack(null)
+                .commit();
     }
 }

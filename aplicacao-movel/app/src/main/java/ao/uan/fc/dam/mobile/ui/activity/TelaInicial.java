@@ -8,6 +8,7 @@ import android.widget.Button;
 import androidx.appcompat.app.AppCompatActivity;
 
 import ao.uan.fc.dam.mobile.R;
+import ao.uan.fc.dam.mobile.security.SessionManager;
 
 public class TelaInicial extends AppCompatActivity {
 
@@ -18,6 +19,11 @@ public class TelaInicial extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (SessionManager.hasSession(this)) {
+            startActivity(new Intent(this, DashboardActivity.class));
+            finish();
+            return;
+        }
         setContentView(R.layout.activity_tela_inicial);
 
         btnRegistar = findViewById(R.id.btnRegistar);

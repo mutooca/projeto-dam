@@ -1,73 +1,56 @@
 package ao.uan.fc.dam.mobile.model;
 
+import androidx.annotation.NonNull;
+import androidx.room.Entity;
+import androidx.room.Ignore;
+import androidx.room.PrimaryKey;
+import java.io.Serializable;
 import java.util.UUID;
 
-public class Local {
-    UUID id_local;
-    String nome;
-    String descricao;
-    String infraestrutura;
+@Entity(tableName = "locais")
+public class Local implements Serializable {
+    @PrimaryKey
+    @NonNull
+    private UUID idLocal;
+    private String nome;
+    
+    // GPS (F3)
+    private Double latitude;
+    private Double longitude;
+    private Integer raio;
 
-    CoordendaWifi coordendad_wifi;
-    CoordenadaGps coordenada_gps;
+    // WiFi (F3)
+    private String ssidWifi;
 
-    public Local(){}
-    public Local(UUID id_local, String nome, String descricao, String infraestrutura, CoordendaWifi coordendad_wifi, CoordenadaGps coordenada_gps) {
-        this.id_local = id_local;
-        this.nome = nome;
-        this.descricao = descricao;
-        this.infraestrutura = infraestrutura;
-        this.coordendad_wifi = coordendad_wifi;
-        this.coordenada_gps = coordenada_gps;
+    @Ignore
+    private Utilizador criadoPor;
+
+    public Local() {
+        this.idLocal = UUID.randomUUID();
     }
 
-    public UUID getId_local() {
-        return id_local;
-    }
+    @NonNull public UUID getIdLocal() { return idLocal; }
+    public void setIdLocal(@NonNull UUID idLocal) { this.idLocal = idLocal; }
 
-    public void setId_local(UUID id_local) {
-        this.id_local = id_local;
-    }
+    public String getNome() { return nome; }
+    public void setNome(String nome) { this.nome = nome; }
 
-    public String getNome() {
-        return nome;
-    }
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
 
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
 
-    public String getDescricao() {
-        return descricao;
-    }
+    public Integer getRaio() { return raio; }
+    public void setRaio(Integer raio) { this.raio = raio; }
 
-    public void setDescricao(String descricao) {
-        this.descricao = descricao;
-    }
+    public String getSsidWifi() { return ssidWifi; }
+    public void setSsidWifi(String ssidWifi) { this.ssidWifi = ssidWifi; }
 
-    public String getInfraestrutura() {
-        return infraestrutura;
-    }
+    public Utilizador getCriadoPor() { return criadoPor; }
+    public void setCriadoPor(Utilizador criadoPor) { this.criadoPor = criadoPor; }
 
-    public void setInfraestrutura(String infraestrutura) {
-        this.infraestrutura = infraestrutura;
-    }
-
-    public CoordendaWifi getCoordendad_wifi() {
-        return coordendad_wifi;
-    }
-
-    public void setCoordendad_wifi(CoordendaWifi coordendad_wifi) {
-        this.coordendad_wifi = coordendad_wifi;
-    }
-
-    public CoordenadaGps getCoordenada_gps() {
-        return coordenada_gps;
-    }
-
-    public void setCoordenada_gps(CoordenadaGps coordenada_gps) {
-        this.coordenada_gps = coordenada_gps;
-    }
-
-
+    public String getId() { return idLocal.toString(); }
+    
+    public boolean isWifi() { return ssidWifi != null && !ssidWifi.isEmpty(); }
 }
