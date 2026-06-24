@@ -19,21 +19,28 @@ import ao.uan.fc.dam.mobile.R;
 import ao.uan.fc.dam.mobile.adapter.AnuncioAdapter;
 import ao.uan.fc.dam.mobile.model.Anuncio;
 import ao.uan.fc.dam.mobile.ui.viewmodel.AnunciosViewModel;
+import ao.uan.fc.dam.mobile.ui.viewmodel.LocaisViewModel;
 import ao.uan.fc.dam.mobile.ui.viewmodel.PerfilViewModel;
 
 public class InicioFragment extends Fragment {
     private AnuncioAdapter adapter;
     private AnunciosViewModel viewModel;
+    private LocaisViewModel locaisViewModel;
     private PerfilViewModel perfilViewModel;
-    private TextView txtSaudacao;
+    
+    private TextView txtSaudacao, txtTotalAds, txtTotalLocais;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_inicio, container, false);
         viewModel = new ViewModelProvider(this).get(AnunciosViewModel.class);
+        locaisViewModel = new ViewModelProvider(this).get(LocaisViewModel.class);
         perfilViewModel = new ViewModelProvider(this).get(PerfilViewModel.class);
 
         txtSaudacao = view.findViewById(R.id.textView7);
+        txtTotalAds = view.findViewById(R.id.textView29);
+        txtTotalLocais = view.findViewById(R.id.textView31);
+
         RecyclerView recyclerView = view.findViewById(R.id.recyclerViewInicio);
         recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
         
@@ -48,13 +55,23 @@ public class InicioFragment extends Fragment {
         // Observa Perfil para saudação personalizada
         perfilViewModel.getProfile().observe(getViewLifecycleOwner(), user -> {
             if (user != null && user.getNome() != null) {
-                txtSaudacao.setText("Olá, " + user.getNome());
+                txtSaudacao.setText("Olá, " + user.getNome() + "!");
             }
         });
 
-        // Observa Anúncios
+        // Observa Anúncios para a lista e para o contador
         viewModel.getMeusAnuncios().observe(getViewLifecycleOwner(), anuncios -> {
-            if (anuncios != null) adapter.atualizar(anuncios);
+            if (anuncios != null) {
+                adapter.atualizar(anuncios);
+                txtTotalAds.setText(String.valueOf(anuncios.size()));
+            }
+        });
+
+        // Observa Locais para o contador
+        locaisViewModel.getLocales().observe(getViewLifecycleOwner(), locais -> {
+            if (locais != null) {
+                txtTotalLocais.setText(String.valueOf(locais.size()));
+            }
         });
 
         viewModel.getErrorMessage().observe(getViewLifecycleOwner(), error -> {

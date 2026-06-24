@@ -1,8 +1,12 @@
 package ao.uan.fc.dam.mobile.ui.fragment;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.pm.PackageManager;
+import android.location.Location;
 import android.os.Bundle;
 import android.text.InputType;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,6 +16,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -20,6 +25,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
+import com.google.android.gms.tasks.Task;
 
 import java.util.ArrayList;
 
@@ -30,9 +36,9 @@ import ao.uan.fc.dam.mobile.ui.viewmodel.LocaisViewModel;
 
 /**
  * Arquiteto: Gestão de Locais (F3)
- * Simplificado: Criação automática de coordenadas baseada na posição atual.
  */
 public class LocaisFragment extends Fragment {
+    private static final String TAG = "LocaisFragment";
     private LocalAdapter adapter;
     private LocaisViewModel viewModel;
     private FusedLocationProviderClient fusedLocationClient;
@@ -51,7 +57,6 @@ public class LocaisFragment extends Fragment {
         setupRecyclerView(view);
         setupObservers();
 
-        // FAB: Agora inicia o fluxo simplificado de criação
         view.findViewById(R.id.fabAddLocal).setOnClickListener(v -> mostrarDialogCriarLocal());
 
         return view;
@@ -76,12 +81,12 @@ public class LocaisFragment extends Fragment {
         viewModel.getLocales().observe(getViewLifecycleOwner(), locales -> {
             if (locales != null) adapter.atualizar(locales);
         });
+        
+        viewModel.getErrorMessage().observe(getViewLifecycleOwner(), msg -> {
+            if (msg != null) Toast.makeText(getContext(), msg, Toast.LENGTH_LONG).show();
+        });
     }
 
-    /**
-     * F3: Criação de Local Simplificada.
-     * O utilizador insere apenas o nome; as coordenadas são obtidas automaticamente.
-     */
     private void mostrarDialogCriarLocal() {
         LinearLayout layout = new LinearLayout(requireContext());
         layout.setOrientation(LinearLayout.VERTICAL);
@@ -99,7 +104,7 @@ public class LocaisFragment extends Fragment {
                 .setPositiveButton("Registar", (dialog, which) -> {
                     String nome = edtNome.getText().toString().trim();
                     if (!nome.isEmpty()) {
-                        obterPosicaoECriarLocal(nome);
+                        verificarPermissaoEObterPosicao(nome);
                     } else {
                         Toast.makeText(requireContext(), "Nome é obrigatório", Toast.LENGTH_SHORT).show();
                     }
@@ -108,21 +113,46 @@ public class LocaisFragment extends Fragment {
                 .show();
     }
 
+    private void verificarPermissaoEObterPosicao(String nome) {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) 
+                != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(requireContext(), "Permissão de GPS necessária", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        obterPosicaoECriarLocal(nome);
+    }
+
     @SuppressLint("MissingPermission")
     private void obterPosicaoECriarLocal(String nome) {
         Toast.makeText(requireContext(), "A obter localização...", Toast.LENGTH_SHORT).show();
+        Log.d(TAG, "Solicitando localização atual para local: " + nome);
         
         fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
                 .addOnSuccessListener(location -> {
                     if (location != null) {
-                        // Requisito 2.1.1: Raio padrão de 20m conforme exemplo do enunciado
-                        viewModel.createLocal(nome, location.getLatitude(), location.getLongitude(), 20);
-                        Toast.makeText(requireContext(), "Local '" + nome + "' enviado ao servidor!", Toast.LENGTH_SHORT).show();
+                        enviarCriacaoLocal(nome, location);
                     } else {
-                        Toast.makeText(requireContext(), "Não foi possível obter a sua posição GPS.", Toast.LENGTH_LONG).show();
+                        Log.w(TAG, "Localização atual é nula, tentando última conhecida...");
+                        fusedLocationClient.getLastLocation().addOnSuccessListener(lastLocation -> {
+                            if (lastLocation != null) {
+                                enviarCriacaoLocal(nome, lastLocation);
+                            } else {
+                                Log.w(TAG, "Ambas as localizações são nulas.");
+                                Toast.makeText(requireContext(), "Não foi possível obter GPS. Ative a localização no dispositivo/emulador.", Toast.LENGTH_LONG).show();
+                            }
+                        });
                     }
                 })
-                .addOnFailureListener(e -> Toast.makeText(requireContext(), "Erro ao aceder ao GPS", Toast.LENGTH_SHORT).show());
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Falha ao obter localização", e);
+                    Toast.makeText(requireContext(), "Erro ao aceder ao GPS: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+    }
+
+    private void enviarCriacaoLocal(String nome, Location location) {
+        Log.d(TAG, "Localização utilizada: " + location.getLatitude() + ", " + location.getLongitude());
+        viewModel.createLocal(nome, location.getLatitude(), location.getLongitude(), 20);
+        Toast.makeText(requireContext(), "Enviando local '" + nome + "'...", Toast.LENGTH_SHORT).show();
     }
 
     private void confirmarExclusao(Local local) {

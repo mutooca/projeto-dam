@@ -1,39 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="8dp"
-    android:layout_marginVertical="4dp">
+    android:layout_marginHorizontal="24dp"
+    android:layout_marginVertical="8dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="2dp"
+    app:strokeWidth="0dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="8dp">
 
-        <ImageView
-            android:id="@+id/imageView4"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/corner_icon"
-            app:srcCompat="@drawable/location_on_icon" />
+        <FrameLayout
+            android:id="@+id/iconContainer"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_icon_container"
+            android:backgroundTint="#FFF3E0">
+
+            <ImageView
+                android:id="@+id/imgLocalIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                app:srcCompat="@drawable/location_on_icon"
+                app:tint="#E67E22" />
+        </FrameLayout>
 
         <TextView
-            android:id="@+id/textView27"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
+            android:id="@+id/txtLocalNome"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
             android:layout_weight="1"
-            android:text="Nome do local"
-            android:textAlignment="center"
-            android:textSize="24sp" />
+            android:text="Largo da Independência"
+            android:textColor="#1A1A1A"
+            android:textSize="18sp"
+            android:textStyle="normal" />
 
     </LinearLayout>
-
-    <TextView
-        android:id="@+id/textView37"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Coordenada" />
-
-</LinearLayout>
+</com.google.android.material.card.MaterialCardView>

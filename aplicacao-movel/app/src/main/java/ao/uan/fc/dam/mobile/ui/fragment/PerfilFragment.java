@@ -2,7 +2,6 @@ package ao.uan.fc.dam.mobile.ui.fragment;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,12 +12,14 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.time.LocalDateTime;
+import com.google.android.material.textfield.TextInputEditText;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,7 +28,6 @@ import java.util.Map;
 import ao.uan.fc.dam.mobile.R;
 import ao.uan.fc.dam.mobile.adapter.PerfilAdapter;
 import ao.uan.fc.dam.mobile.api.RetrofitClient;
-import ao.uan.fc.dam.mobile.model.Anuncio;
 import ao.uan.fc.dam.mobile.model.Utilizador;
 import ao.uan.fc.dam.mobile.security.SessionManager;
 import ao.uan.fc.dam.mobile.ui.activity.LoginActivity;
@@ -95,8 +95,9 @@ public class PerfilFragment extends Fragment {
         layoutProperties.removeAllViews();
         if (prefs == null || prefs.isEmpty()) {
             TextView empty = new TextView(requireContext());
-            empty.setText("Nenhuma propriedade definida localmente.");
+            empty.setText("Nenhum atributo definido.");
             empty.setPadding(32, 16, 32, 16);
+            empty.setTextColor(ContextCompat.getColor(requireContext(), R.color.cor_app));
             layoutProperties.addView(empty);
             return;
         }
@@ -105,14 +106,15 @@ public class PerfilFragment extends Fragment {
         for (String pair : pairs) {
             if (!pair.contains("=")) continue;
             
-            View propView = getLayoutInflater().inflate(android.R.layout.simple_list_item_1, layoutProperties, false);
-            TextView text = propView.findViewById(android.R.id.text1);
+            View propView = getLayoutInflater().inflate(R.layout.item_locais_fragment, layoutProperties, false);
+            TextView text = propView.findViewById(R.id.txtLocalNome);
             text.setText(pair.replace("=", " : "));
-            text.setTextSize(14);
+            text.setTextSize(16);
             
-            // Requisito: Clique para editar ou excluir
+            propView.findViewById(R.id.iconContainer).setBackgroundTintList(null);
+            ((android.widget.ImageView)propView.findViewById(R.id.imgLocalIcon)).setImageResource(R.drawable.settings_icon);
+            
             propView.setOnClickListener(v -> mostrarMenuAtributo(pair));
-            
             layoutProperties.addView(propView);
         }
     }
@@ -123,8 +125,8 @@ public class PerfilFragment extends Fragment {
         String value = parts.length > 1 ? parts[1] : "";
 
         new AlertDialog.Builder(requireContext())
-                .setTitle("Gestão de Atributo")
-                .setItems(new String[]{"Editar", "Excluir"}, (dialog, which) -> {
+                .setTitle("Atributo: " + key)
+                .setItems(new String[]{"Editar", "Remover"}, (dialog, which) -> {
                     if (which == 0) mostrarDialogAddAtributo(key, value);
                     else removerAtributo(pair);
                 }).show();
@@ -143,7 +145,42 @@ public class PerfilFragment extends Fragment {
         
         viewModel.updatePrefsLocal(novo);
         salvarPreferenciasRemoto(novo);
-        Toast.makeText(requireContext(), "Propriedade removida localmente", Toast.LENGTH_SHORT).show();
+        Toast.makeText(requireContext(), "Removido", Toast.LENGTH_SHORT).show();
+    }
+
+    private void mostrarDialogAddAtributo(String oldKey, String oldVal) {
+        View view = getLayoutInflater().inflate(R.layout.dialog_add_property, null);
+        TextInputEditText editKey = view.findViewById(R.id.editKey);
+        TextInputEditText editValue = view.findViewById(R.id.editValue);
+        
+        editKey.setText(oldKey);
+        editValue.setText(oldVal);
+
+        new AlertDialog.Builder(requireContext())
+                .setView(view)
+                .setPositiveButton("Confirmar", (d, w) -> {
+                    String k = editKey.getText().toString().trim();
+                    String v = editValue.getText().toString().trim();
+                    if (!k.isEmpty() && !v.isEmpty()) {
+                        Utilizador user = viewModel.getProfile().getValue();
+                        String current = (user != null && user.getPreferenciaAnuncio() != null) ? user.getPreferenciaAnuncio() : "";
+                        
+                        List<String> list = new ArrayList<>();
+                        if (!current.isEmpty()) {
+                            for (String p : current.split(",")) {
+                                if (!oldKey.isEmpty() && p.startsWith(oldKey + "=")) continue;
+                                list.add(p);
+                            }
+                        }
+                        list.add(k + "=" + v);
+                        String finalStr = String.join(",", list);
+                        
+                        viewModel.updatePrefsLocal(finalStr);
+                        salvarPreferenciasRemoto(finalStr);
+                    }
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
     }
 
     private void mostrarDialogEditarNome() {
@@ -170,40 +207,6 @@ public class PerfilFragment extends Fragment {
         });
     }
 
-    private void mostrarDialogAddAtributo(String oldKey, String oldVal) {
-        LinearLayout l = new LinearLayout(requireContext());
-        l.setOrientation(LinearLayout.VERTICAL);
-        l.setPadding(50, 40, 50, 10);
-        EditText key = new EditText(requireContext()); key.setHint("Tipo (ex: clube)"); key.setText(oldKey);
-        EditText val = new EditText(requireContext()); val.setHint("Nome (ex: Benfica)"); val.setText(oldVal);
-        l.addView(key); l.addView(val);
-
-        new AlertDialog.Builder(requireContext()).setTitle(oldKey.isEmpty() ? "Nova Propriedade" : "Editar Propriedade")
-                .setView(l)
-                .setPositiveButton("Guardar", (d, w) -> {
-                    String k = key.getText().toString().trim();
-                    String v = val.getText().toString().trim();
-                    if (!k.isEmpty() && !v.isEmpty()) {
-                        Utilizador user = viewModel.getProfile().getValue();
-                        String current = (user != null && user.getPreferenciaAnuncio() != null) ? user.getPreferenciaAnuncio() : "";
-                        
-                        List<String> list = new ArrayList<>();
-                        if (!current.isEmpty()) {
-                            for (String p : current.split(",")) {
-                                if (!oldKey.isEmpty() && p.equals(oldKey + "=" + oldVal)) continue;
-                                list.add(p);
-                            }
-                        }
-                        list.add(k + "=" + v);
-                        String finalStr = String.join(",", list);
-                        
-                        viewModel.updatePrefsLocal(finalStr);
-                        salvarPreferenciasRemoto(finalStr);
-                        Toast.makeText(requireContext(), "Propriedade guardada localmente", Toast.LENGTH_SHORT).show();
-                    }
-                }).show();
-    }
-
     private void salvarPreferenciasRemoto(String prefs) {
         String email = SessionManager.getEmail(requireContext());
         RetrofitClient.getInstance().getApi().atualizarPreferencias(email, prefs).enqueue(new Callback<ResponseBody>() {
@@ -214,11 +217,12 @@ public class PerfilFragment extends Fragment {
     }
 
     private void confirmarLogout() {
-        new AlertDialog.Builder(requireContext()).setTitle("Sair").setMessage("Deseja encerrar a sessão?")
-                .setPositiveButton("Sim", (d, w) -> {
+        new AlertDialog.Builder(requireContext()).setTitle("Sair")
+                .setMessage("Deseja realmente encerrar a sessão?")
+                .setPositiveButton("Sim, Sair", (d, w) -> {
                     SessionManager.clear(requireContext());
                     startActivity(new Intent(requireContext(), LoginActivity.class));
                     requireActivity().finish();
-                }).setNegativeButton("Não", null).show();
+                }).setNegativeButton("Cancelar", null).show();
     }
 }

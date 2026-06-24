@@ -10,7 +10,7 @@ import ao.uan.fc.dam.mobile.model.Anuncio;
 import ao.uan.fc.dam.mobile.model.Local;
 import ao.uan.fc.dam.mobile.model.Utilizador;
 
-@Database(entities = {Anuncio.class, Local.class, Utilizador.class}, version = 5, exportSchema = false)
+@Database(entities = {Anuncio.class, Local.class, Utilizador.class}, version = 6, exportSchema = false)
 @TypeConverters({Converters.class})
 public abstract class AppDatabase extends RoomDatabase {
     private static AppDatabase instance;

@@ -4,14 +4,17 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import ao.uan.fc.dam.mobile.R;
 import ao.uan.fc.dam.mobile.model.Anuncio;
+import ao.uan.fc.dam.mobile.ui.viewmodel.AnunciosViewModel;
 
 /**
  * Arquiteto: Visualização Detalhada de Anúncio
@@ -19,6 +22,8 @@ import ao.uan.fc.dam.mobile.model.Anuncio;
  */
 public class CaixaFragment extends Fragment {
     private static final String ARG_ANUNCIO = "anuncio_detalhe";
+    private Anuncio anuncio;
+    private AnunciosViewModel viewModel;
 
     public static CaixaFragment novaInstancia(Anuncio anuncio) {
         CaixaFragment fragment = new CaixaFragment();
@@ -31,31 +36,45 @@ public class CaixaFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_caixa, container, false);
+        viewModel = new ViewModelProvider(this).get(AnunciosViewModel.class);
         
-        TextView txtTitulo = view.findViewById(R.id.textView18);
-        TextView txtLocal = view.findViewById(R.id.textView19);
-        TextView txtMensagem = view.findViewById(R.id.textView20);
-        TextView txtAutor = view.findViewById(R.id.textView21);
-        ImageView imgAnuncio = view.findViewById(R.id.imageView);
+        TextView txtTitulo = view.findViewById(R.id.txtTituloDetalhe);
+        TextView txtLocal = view.findViewById(R.id.txtLocalDetalhe);
+        TextView txtMensagem = view.findViewById(R.id.txtMensagemDetalhe);
+        TextView txtAutor = view.findViewById(R.id.txtAutorNome);
 
         if (getArguments() != null) {
-            Anuncio anuncio = (Anuncio) getArguments().getSerializable(ARG_ANUNCIO);
+            anuncio = (Anuncio) getArguments().getSerializable(ARG_ANUNCIO);
             if (anuncio != null) {
                 txtTitulo.setText(anuncio.getTitulo());
-                txtLocal.setText("Local: " + (anuncio.getNome_local() != null ? anuncio.getNome_local() : "Global"));
+                txtLocal.setText(anuncio.getNome_local() != null ? anuncio.getNome_local() : "Global");
+                txtMensagem.setText(anuncio.getConteudo());
                 
-                // Exibição de política no corpo da mensagem (Baseline visual)
-                String infoPolitica = "\n\n--- Info Sistema ---\n" +
-                        "Modo: " + (anuncio.getModo_entrega() != null ? anuncio.getModo_entrega() : "Centralizado") + "\n" +
-                        "Política: " + (anuncio.getCategoria() != null ? anuncio.getCategoria() : "Padrão");
-                
-                txtMensagem.setText(anuncio.getConteudo() + infoPolitica);
-                txtAutor.setText("Publicado por: " + (anuncio.getAutorEmail() != null ? anuncio.getAutorEmail() : "Anónimo"));
-
-                imgAnuncio.setImageResource(R.drawable.anuncio_icon);
+                String autorNome = (anuncio.getAutor() != null && anuncio.getAutor().getNome() != null) 
+                        ? anuncio.getAutor().getNome() : anuncio.getAutorEmail();
+                txtAutor.setText(autorNome != null ? autorNome : "Anônimo");
             }
         }
 
+        view.findViewById(R.id.btnClose).setOnClickListener(v -> getParentFragmentManager().popBackStack());
+        
+        view.findViewById(R.id.btnDelete).setOnClickListener(v -> confirmarExclusao());
+
         return view;
+    }
+
+    private void confirmarExclusao() {
+        if (anuncio == null) return;
+        
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Eliminar Anúncio")
+                .setMessage("Tem certeza que deseja eliminar este anúncio permanentemente?")
+                .setPositiveButton("Eliminar", (dialog, which) -> {
+                    viewModel.remover(anuncio.getIdAnuncio());
+                    Toast.makeText(getContext(), "Anúncio removido com sucesso", Toast.LENGTH_SHORT).show();
+                    getParentFragmentManager().popBackStack();
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
     }
 }

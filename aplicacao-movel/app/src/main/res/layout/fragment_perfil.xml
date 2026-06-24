@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F8F9FA">
+    android:background="#FDFDFD">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -15,37 +15,44 @@
             android:id="@+id/textView22"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="24dp"
+            android:layout_marginStart="24dp"
+            android:layout_marginTop="32dp"
             android:text="Meu perfil"
-            android:textColor="@color/black"
-            android:textSize="24sp"
+            android:textColor="#1A1A1A"
+            android:textSize="26sp"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <ImageButton
+        <FrameLayout
             android:id="@+id/btnLogout"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="16dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Logout"
-            android:src="@drawable/notifications_icon"
+            android:layout_width="45dp"
+            android:layout_height="45dp"
+            android:layout_marginEnd="24dp"
+            android:background="@drawable/bg_icon_container"
+            android:backgroundTint="#FFF1F0"
             app:layout_constraintBottom_toBottomOf="@+id/textView22"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/textView22"
-            app:tint="#D32F2F" />
+            app:layout_constraintTop_toTopOf="@+id/textView22">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_gravity="center"
+                app:srcCompat="@drawable/logout_icon"
+                app:tint="#E74C3C" />
+        </FrameLayout>
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/frameLayout3"
             android:layout_width="0dp"
-            android:layout_height="140dp"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="16dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="24dp"
+            android:layout_marginTop="24dp"
             android:background="@drawable/frame_radius"
-            android:backgroundTint="@color/cor_app"
-            android:elevation="4dp"
+            android:backgroundTint="#EF8C11"
+            android:padding="24dp"
+            android:elevation="0dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/textView22">
@@ -54,8 +61,6 @@
                 android:id="@+id/textView23"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="24dp"
-                android:layout_marginTop="16dp"
                 android:text="Nome do utilizador"
                 android:textColor="@color/white"
                 android:textSize="22sp"
@@ -65,10 +70,10 @@
 
             <ImageView
                 android:id="@+id/btnEditName"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:layout_marginStart="8dp"
-                android:src="@drawable/outline_add_location_alt_24"
+                android:src="@drawable/settings_icon"
                 app:layout_constraintBottom_toBottomOf="@+id/textView23"
                 app:layout_constraintStart_toEndOf="@+id/textView23"
                 app:layout_constraintTop_toTopOf="@+id/textView23"
@@ -79,8 +84,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="Email"
-                android:textColor="#E0E0E0"
+                android:text="Email@exemplo.com"
+                android:textColor="#FAD7A0"
                 android:textSize="14sp"
                 app:layout_constraintStart_toStartOf="@+id/textView23"
                 app:layout_constraintTop_toBottomOf="@+id/textView23" />
@@ -89,30 +94,29 @@
                 android:id="@+id/textView25"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:background="@drawable/corner_icon"
-                android:backgroundTint="#FFB74D"
+                android:layout_marginTop="20dp"
+                android:background="@drawable/bg_icon_container"
+                android:backgroundTint="#40FFFFFF"
                 android:paddingHorizontal="16dp"
-                android:paddingVertical="4dp"
+                android:paddingVertical="6dp"
                 android:text="Saldo: 0"
                 android:textColor="@color/white"
-                android:textSize="18sp"
+                android:textSize="16sp"
                 android:textStyle="bold"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintStart_toStartOf="@+id/textView24" />
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/textView24" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnAddProperty"
                 style="@style/Widget.MaterialComponents.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="16dp"
-                android:layout_marginBottom="8dp"
                 android:text="+ Atributo"
                 android:textColor="@color/white"
                 android:textSize="12sp"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent" />
+                app:layout_constraintBottom_toBottomOf="@+id/textView25"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@+id/textView25" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -120,7 +124,7 @@
             android:id="@+id/statsContainer"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="24dp"
             android:orientation="horizontal"
             android:weightSum="2"
             app:layout_constraintEnd_toEndOf="parent"
@@ -128,14 +132,14 @@
             app:layout_constraintTop_toBottomOf="@+id/frameLayout3">
 
             <androidx.cardview.widget.CardView
-                android:id="@+id/frameLayout4"
                 android:layout_width="0dp"
-                android:layout_height="80dp"
-                android:layout_marginStart="16dp"
+                android:layout_height="90dp"
+                android:layout_marginStart="24dp"
                 android:layout_marginEnd="8dp"
                 android:layout_weight="1"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="2dp">
+                app:cardBackgroundColor="#FAFAFA"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -148,7 +152,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="0 Anúncios"
-                        android:textColor="@color/black"
+                        android:textColor="#1A1A1A"
                         android:textSize="18sp"
                         android:textStyle="bold" />
 
@@ -156,19 +160,20 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="publicados"
+                        android:textColor="#9E9E9E"
                         android:textSize="12sp" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
             <androidx.cardview.widget.CardView
-                android:id="@+id/frameLayout5"
                 android:layout_width="0dp"
-                android:layout_height="80dp"
+                android:layout_height="90dp"
                 android:layout_marginStart="8dp"
-                android:layout_marginEnd="16dp"
+                android:layout_marginEnd="24dp"
                 android:layout_weight="1"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="2dp">
+                app:cardBackgroundColor="#FAFAFA"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -181,7 +186,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="0 Entregas"
-                        android:textColor="@color/black"
+                        android:textColor="#1A1A1A"
                         android:textSize="18sp"
                         android:textStyle="bold" />
 
@@ -189,6 +194,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="recebidas"
+                        android:textColor="#9E9E9E"
                         android:textSize="12sp" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
@@ -198,33 +204,33 @@
             android:id="@+id/historyLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="24dp"
+            android:layout_marginStart="24dp"
+            android:layout_marginTop="32dp"
             android:text="Meus Anúncios (Histórico)"
-            android:textColor="@color/black"
+            android:textColor="#1A1A1A"
+            android:textSize="18sp"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/statsContainer" />
 
-        <!-- RecyclerView para Anúncios (Altamente Otimizado) -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerViewPerfil"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="12dp"
             android:nestedScrollingEnabled="false"
             app:layout_constraintTop_toBottomOf="@+id/historyLabel"
-            tools:listitem="@layout/item_perfil_fragment" />
+            tools:listitem="@layout/item_inicio_fragment" />
 
-        <!-- Seção de Propriedades do Perfil (F6) -->
         <TextView
             android:id="@+id/propertiesLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="24dp"
-            android:text="Propriedades do Perfil (F6)"
-            android:textColor="@color/black"
+            android:layout_marginStart="24dp"
+            android:layout_marginTop="32dp"
+            android:text="Atributos de Perfil"
+            android:textColor="#1A1A1A"
+            android:textSize="18sp"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/recyclerViewPerfil" />
@@ -233,8 +239,8 @@
             android:id="@+id/layoutProperties"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="8dp"
+            android:layout_marginHorizontal="24dp"
+            android:layout_marginTop="12dp"
             android:orientation="vertical"
             app:layout_constraintTop_toBottomOf="@+id/propertiesLabel" />
 

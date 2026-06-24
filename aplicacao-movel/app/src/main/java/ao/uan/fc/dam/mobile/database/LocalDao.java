@@ -1,5 +1,6 @@
 package ao.uan.fc.dam.mobile.database;
 
+import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Delete;
 import androidx.room.Insert;
@@ -17,8 +18,8 @@ public interface LocalDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(Local local);
 
-    @Query("SELECT * FROM locais")
-    List<Local> getAll();
+    @Query("SELECT * FROM locais ORDER BY nome ASC")
+    LiveData<List<Local>> getAll();
 
     @Query("DELETE FROM locais WHERE idLocal = :id")
     void deleteById(UUID id);

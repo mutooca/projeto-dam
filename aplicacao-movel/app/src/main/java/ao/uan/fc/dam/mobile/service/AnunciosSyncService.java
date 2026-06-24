@@ -121,7 +121,6 @@ public class AnunciosSyncService extends Service {
     private void showNewAnuncioNotification(Anuncio anuncio) {
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         
-        // Criar Intent para abrir o detalhe do anúncio na DashboardActivity
         Intent intent = new Intent(this, DashboardActivity.class);
         intent.putExtra("OPEN_ANUNCIO", anuncio);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -133,11 +132,9 @@ public class AnunciosSyncService extends Service {
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle("Novo anúncio em " + (anuncio.getNome_local() != null ? anuncio.getNome_local() : "seu local"))
                 .setContentText(anuncio.getTitulo())
-                .setSubText("Toque para ler")
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(pi)
                 .setAutoCancel(true)
-                .setDefaults(Notification.DEFAULT_ALL)
                 .build();
 
         nm.notify(anuncio.getIdAnuncio().hashCode(), n);

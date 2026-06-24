@@ -109,9 +109,9 @@ public class DecentralizedManager {
     }
 
     private boolean checkPolicy(Anuncio ad, String remotePrefs) {
-        // Implementação simplificada de Whitelist (F2.1.3)
+
         if (ad.getCategoria() == null || ad.getCategoria().equals("WHITELIST")) {
-            String required = ad.getPreferenciaAnuncio(); // Usando campo de restrição
+            String required = ad.getRestricaoPerfil(); // Usando campo de restrição
             if (required == null || required.isEmpty()) return true;
             return remotePrefs.contains(required);
         }

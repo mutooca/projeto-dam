@@ -6,9 +6,9 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import ao.uan.fc.dam.mobile.data.repository.LocalRepository;
 import ao.uan.fc.dam.mobile.model.Local;
@@ -34,22 +34,22 @@ public class LocaisViewModel extends AndroidViewModel {
         return errorMessage;
     }
 
-    public LiveData<Boolean> getIsLoading() {
-        return isLoading;
-    }
-
-    public void refresh() {
-        repository.refreshLocales();
-    }
-
     public void createLocal(String nome, Double lat, Double lon, Integer raio) {
+        String email = SessionManager.getEmail(getApplication());
+        if (email == null) {
+            errorMessage.setValue("Sessão expirada. Faça login novamente.");
+            return;
+        }
+
         isLoading.setValue(true);
-        Map<String, Object> request = new java.util.HashMap<>();
+        Map<String, Object> request = new HashMap<>();
         request.put("nome", nome);
         request.put("latitude", lat);
         request.put("longitude", lon);
         request.put("raio", raio);
-        // Backend exige coordenadas do utilizador para validar proximidade na criação
+        request.put("criadorEmail", email); // Adicionado para identificar o autor
+        
+        // Coordenadas para validação de proximidade no backend
         request.put("latUtilizador", lat);
         request.put("lonUtilizador", lon);
 
