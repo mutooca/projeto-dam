@@ -28,7 +28,7 @@ public class Anuncio {
     private String estado;
     
     private String categoria;
-
+    
     
     @ManyToOne
     @JoinColumn(name = "id_local")
@@ -41,4 +41,20 @@ public class Anuncio {
     @ManyToOne
     @JoinColumn(name = "id_infraestrutura")
     private Infraestrutura infraestrutura; 
+
+    // Tipo de política: "WHITELIST", "BLACKLIST" ou null (sem restrição)
+    @Column(name = "tipo_politica")
+    private String tipoPolitica;
+
+    // Filtro: pares chave=valor separados por vírgula
+    // "profissao=Estudante,bairro=Maianga"
+    @Column(name = "politica_filtro")
+    private String politicaFiltro;
+
+    // Janela de tempo de visibilidade
+    @Column(name = "visivel_de")
+    private LocalDateTime visivelDe;
+
+    @Column(name = "visivel_ate")
+    private LocalDateTime visivelAte;
 }

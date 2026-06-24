@@ -1,8 +1,11 @@
 package com.anunciosloc.anunciosloc_server.controller;
 
+import com.anunciosloc.anunciosloc_server.dto.DashboardResponse;
 import com.anunciosloc.anunciosloc_server.model.Infraestrutura;
 import com.anunciosloc.anunciosloc_server.repository.InfraestruturaRepository;
 import com.anunciosloc.anunciosloc_server.repository.UtilizadorRepository;
+import com.anunciosloc.anunciosloc_server.service.AdminService;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
@@ -14,11 +17,12 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
+//@CrossOrigin(origins = "*")
 public class AdminController {
     
     private final InfraestruturaRepository infraRepository;
     private final UtilizadorRepository utilizadorRepository;
+    private final AdminService adminService;
     
     @PostMapping("/infraestruturas")
     public ResponseEntity<?> registarInfraestrutura(@RequestBody @NonNull Infraestrutura infra) {
@@ -55,5 +59,16 @@ public class AdminController {
     @GetMapping("/utilizadores")
     public ResponseEntity<?> listarUtilizadores() {
         return ResponseEntity.ok(utilizadorRepository.findAll());
+    }
+
+    @GetMapping("/dashboard")
+    public ResponseEntity<?> obterDashboard(
+            @RequestParam String email) {
+        try {
+            DashboardResponse dashboard = adminService.obterDashboard(email);
+            return ResponseEntity.ok(dashboard);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }

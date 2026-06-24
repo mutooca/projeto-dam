@@ -14,6 +14,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface InfraestruturaRepository extends JpaRepository<Infraestrutura, UUID> {
 
     List<Infraestrutura> findByGestor(Utilizador gestor);
+    Optional<Infraestrutura> findByNome(String nome);
     List<Infraestrutura> findByAtivaTrue();
     Optional<Infraestrutura> findByIdInfraestrutura(UUID id);
 }

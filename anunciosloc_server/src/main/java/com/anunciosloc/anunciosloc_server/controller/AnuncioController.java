@@ -3,6 +3,8 @@ package com.anunciosloc.anunciosloc_server.controller;
 import com.anunciosloc.anunciosloc_server.dto.PostarAnuncioRequest;
 import com.anunciosloc.anunciosloc_server.model.Anuncio;
 import com.anunciosloc.anunciosloc_server.service.AnuncioService;
+
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
@@ -13,14 +15,14 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/anuncios")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
+//@CrossOrigin(origins = "*")
 public class AnuncioController {
 
     private final AnuncioService anuncioService;
 
     
     @PostMapping
-    public ResponseEntity<?> postarAnuncio(@RequestBody PostarAnuncioRequest request) {
+    public ResponseEntity<?> postarAnuncio(@Valid @RequestBody PostarAnuncioRequest request) {
         try {
             Anuncio anuncio = anuncioService.postarAnuncio(request);
             return ResponseEntity.ok(anuncio);

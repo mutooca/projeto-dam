@@ -1,7 +1,7 @@
 package com.anunciosloc.anunciosloc_server.uddi;
 
 import com.anunciosloc.anunciosloc_server.uddi.dto.*;
-import com.anunciosloc.anunciosloc_server.uddi.InfrastructureServiceSEI;
+//import com.anunciosloc.anunciosloc_server.uddi.InfrastructureServiceSEI;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -109,6 +109,11 @@ public class InfrastruturaSoapClient {
         }
 
         public String ping() { return port.ping(); }
+
+        public void enviarPerfil(String idUtilizador, String email, 
+                          String preferencias) {
+            port.enviarPerfil(idUtilizador, email, preferencias);
+        }
     };
 }
 }

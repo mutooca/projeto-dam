@@ -2,8 +2,9 @@ package com.anunciosloc.anunciosloc_server.controller;
 
 import com.anunciosloc.anunciosloc_server.dto.CriarLocalRequest;
 import com.anunciosloc.anunciosloc_server.dto.LocalResponse;
-import com.anunciosloc.anunciosloc_server.model.Local;
 import com.anunciosloc.anunciosloc_server.service.LocalService;
+
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
@@ -21,7 +22,7 @@ public class LocalController {
 
     
     @PostMapping
-    public ResponseEntity<?> criarLocal(@RequestBody CriarLocalRequest request) {
+    public ResponseEntity<?> criarLocal(@Valid @RequestBody CriarLocalRequest request) {
         try {
             if (request.getLatUtilizador() == null || request.getLonUtilizador() == null) {
                 return ResponseEntity.badRequest()

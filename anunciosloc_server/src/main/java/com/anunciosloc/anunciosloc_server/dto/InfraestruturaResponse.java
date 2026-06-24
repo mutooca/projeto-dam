@@ -5,11 +5,16 @@ package com.anunciosloc.anunciosloc_server.dto;
 import java.util.List;
 import java.util.UUID;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class InfraestruturaResponse {
     private UUID id;
     private String nome;

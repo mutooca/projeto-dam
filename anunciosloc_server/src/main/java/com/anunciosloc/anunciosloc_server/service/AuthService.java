@@ -3,17 +3,20 @@ package com.anunciosloc.anunciosloc_server.service;
 import com.anunciosloc.anunciosloc_server.client.KerberosSoapClient;
 import com.anunciosloc.anunciosloc_server.dto.RegistarUtilizadorRequest;
 import com.anunciosloc.anunciosloc_server.client.TicketResponse;
+import com.anunciosloc.anunciosloc_server.client.TicketResponseAdmin;
 import com.anunciosloc.anunciosloc_server.model.Utilizador;
 import com.anunciosloc.anunciosloc_server.repository.UtilizadorRepository;
 import com.anunciosloc.anunciosloc_server.util.EmailValidator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.UUID;
+//import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +25,7 @@ public class AuthService {
     private final KerberosSoapClient kerberosClient;
     private final UtilizadorRepository utilizadorRepository;
     private final ObjectMapper objectMapper;
+    private final BCryptPasswordEncoder passwordEncoder;
 
     @Transactional
     public Utilizador registar(RegistarUtilizadorRequest request) {
@@ -37,13 +41,17 @@ public class AuthService {
         
         Utilizador user = new Utilizador();
         user.setEmail(request.getEmail());
-        user.setPalavraChave(request.getPalavraChave());
+        //user.setPalavraChave(request.getPalavraChave());
+        user.setPalavraChave(passwordEncoder.encode(request.getPalavraChave()));
         user.setNome(request.getNome());
         user.setPreferenciaAnuncio(request.getPreferenciaAnuncio());
         user.setSaldo(10);
         user.setRole("USER");
         user.setDataCriacao(LocalDateTime.now());
         user.setAtivo(true);
+
+        
+
         utilizadorRepository.save(user);
         
       
@@ -63,8 +71,8 @@ public class AuthService {
         Utilizador user = utilizadorRepository.findByEmail(email)
             .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
         
-        if (!user.getPalavraChave().equals(password)) {
-            throw new RuntimeException("Password incorreta");
+        if (!passwordEncoder.matches(password, user.getPalavraChave())) {
+            throw new RuntimeException("Palavra Chave incorrecta");
         }
         
         if (!user.isAtivo()) {
@@ -102,6 +110,61 @@ public class AuthService {
             response.setSessionKey((String) map.get("sessionKey"));
             response.setSessionId((String) map.get("sessionId"));
             response.setMessage((String) map.get("message"));
+            
+            return response;
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao comunicar com Kerberos: " + e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public TicketResponseAdmin loginAdmin(String email, String password, String clientNonce) {
+        
+        Utilizador user = utilizadorRepository.findByEmail(email)
+            .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
+        
+        if (!passwordEncoder.matches(password, user.getPalavraChave())) {
+            throw new RuntimeException("Palavra Chave incorrecta");
+        }
+        
+        if (!user.isAtivo()) {
+            throw new RuntimeException("Utilizador não ativado");
+        }
+    
+        if (!"ADMIN".equals(user.getRole())) {
+            throw new RuntimeException("Acesso negado: esta conta não tem privilégios de administrador");
+        }
+        boolean existeNoKerberos = false;
+        try {
+            existeNoKerberos = kerberosClient.verificarUtilizador(email);
+            System.out.println("Utilizador existe no Kerberos? " + existeNoKerberos);
+        } catch (Exception e) {
+            System.out.println("Erro ao verificar utilizador no Kerberos: " + e.getMessage());
+        }
+        
+        if (!existeNoKerberos) {
+            try {
+                String responseJson = kerberosClient.criarUtilizador(email, password);
+                System.out.println("Utilizador criado no Kerberos automaticamente: " + responseJson);
+            } catch (Exception e) {
+                System.out.println("Erro ao criar utilizador no Kerberos: " + e.getMessage());
+               
+            }
+        }
+        try {
+            String responseJson = kerberosClient.requestTicket(email, clientNonce);
+            System.out.println("Resposta do Kerberos (requestTicket): " + responseJson);
+            
+            Map<String, Object> map = objectMapper.readValue(responseJson, Map.class);
+            
+            TicketResponseAdmin response = new TicketResponseAdmin();
+            response.setSuccess((Boolean) map.get("success"));
+            response.setTicket((String) map.get("ticket"));
+            response.setSessionKey((String) map.get("sessionKey"));
+            response.setSessionId((String) map.get("sessionId"));
+            response.setMessage((String) map.get("message"));
+            response.setRole(user.getRole());  // ← ADICIONAR ROLE
+        
             
             return response;
         } catch (Exception e) {

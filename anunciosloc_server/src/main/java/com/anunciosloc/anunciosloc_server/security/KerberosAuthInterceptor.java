@@ -3,7 +3,6 @@ package com.anunciosloc.anunciosloc_server.security;
 import com.anunciosloc.anunciosloc_server.client.KerberosSoapClient;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -11,8 +10,11 @@ import org.springframework.web.servlet.HandlerInterceptor;
 @Component
 public class KerberosAuthInterceptor implements HandlerInterceptor {
 
-    @Autowired
-    private KerberosSoapClient kerberosClient;
+    private final KerberosSoapClient kerberosClient;
+
+    KerberosAuthInterceptor(KerberosSoapClient kerberosClient) {
+        this.kerberosClient = kerberosClient;
+    }
 
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler) {

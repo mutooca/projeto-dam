@@ -36,4 +36,11 @@ public interface InfrastructureServiceSEI {
 
     @WebMethod(operationName = "clear")
     void clear();
+
+    @WebMethod(operationName = "enviarPerfil")
+    void enviarPerfil(
+        @WebParam(name = "idUtilizador") String idUtilizador,
+        @WebParam(name = "email") String email,
+        @WebParam(name = "preferencias") String preferencias
+    );
 }

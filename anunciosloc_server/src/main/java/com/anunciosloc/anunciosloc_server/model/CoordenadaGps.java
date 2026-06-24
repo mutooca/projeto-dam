@@ -19,5 +19,5 @@ public class CoordenadaGps {
     
     private Double latitude;
     private Double longitude;
-    private Integer raio;
+    private Double raio;
 }

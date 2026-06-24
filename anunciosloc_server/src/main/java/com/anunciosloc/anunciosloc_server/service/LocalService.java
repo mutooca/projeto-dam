@@ -31,14 +31,9 @@ public class LocalService {
 
     @Transactional
     @CacheEvict(value = "locais", allEntries = true)
-    
     public LocalResponse criarLocalAutomatico(CriarLocalRequest request,
                                             double latUtilizador,
                                             double lonUtilizador) {
-
-       
-
-        
         Infraestrutura infraAssociada = null;
 
         List<Infraestrutura> todasInfras = infraRepository.findByAtivaTrue();
@@ -66,6 +61,9 @@ public class LocalService {
                 "Não está dentro do raio de cobertura de nenhuma infraestrutura. " +
                 "Apenas pode criar locais dentro de áreas de cobertura.");
         }
+
+        Utilizador criador = utilizadorRepository.findByEmail(request.getEmailUtilizador())
+             .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
 
         infraDisponibilidade.verificarDisponibilidade(infraAssociada.getNome());
 
@@ -122,6 +120,7 @@ public class LocalService {
         local.setInfraestrutura(infraAssociada);
         local.setCoordenadaGps(gps);
         local.setCoordenadaWifi(wifi);
+        local.setCriadoPor(criador);
         local = localRepository.save(local);
 
         log.info("Local '{}' criado e associado à infraestrutura '{}'",
@@ -161,7 +160,7 @@ public class LocalService {
         return null;
     }*/
 
-    @Cacheable(value = "locais", key = "#infraId")
+    @Cacheable(value = "locais", key = "#lat + ',' + #lon")
     public List<LocalResponse> listarLocaisProximos(double latUtilizador,
                                                     double lonUtilizador) {
 
@@ -195,6 +194,7 @@ public class LocalService {
 
     @SuppressWarnings("null")
     @Transactional
+    @CacheEvict(value = "locais", allEntries = true)
     public void removerLocal(UUID localId, String emailUtilizador) {
 
         Utilizador utilizador = utilizadorRepository.findByEmail(emailUtilizador)

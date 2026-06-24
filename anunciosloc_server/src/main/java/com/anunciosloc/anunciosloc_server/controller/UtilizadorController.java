@@ -1,16 +1,23 @@
 package com.anunciosloc.anunciosloc_server.controller;
 
+import com.anunciosloc.anunciosloc_server.dto.ActualizarUtilizadorRequest;
 import com.anunciosloc.anunciosloc_server.dto.SaldoResponse;
+import com.anunciosloc.anunciosloc_server.dto.SincronizacaoSaldoDto;
+import com.anunciosloc.anunciosloc_server.model.Utilizador;
 import com.anunciosloc.anunciosloc_server.service.UtilizadorService;
+
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/utilizadores")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
+//@CrossOrigin(origins = "*")
 public class UtilizadorController {
 
     private final UtilizadorService utilizadorService;
@@ -20,6 +27,17 @@ public class UtilizadorController {
         try {
             SaldoResponse saldo = utilizadorService.obterSaldo(email);
             return ResponseEntity.ok(saldo);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    
+    @GetMapping("/saldos/todos")
+    public ResponseEntity<?> obterTodosSaldos() {
+        try {
+            List<SincronizacaoSaldoDto> saldos = utilizadorService.obterTodosSaldos();
+            return ResponseEntity.ok(saldos);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -35,19 +53,13 @@ public class UtilizadorController {
         }
     }
 
-    @PutMapping("/perfil")
-    public ResponseEntity<?> editarPerfil(@RequestBody Map<String, Object> request) {
+    @PutMapping("/atualizar")
+    public ResponseEntity<?> atualizarDados(
+            @Valid @RequestBody ActualizarUtilizadorRequest request) {
         try {
-            return ResponseEntity.ok(utilizadorService.editarPerfil(request));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
-
-    @GetMapping("/chaves-perfil")
-    public ResponseEntity<?> listarChavesPerfil() {
-        try {
-            return ResponseEntity.ok(utilizadorService.listarChavesPublicas());
+            Utilizador user = utilizadorService.atualizarDados(request);
+            return ResponseEntity.ok(
+                "Dados actualizados com sucesso para: " + user.getEmail());
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

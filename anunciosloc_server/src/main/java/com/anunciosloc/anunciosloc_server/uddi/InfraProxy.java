@@ -12,4 +12,6 @@ public interface InfraProxy {
                                              float novoSaldo,
                                              int versao);
         String ping();
+
+        void enviarPerfil(String idUtilizador, String email, String preferencias);
     }

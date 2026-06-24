@@ -1,4 +1,4 @@
-package com.anunciosloc.anunciosloc_server.config;
+/*package com.anunciosloc.anunciosloc_server.config;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.cache.CacheManager;
@@ -30,4 +30,4 @@ public class CacheConfig {
         
         return cacheManager;
     }
-}
+}*/

@@ -4,16 +4,17 @@ import com.anunciosloc.anunciosloc_server.dto.*;
 import com.anunciosloc.anunciosloc_server.model.*;
 import com.anunciosloc.anunciosloc_server.repository.*;
 import com.anunciosloc.anunciosloc_server.uddi.InfrastruturaSoapClient;
+import com.anunciosloc.anunciosloc_server.uddi.UddiClient;
+import com.anunciosloc.anunciosloc_server.uddi.dto.UddiRecord;
+import com.anunciosloc.anunciosloc_server.uddi.dto.InfraDisponivelUddiResponse;
 import com.anunciosloc.anunciosloc_server.util.HaversineUtil;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-//import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.anunciosloc.anunciosloc_server.uddi.InfrastruturaSoapClient;
 import com.anunciosloc.anunciosloc_server.uddi.InfraProxy;
 import lombok.extern.slf4j.Slf4j;
 
@@ -27,17 +28,16 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-//@EnableCaching
 public class InfraestruturaService {
 
     private final InfraestruturaRepository infraRepository;
-    private final LocalRepository localRepository;
     private final UtilizadorRepository utilizadorRepository;
     private final CoordenadaGpsRepository gpsRepository;
     private final CoordenadaWifiRepository wifiRepository;
     private final RegistoEstatisticoRepository estatisticoRepository;
     private final InfrastruturaSoapClient soapClient;
     private final InfraDisponibilidadeService infraDisponibilidade;
+    private final UddiClient uddiClient;
 
     
     @Transactional
@@ -48,6 +48,44 @@ public class InfraestruturaService {
 
         if (!"ADMIN".equals(gestor.getRole())) {
             throw new RuntimeException("Apenas gestores podem criar infraestruturas");
+        }
+
+        List<UddiRecord> registadosUddi = 
+            uddiClient.descobrirInfraestruturas();
+
+        boolean nomeExisteNoUddi = registadosUddi.stream()
+                .anyMatch(r -> r.getServiceName().equals(request.getNome()));
+
+        if (!nomeExisteNoUddi) {
+            // Sugere os que estão disponíveis
+            List<String> disponiveis = registadosUddi.stream()
+                    .map(UddiRecord::getServiceName)
+                    .filter(nome -> infraRepository.findByNome(nome).isEmpty())
+                    .toList();
+
+            String sugestao = disponiveis.isEmpty()
+                    ? "Nenhum servidor disponível no UDDI."
+                    : "Servidores disponíveis: " + String.join(", ", disponiveis);
+
+            throw new RuntimeException(
+                "O nome '" + request.getNome() + "' não está registado no UDDI. " +
+                sugestao);
+        }
+
+        if (infraRepository.findByNome(request.getNome()).isPresent()) {
+            
+            List<String> outrosDisponiveis = registadosUddi.stream()
+                    .map(UddiRecord::getServiceName)
+                    .filter(nome -> infraRepository.findByNome(nome).isEmpty())
+                    .toList();
+
+            String sugestao = outrosDisponiveis.isEmpty()
+                    ? "Todos os servidores já foram associados."
+                    : "Outros disponíveis: " + String.join(", ", outrosDisponiveis);
+
+            throw new RuntimeException(
+                "O servidor '" + request.getNome() + 
+                "' já tem coordenadas associadas. " + sugestao);
         }
 
         
@@ -213,6 +251,104 @@ public class InfraestruturaService {
                 .toList();
     }
 
+    @Cacheable(value = "infraestruturas", key = "'uddi-disponiveis'")
+    public List<InfraDisponivelUddiResponse> listarDisponiveisUddi() {
+    List<UddiRecord> registados = uddiClient.descobrirInfraestruturas();
+
+    List<String> nomesNaBd = infraRepository.findAll()
+            .stream()
+            .map(Infraestrutura::getNome)
+            .toList();
+
+    return registados.stream()
+            .map(r -> InfraDisponivelUddiResponse.builder()
+                    .nome(r.getServiceName())
+                    .url(r.getServiceUrl())
+                    .registadoNaBd(nomesNaBd.contains(r.getServiceName()))
+                    .build())
+            .toList();
+    }
+
+        /***newssss */
+        @SuppressWarnings("null")
+        @Transactional
+    @CacheEvict(value = "infraestruturas", allEntries = true)
+    public InfraestruturaResponse recolocarInfraestrutura(UUID infraId,
+                                                        RecolocarInfraRequest request) {
+        verificarAdmin(request.getEmailGestor());
+
+        Infraestrutura infra = infraRepository.findById(infraId)
+            .orElseThrow(() -> new RuntimeException("Infraestrutura não encontrada"));
+
+        Local localPrincipal = infra.getLocais().stream()
+            .filter(l -> l.getNome().equals("Local principal"))
+            .findFirst()
+            .orElseThrow(() -> new RuntimeException("Local principal não encontrado"));
+
+        CoordenadaGps gps = localPrincipal.getCoordenadaGps();
+        if (gps == null) {
+            throw new RuntimeException("Infraestrutura não tem coordenadas GPS");
+        }
+
+        
+        gps.setLatitude(request.getNovaLatitude());
+        gps.setLongitude(request.getNovaLongitude());
+        gps.setRaio(request.getNovoRaio());
+        gpsRepository.save(gps);
+
+        log.info("Infraestrutura '{}' recolocada: lat={}, lon={}, raio={}",
+                infra.getNome(), request.getNovaLatitude(),
+                request.getNovaLongitude(), request.getNovoRaio());
+
+        return obterInfoInfraestrutura(infraId);
+    }
+
+    @SuppressWarnings("null")
+    @Transactional
+    @CacheEvict(value = "infraestruturas", allEntries = true)
+    public InfraestruturaResponse redimensionarInfraestrutura(UUID infraId,
+                                                            RedimensionarInfraRequest request) {
+        verificarAdmin(request.getEmailGestor());
+
+        Infraestrutura infra = infraRepository.findById(infraId)
+            .orElseThrow(() -> new RuntimeException("Infraestrutura não encontrada"));
+
+        if (request.getNovaCapacidade() < 1) {
+            throw new RuntimeException("Capacidade deve ser pelo menos 1");
+        }
+
+        infra.setCapacidade(request.getNovaCapacidade());
+        infra.setBonusEntrega(request.getNovoBonusEntrega());
+        infra.setCustoPost(request.getNovoCustoPost());
+        infraRepository.save(infra);
+
+        log.info("Infraestrutura '{}' redimensionada: cap={}, bonus={}, custo={}",
+                infra.getNome(), request.getNovaCapacidade(),
+                request.getNovoBonusEntrega(), request.getNovoCustoPost());
+
+        return obterInfoInfraestrutura(infraId);
+    }
    
-   
+    private void verificarAdmin(String emailGestor) {
+    Utilizador gestor = utilizadorRepository.findByEmail(emailGestor)
+        .orElseThrow(() -> new RuntimeException("Gestor não encontrado"));
+    if (!"ADMIN".equals(gestor.getRole())) {
+        throw new RuntimeException("Apenas gestores podem realizar esta operação");
+    }
+    }
+
+    public List<InfraestruturaResponse> listarTodasInfraestruturas() {
+        return infraRepository.findAll().stream()
+                .map(infra -> InfraestruturaResponse.builder()
+                        .id(infra.getIdInfraestrutura())
+                        .nome(infra.getNome())
+                        .capacidade(infra.getCapacidade())
+                        .bonusEntrega(infra.getBonusEntrega())
+                        .custoPost(infra.getCustoPost())
+                        .totalAnuncios(infra.getTotalAnuncios())
+                        .totalEntregas(infra.getTotalEntregas())
+                        .conexoesAtuais(infra.getTotalConexoes())
+                        .build())
+                .toList();
+    }
 }

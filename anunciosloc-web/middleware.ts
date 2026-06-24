@@ -3,30 +3,52 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const ticket = request.cookies.get('ticket');
-  const isLoginPage = request.nextUrl.pathname === '/';
-  const isApiRoute = request.nextUrl.pathname.startsWith('/api');
+    const ticket = request.cookies.get('ticket');
+    const { pathname } = request.nextUrl;
 
-  // Permite acesso à API e recursos públicos
-  if (isApiRoute) {
+    console.log('🔍 Middleware - Path:', pathname);
+    console.log('🔍 Middleware - Ticket:', ticket ? '✅ Existe' : '❌ Não existe');
+
+    // 🗂️ Recursos estáticos
+    const isStatic = pathname.startsWith('/_next') ||
+        pathname.startsWith('/favicon.ico') ||
+        pathname.startsWith('/public');
+
+    // 🔓 Rotas públicas (acesso livre)
+    const publicRoutes = ['/', '/api/auth/login', '/api/auth/authenticator'];
+    const isPublicRoute = publicRoutes.includes(pathname);
+
+    // ✅ Permite recursos estáticos
+    if (isStatic) {
+        return NextResponse.next();
+    }
+
+    // ✅ Permite rotas públicas
+    if (isPublicRoute) {
+        return NextResponse.next();
+    }
+
+    // 🔐 Se NÃO tem ticket → redireciona para login
+    if (!ticket) {
+        console.log('⛔ Redirecionando para login (sem ticket)');
+        const url = new URL('/', request.url);
+        return NextResponse.redirect(url);
+    }
+
+    // ✅ Se tem ticket → permite acesso
+    console.log('✅ Ticket válido - permitindo acesso');
     return NextResponse.next();
-  }
-
-  // Se não tem ticket e não está na página de login
-  if (!ticket && !isLoginPage) {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
-
-  // Se tem ticket e está na página de login, redireciona para dashboard
-  if (ticket && isLoginPage) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-
-  return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
-  ],
+    matcher: [
+        /*
+         * Match all request paths except:
+         * - _next/static (static files)
+         * - _next/image (image optimization files)
+         * - favicon.ico (favicon file)
+         * - public folder
+         */
+        '/((?!_next/static|_next/image|favicon.ico|public).*)',
+    ],
 };

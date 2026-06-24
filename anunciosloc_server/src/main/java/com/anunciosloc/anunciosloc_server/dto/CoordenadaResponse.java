@@ -8,6 +8,6 @@ import lombok.Data;
 public class CoordenadaResponse {
     private Double latitude;
     private Double longitude;
-    private Integer raio;
+    private Double raio;
     private String ssidWifi;
 }

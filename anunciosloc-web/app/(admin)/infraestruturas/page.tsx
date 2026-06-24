@@ -1,4 +1,3 @@
-// app/(admin)/infraestruturas/page.tsx
 'use client'
 
 import { useState, useEffect } from "react";
@@ -6,6 +5,7 @@ import toast from "react-hot-toast";
 import { HiMiniMagnifyingGlass } from "react-icons/hi2";
 import { LuSettings2, LuTrash2 } from "react-icons/lu";
 import { ImPencil } from "react-icons/im";
+import { useRouter } from "next/navigation";
 import { getCookie } from 'cookies-next';
 
 import ModalInfraestrutura, {

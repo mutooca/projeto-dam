@@ -1,4 +1,4 @@
-package com.anunciosloc.anunciosloc_server.dto;
+/*package com.anunciosloc.anunciosloc_server.dto;
 
 import lombok.Builder;
 import lombok.Data;
@@ -10,4 +10,4 @@ public class LoginResponse {
     private String email;
     private String role;
     private Integer saldo;
-}
+}**/
