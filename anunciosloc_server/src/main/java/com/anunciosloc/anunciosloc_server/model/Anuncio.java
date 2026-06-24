@@ -28,7 +28,7 @@ public class Anuncio {
     private String estado;
     
     private String categoria;
-    
+
     
     @ManyToOne
     @JoinColumn(name = "id_local")

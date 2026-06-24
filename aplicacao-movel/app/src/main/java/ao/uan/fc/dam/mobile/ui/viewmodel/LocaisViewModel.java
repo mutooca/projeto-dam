@@ -47,7 +47,9 @@ public class LocaisViewModel extends AndroidViewModel {
         request.put("latitude", lat);
         request.put("longitude", lon);
         request.put("raio", raio);
-        request.put("criadorEmail", email); // Adicionado para identificar o autor
+        
+        // Corrigido: O servidor espera "emailUtilizador" (Requisito Centralizado)
+        request.put("emailUtilizador", email);
         
         // Coordenadas para validação de proximidade no backend
         request.put("latUtilizador", lat);

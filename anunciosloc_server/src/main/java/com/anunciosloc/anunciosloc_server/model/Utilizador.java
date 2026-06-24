@@ -53,7 +53,7 @@ public class Utilizador {
 
     @OneToMany(mappedBy = "utilizador")
     private List<EntregaAnuncio> entregas = new ArrayList<>();
-    
+
     
     private boolean ativo;
 

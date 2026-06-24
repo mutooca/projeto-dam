@@ -5,6 +5,7 @@ import com.anunciosloc.anunciosloc_server.service.UtilizadorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/utilizadores")
@@ -29,6 +30,24 @@ public class UtilizadorController {
         try {
             utilizadorService.atualizarPreferencias(email, preferencias);
             return ResponseEntity.ok("Preferências atualizadas");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/perfil")
+    public ResponseEntity<?> editarPerfil(@RequestBody Map<String, Object> request) {
+        try {
+            return ResponseEntity.ok(utilizadorService.editarPerfil(request));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/chaves-perfil")
+    public ResponseEntity<?> listarChavesPerfil() {
+        try {
+            return ResponseEntity.ok(utilizadorService.listarChavesPublicas());
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
