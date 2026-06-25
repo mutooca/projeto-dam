@@ -160,25 +160,16 @@ public class LocalService {
         return null;
     }*/
 
-    @Cacheable(value = "locais", key = "#lat + ',' + #lon")
-    public List<LocalResponse> listarLocaisProximos(double latUtilizador,
-                                                    double lonUtilizador) {
-
+        @Cacheable(value = "locais", key = "#lat + ',' + #lon")
+    public List<LocalResponse> listarLocaisProximos(double lat, double lon) {
         List<Infraestrutura> todasInfras = infraRepository.findByAtivaTrue();
 
         return todasInfras.stream()
-            .filter(infra -> infra.getLocais().stream()
-                .filter(l -> l.getCoordenadaGps() != null)
-                .anyMatch(l -> HaversineUtil.calcularDistancia(
-                        latUtilizador, lonUtilizador,
-                        l.getCoordenadaGps().getLatitude(),
-                        l.getCoordenadaGps().getLongitude())
-                    <= l.getCoordenadaGps().getRaio()))
-            // infra cobre o utilizador — devolve os seus locais
             .flatMap(infra -> infra.getLocais().stream()
                 .filter(l -> l.getCoordenadaGps() != null)
+                .filter(l -> !"Local principal".equalsIgnoreCase(l.getNome()))
                 .filter(l -> HaversineUtil.calcularDistancia(
-                        latUtilizador, lonUtilizador,
+                        lat, lon,
                         l.getCoordenadaGps().getLatitude(),
                         l.getCoordenadaGps().getLongitude())
                     <= l.getCoordenadaGps().getRaio())

@@ -1,5 +1,6 @@
 package com.anunciosloc.anunciosloc_server.service;
 
+import com.anunciosloc.anunciosloc_server.dto.AnuncioResponse;
 import com.anunciosloc.anunciosloc_server.dto.PostarAnuncioRequest;
 import com.anunciosloc.anunciosloc_server.model.*;
 import com.anunciosloc.anunciosloc_server.repository.*;
@@ -46,7 +47,7 @@ public class AnuncioService {
     @SuppressWarnings("null")
     @Transactional
     @CacheEvict(value = "saldo", key = "#request.emailAutor")
-    public Anuncio postarAnuncio(PostarAnuncioRequest request) {
+    public AnuncioResponse postarAnuncio(PostarAnuncioRequest request) {
 
         Utilizador autor = utilizadorRepository.findByEmail(request.getEmailAutor())
             .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
@@ -142,7 +143,24 @@ public class AnuncioService {
             
         }
 
-        return anuncioRepository.save(anuncio);
+        Anuncio salvo = anuncioRepository.save(anuncio);
+
+            return  AnuncioResponse.builder()
+                    .id(salvo.getIdAnuncio())
+                    .titulo(salvo.getTitulo())
+                    .conteudo(salvo.getConteudo())
+                    .categoria(salvo.getCategoria())
+                    .estado(salvo.getEstado())
+                    .dataPublicacao(salvo.getDataPublicacao())
+                    .visivelDe(salvo.getVisivelDe())
+                    .visivelAte(salvo.getVisivelAte())
+                    .tipoPolitica(salvo.getTipoPolitica())
+                    .politicaFiltro(salvo.getPoliticaFiltro())
+                    .idLocal(local.getIdLocal().toString())
+                    .nomeLocal(local.getNome())
+                    .autorEmail(autor.getEmail())
+                    .nomeAutor(autor.getNome())
+                    .build();
     }
 
         
@@ -347,19 +365,23 @@ public class AnuncioService {
         log.info("Anúncio {} marcado como lido por {}", anuncioId, emailUtilizador);
     }
 
+    @SuppressWarnings("null")
     @Cacheable(value = "anuncios", key = "#localId")
-    public List<Anuncio> listarAnunciosPorLocal(@NonNull UUID localId) {
-        Local local = localRepository.findById(localId)
-            .orElseThrow(() -> new RuntimeException("Local não encontrado"));
-        return anuncioRepository.findByLocal(local);
-    }
+    public List<AnuncioResponse> listarAnunciosPorLocal(UUID localId) {
+    Local local = localRepository.findById(localId)
+        .orElseThrow(() -> new RuntimeException("Local não encontrado"));
+    return anuncioRepository.findByLocal(local).stream()
+            .map(this::toResponse).toList();
+}
 
     @Cacheable(value = "anuncios", key = "#email")
-    public List<Anuncio> listarAnunciosPorUtilizador(String email) {
+    public List<AnuncioResponse> listarAnunciosPorUtilizador(String email) {
         Utilizador user = utilizadorRepository.findByEmail(email)
             .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
-        return anuncioRepository.findByAutor(user);
+        return anuncioRepository.findByAutor(user).stream()
+                .map(this::toResponse).toList();
     }
+
 
     public List<Anuncio> listarAnunciosPorInfraestrutura(@NonNull UUID infraId) {
         Infraestrutura infra = infraRepository.findById(infraId)
@@ -436,5 +458,24 @@ private boolean passaNaPolitica(Anuncio anuncio, Utilizador user) {
     }
 
     return true;
+}
+
+private AnuncioResponse toResponse(Anuncio a) {
+    return AnuncioResponse.builder()
+            .id(a.getIdAnuncio())
+            .titulo(a.getTitulo())
+            .conteudo(a.getConteudo())
+            .categoria(a.getCategoria())
+            .estado(a.getEstado())
+            .dataPublicacao(a.getDataPublicacao())
+            .visivelDe(a.getVisivelDe())
+            .visivelAte(a.getVisivelAte())
+            .tipoPolitica(a.getTipoPolitica())
+            .politicaFiltro(a.getPoliticaFiltro())
+            .idLocal(a.getLocal() != null ? a.getLocal().getIdLocal().toString() : null)
+            .nomeLocal(a.getLocal() != null ? a.getLocal().getNome() : null)
+            .autorEmail(a.getAutor() != null ? a.getAutor().getEmail() : null)
+            .nomeAutor(a.getAutor() != null ? a.getAutor().getNome() : null)
+            .build();
 }
 }

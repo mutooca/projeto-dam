@@ -1,7 +1,7 @@
 package com.anunciosloc.anunciosloc_server.controller;
 
+import com.anunciosloc.anunciosloc_server.dto.AnuncioResponse;
 import com.anunciosloc.anunciosloc_server.dto.PostarAnuncioRequest;
-import com.anunciosloc.anunciosloc_server.model.Anuncio;
 import com.anunciosloc.anunciosloc_server.service.AnuncioService;
 
 import jakarta.validation.Valid;
@@ -21,14 +21,16 @@ public class AnuncioController {
     private final AnuncioService anuncioService;
 
     
-    @PostMapping
-    public ResponseEntity<?> postarAnuncio(@Valid @RequestBody PostarAnuncioRequest request) {
-        try {
-            Anuncio anuncio = anuncioService.postarAnuncio(request);
-            return ResponseEntity.ok(anuncio);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    
+    @PostMapping("/postar")
+    public ResponseEntity<?> postarAnuncio(
+        @Valid @RequestBody PostarAnuncioRequest request) {
+      try {
+        AnuncioResponse response = anuncioService.postarAnuncio(request);
+        return ResponseEntity.ok(response);
+            } catch (Exception e) {
+                return ResponseEntity.badRequest().body(e.getMessage());
+            }
     }
 
     
@@ -52,13 +54,13 @@ public class AnuncioController {
             return ResponseEntity.ok("Anúncio marcado como lido");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        } 
     }
 
     @GetMapping("/local/{localId}")
     public ResponseEntity<?> listarPorLocal(@PathVariable @NonNull UUID localId) {
         try {
-            List<Anuncio> anuncios = anuncioService.listarAnunciosPorLocal(localId);
+            List<AnuncioResponse> anuncios = anuncioService.listarAnunciosPorLocal(localId);
             return ResponseEntity.ok(anuncios);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -68,7 +70,7 @@ public class AnuncioController {
     @GetMapping("/utilizador/{email}")
     public ResponseEntity<?> listarPorUtilizador(@PathVariable String email) {
         try {
-            List<Anuncio> anuncios = anuncioService.listarAnunciosPorUtilizador(email);
+            List<AnuncioResponse> anuncios = anuncioService.listarAnunciosPorUtilizador(email);
             return ResponseEntity.ok(anuncios);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());

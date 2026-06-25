@@ -37,7 +37,7 @@ public class Anuncio {
     @ManyToOne
     @JoinColumn(name = "id_autor")
     private Utilizador autor;
-    
+     
     @ManyToOne
     @JoinColumn(name = "id_infraestrutura")
     private Infraestrutura infraestrutura; 

@@ -1,7 +1,9 @@
 package com.anunciosloc.anunciosloc_server.dto;
 
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
+@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
