@@ -11,6 +11,6 @@ import lombok.*;
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class EscreverSaldoResponse {
     private boolean sucesso;
-    private int versaoActual;
     private String mensagem;
+    private int versaoActual;
 }

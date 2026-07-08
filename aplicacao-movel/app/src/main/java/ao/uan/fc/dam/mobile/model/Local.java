@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.room.Entity;
 import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
+import com.google.gson.annotations.SerializedName;
 import java.io.Serializable;
 import java.util.UUID;
 
@@ -11,6 +12,7 @@ import java.util.UUID;
 public class Local implements Serializable {
     @PrimaryKey
     @NonNull
+    @SerializedName("idLocal")
     private UUID idLocal;
     private String nome;
     
@@ -31,6 +33,7 @@ public class Local implements Serializable {
 
     @NonNull public UUID getIdLocal() { return idLocal; }
     public void setIdLocal(@NonNull UUID idLocal) { this.idLocal = idLocal; }
+    public void setIdLocal(String idLocal) { this.idLocal = UUID.fromString(idLocal); }
 
     public String getNome() { return nome; }
     public void setNome(String nome) { this.nome = nome; }
@@ -43,6 +46,7 @@ public class Local implements Serializable {
 
     public Integer getRaio() { return raio; }
     public void setRaio(Integer raio) { this.raio = raio; }
+    public void setRaio(Double raio) { this.raio = raio == null ? null : raio.intValue(); }
 
     public String getSsidWifi() { return ssidWifi; }
     public void setSsidWifi(String ssidWifi) { this.ssidWifi = ssidWifi; }

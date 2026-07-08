@@ -59,28 +59,28 @@ public class LoginActivity extends AppCompatActivity {
 
         Map<String, String> request = new HashMap<>();
         request.put("email", email);
-        request.put("password", senha);
+        // O servidor espera apenas 'palavraChave' no DTO LoginRequest
         request.put("palavraChave", senha);
 
         RetrofitClient.getInstance().getApi().login(request).enqueue(new Callback<TicketResponse>() {
             @Override
             public void onResponse(Call<TicketResponse> call, Response<TicketResponse> response) {
-                TicketResponse body = response.body();
-                if (response.isSuccessful() && body != null && body.isSuccess()) {
-                    SessionManager.save(LoginActivity.this, email, body);
-                    
-                    // Dispara a sincronização de Cache Local
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    SessionManager.save(LoginActivity.this, email, response.body());
                     CacheManager.getInstance(LoginActivity.this).syncAll(email);
-                    
                     iniciarServicosEIrParaMain();
                 } else {
-                    resetUI("Falha na autenticação");
+                    String erro = "Credenciais inválidas";
+                    try {
+                        if (response.errorBody() != null) erro = response.errorBody().string();
+                    } catch (Exception e) {}
+                    resetUI(erro);
                 }
             }
 
             @Override
             public void onFailure(Call<TicketResponse> call, Throwable t) {
-                resetUI("Erro de conexão");
+                resetUI("Sem conexão ao servidor. Verifique o IP no gradle.properties");
             }
         });
     }
@@ -97,6 +97,6 @@ public class LoginActivity extends AppCompatActivity {
     private void resetUI(String msg) {
         btnEntrar.setEnabled(true);
         if (progressBar != null) progressBar.setVisibility(View.GONE);
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
     }
 }

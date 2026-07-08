@@ -37,7 +37,7 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 /**
- * Arquiteto: Serviço de Localização em Foreground (F2.1.4)
+ * Arquiteto: Serviço de Localização em Foreground
  * Responsável por rastreamento contínuo e sincronização com o servidor central.
  */
 public class LocationService extends Service {
@@ -51,6 +51,7 @@ public class LocationService extends Service {
 
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locationCallback;
+    private DecentralizedManager decentralizedManager;
 
     @Override
     public void onCreate() {
@@ -71,6 +72,7 @@ public class LocationService extends Service {
         }
 
         startForeground(NOTIF_ID, getNotification("Rastreamento ativo", "A buscar anúncios próximos..."));
+        startDecentralizedLayer();
         requestLocationUpdates();
         
         return START_STICKY; // Mantém ativo mesmo se o sistema matar a app
@@ -96,9 +98,23 @@ public class LocationService extends Service {
                 if (locationResult == null) return;
                 for (Location location : locationResult.getLocations()) {
                     syncWithServer(location);
+                    syncWithNeighbors();
                 }
             }
         };
+    }
+
+    private void startDecentralizedLayer() {
+        if (decentralizedManager == null) {
+            decentralizedManager = new DecentralizedManager(this, SessionManager.getEmail(this));
+            decentralizedManager.start();
+        }
+    }
+
+    private void syncWithNeighbors() {
+        if (decentralizedManager != null) {
+            decentralizedManager.syncAdsWithNeighbors();
+        }
     }
 
     private void syncWithServer(Location location) {
@@ -161,6 +177,9 @@ public class LocationService extends Service {
         super.onDestroy();
         if (fusedLocationClient != null) {
             fusedLocationClient.removeLocationUpdates(locationCallback);
+        }
+        if (decentralizedManager != null) {
+            decentralizedManager.stop();
         }
         Log.d(TAG, "Serviço encerrado.");
     }

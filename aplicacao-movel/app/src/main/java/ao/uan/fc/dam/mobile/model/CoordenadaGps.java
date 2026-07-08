@@ -4,13 +4,13 @@ import java.util.UUID;
 
 public class CoordenadaGps {
     UUID id_coordenada;
-    String latitude;
-    String longitude;
-    int raio;
+    double latitude;
+    double longitude;
+    double raio;
 
     public CoordenadaGps(){}
 
-    public CoordenadaGps(UUID id_coordenada, String latitude, String longitude, int raio) {
+    public CoordenadaGps(UUID id_coordenada, double latitude, double longitude, double raio) {
         this.id_coordenada = id_coordenada;
         this.latitude = latitude;
         this.longitude = longitude;
@@ -25,27 +25,27 @@ public class CoordenadaGps {
         this.id_coordenada = id_coordenada;
     }
 
-    public String getLatitude() {
+    public double getLatitude() {
         return latitude;
     }
 
-    public void setLatitude(String latitude) {
+    public void setLatitude(double latitude) {
         this.latitude = latitude;
     }
 
-    public String getLongitude() {
+    public double getLongitude() {
         return longitude;
     }
 
-    public void setLongitude(String longitude) {
+    public void setLongitude(double longitude) {
         this.longitude = longitude;
     }
 
-    public int getRaio() {
+    public double getRaio() {
         return raio;
     }
 
-    public void setRaio(int raio) {
+    public void setRaio(double raio) {
         this.raio = raio;
     }
 }

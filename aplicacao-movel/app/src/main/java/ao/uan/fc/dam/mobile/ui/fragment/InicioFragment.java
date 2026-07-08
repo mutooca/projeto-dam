@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import ao.uan.fc.dam.mobile.R;
 import ao.uan.fc.dam.mobile.adapter.AnuncioAdapter;
 import ao.uan.fc.dam.mobile.model.Anuncio;
+import ao.uan.fc.dam.mobile.security.SessionManager;
 import ao.uan.fc.dam.mobile.ui.viewmodel.AnunciosViewModel;
 import ao.uan.fc.dam.mobile.ui.viewmodel.LocaisViewModel;
 import ao.uan.fc.dam.mobile.ui.viewmodel.PerfilViewModel;
@@ -27,12 +28,13 @@ public class InicioFragment extends Fragment {
     private AnunciosViewModel viewModel;
     private LocaisViewModel locaisViewModel;
     private PerfilViewModel perfilViewModel;
-    
+
     private TextView txtSaudacao, txtTotalAds, txtTotalLocais;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_inicio, container, false);
+
         viewModel = new ViewModelProvider(this).get(AnunciosViewModel.class);
         locaisViewModel = new ViewModelProvider(this).get(LocaisViewModel.class);
         perfilViewModel = new ViewModelProvider(this).get(PerfilViewModel.class);
@@ -43,11 +45,18 @@ public class InicioFragment extends Fragment {
 
         RecyclerView recyclerView = view.findViewById(R.id.recyclerViewInicio);
         recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
-        
+
         adapter = new AnuncioAdapter(new ArrayList<>(), this::abrirDetalhesAnuncio);
         recyclerView.setAdapter(adapter);
 
         setupObservers();
+
+        // ⭐ CARREGAR DADOS INICIAIS ⭐
+        String email = SessionManager.getEmail(requireContext());
+        if (email != null) {
+            viewModel.carregarMeusAnuncios(requireContext(), email);
+        }
+
         return view;
     }
 
@@ -59,7 +68,7 @@ public class InicioFragment extends Fragment {
             }
         });
 
-        // Observa Anúncios para a lista e para o contador
+        // ⭐ OBSERVA ANÚNCIOS ⭐
         viewModel.getMeusAnuncios().observe(getViewLifecycleOwner(), anuncios -> {
             if (anuncios != null) {
                 adapter.atualizar(anuncios);
@@ -74,8 +83,11 @@ public class InicioFragment extends Fragment {
             }
         });
 
+        // Observa erros
         viewModel.getErrorMessage().observe(getViewLifecycleOwner(), error -> {
-            if (error != null) Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show();
+            if (error != null && !error.isEmpty()) {
+                Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show();
+            }
         });
     }
 

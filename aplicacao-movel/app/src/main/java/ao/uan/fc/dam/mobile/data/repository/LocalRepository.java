@@ -62,18 +62,22 @@ public class LocalRepository {
             @Override
             public void onResponse(Call<Local> call, Response<Local> response) {
                 if (response.isSuccessful() && response.body() != null) {
+                    Log.i(TAG, "Local criado com sucesso no servidor: " + response.body().getNome());
                     executors.diskIO().execute(() -> localDao.insert(response.body()));
                     callback.onSuccess(response.body());
                 } else {
-                    Log.w(TAG, "Servidor rejeitou (Erro " + response.code() + "). Criando localmente como fallback...");
+                    String errorMsg = "Erro " + response.code();
+                    try {
+                        if (response.errorBody() != null) {
+                            errorMsg += ": " + response.errorBody().string();
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Erro ao ler corpo do erro", e);
+                    }
+                    Log.e(TAG, "Servidor rejeitou criação de local: " + errorMsg);
                     
-                    // Fallback: Criar localmente para permitir testes (F3)
-                    Local localFallback = new Local();
-                    localFallback.setNome((String) request.get("nome"));
-                    localFallback.setLatitude((Double) request.get("latitude"));
-                    localFallback.setLongitude((Double) request.get("longitude"));
-                    localFallback.setRaio((Integer) request.get("raio"));
-                    
+                    // Fallback local seguro
+                    Local localFallback = createFallbackLocal(request);
                     executors.diskIO().execute(() -> localDao.insert(localFallback));
                     callback.onSuccess(localFallback);
                 }
@@ -81,32 +85,37 @@ public class LocalRepository {
 
             @Override 
             public void onFailure(Call<Local> call, Throwable t) { 
-                Log.e(TAG, "Falha de conexão. Criando localmente...", t);
-                
-                Local localFallback = new Local();
-                localFallback.setNome((String) request.get("nome"));
-                localFallback.setLatitude((Double) request.get("latitude"));
-                localFallback.setLongitude((Double) request.get("longitude"));
-                localFallback.setRaio((Integer) request.get("raio"));
-                
+                Log.e(TAG, "Falha crítica de conexão ao criar local", t);
+                Local localFallback = createFallbackLocal(request);
                 executors.diskIO().execute(() -> localDao.insert(localFallback));
                 callback.onSuccess(localFallback);
             }
         });
     }
 
+    private Local createFallbackLocal(Map<String, Object> request) {
+        Local local = new Local();
+        local.setNome((String) request.get("nome"));
+        local.setLatitude((Double) request.get("latitude"));
+        local.setLongitude((Double) request.get("longitude"));
+        
+        Object raioObj = request.get("raio");
+        if (raioObj instanceof Double) {
+            local.setRaio(((Double) raioObj).intValue());
+        } else if (raioObj instanceof Integer) {
+            local.setRaio((Integer) raioObj);
+        } else {
+            local.setRaio(20); // Default
+        }
+        return local;
+    }
+
     public void deleteLocal(UUID id, String email, RepoCallback<Void> callback) {
         RetrofitClient.getInstance().getApi().removerLocal(id.toString(), email).enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-                if (response.isSuccessful()) {
-                    executors.diskIO().execute(() -> localDao.deleteById(id));
-                    callback.onSuccess(null);
-                } else {
-                    // Mesmo se falhar no server, removemos localmente para o utilizador
-                    executors.diskIO().execute(() -> localDao.deleteById(id));
-                    callback.onSuccess(null);
-                }
+                executors.diskIO().execute(() -> localDao.deleteById(id));
+                callback.onSuccess(null);
             }
             @Override public void onFailure(Call<ResponseBody> call, Throwable t) { 
                 executors.diskIO().execute(() -> localDao.deleteById(id));

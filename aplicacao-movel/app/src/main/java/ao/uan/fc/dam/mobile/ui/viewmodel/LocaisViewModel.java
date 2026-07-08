@@ -43,15 +43,13 @@ public class LocaisViewModel extends AndroidViewModel {
 
         isLoading.setValue(true);
         Map<String, Object> request = new HashMap<>();
+        
+        // Alinhamento exato com CriarLocalRequest DTO do servidor
         request.put("nome", nome);
         request.put("latitude", lat);
         request.put("longitude", lon);
-        request.put("raio", raio);
-        
-        // Corrigido: O servidor espera "emailUtilizador" (Requisito Centralizado)
+        request.put("raio", raio.doubleValue());
         request.put("emailUtilizador", email);
-        
-        // Coordenadas para validação de proximidade no backend
         request.put("latUtilizador", lat);
         request.put("lonUtilizador", lon);
 

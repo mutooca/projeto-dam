@@ -1,59 +1,77 @@
+// app/(admin)/infraestruturas/page.tsx
 'use client'
 
 import { useState, useEffect } from "react";
-import toast from "react-hot-toast";
-import { HiMiniMagnifyingGlass } from "react-icons/hi2";
-import { LuSettings2, LuTrash2 } from "react-icons/lu";
-import { ImPencil } from "react-icons/im";
 import { useRouter } from "next/navigation";
-import { getCookie } from 'cookies-next';
+import { getCookie } from "cookies-next";
+import toast from "react-hot-toast";
+import { ImPencil } from "react-icons/im";
+import { LuTrash2 } from "react-icons/lu";
 
 import ModalInfraestrutura, {
     Infraestrutura
 } from "@/app/components/infraestruturas/ModalInfraestrutura";
 import { 
-    buscarTodasInfraestruturas, 
     buscarInfraestruturasDisponiveis,
-    InfraestruturaResponse 
+    InfraestruturaDisponivel
 } from "@/services/infraestrutura-service";
 
 export default function Infraestruturas() {
-
+    const router = useRouter();
     const [modalOpen, setModalOpen] = useState(false);
     const [infraEditar, setInfraEditar] = useState<Infraestrutura | null>(null);
     const [infraestruturas, setInfraestruturas] = useState<Infraestrutura[]>([]);
     const [carregando, setCarregando] = useState(true);
+    const [autenticado, setAutenticado] = useState(false);
 
-    // Carregar infraestruturas ao iniciar
     useEffect(() => {
+        const ticket = getCookie('ticket');
+        console.log('🔍 Ticket na página:', ticket ? '✅ Existe' : '❌ Não existe');
+
+        if (!ticket) {
+            console.log('⛔ Sem ticket, redirecionando para login');
+            toast.error('Sessão expirada. Faça login novamente.');
+            router.push('/');
+            return;
+        }
+
+        setAutenticado(true);
         carregarInfraestruturas();
     }, []);
 
     async function carregarInfraestruturas() {
         try {
             setCarregando(true);
-            const data = await buscarTodasInfraestruturas();
             
-            // Mapear para o formato da UI - CORRIGIDO
-            const infraMapeadas: Infraestrutura[] = data.map((item: InfraestruturaResponse) => ({
-                id: item.id,
+            // 🔥 Buscar da rota disponiveis-uddi
+            const data = await buscarInfraestruturasDisponiveis();
+            console.log('📦 Dados da API:', data);
+            
+            // 🔥 Filtrar apenas as que estão registadas (true)
+            const infraRegistadas = data.filter((item: InfraestruturaDisponivel) => item.registadoNaBd === true);
+            console.log('✅ Infraestruturas registadas:', infraRegistadas);
+            
+            // 🔥 Converter para o formato da UI (com dados mock para os campos que faltam)
+            const infraMapeadas: Infraestrutura[] = infraRegistadas.map((item: InfraestruturaDisponivel, index: number) => ({
+                id: index + 1,
                 nome: item.nome,
-                gps: item.gps || false,
-                wifi: item.wifi || false,
-                latitude: item.latitude,
-                longitude: item.longitude,
-                raio: item.raio,
-                capacidade: item.capacidade,
-                premio: item.premio,
-                regras: item.regras || '',
-                ssids: item.ssids || '',
+                gps: true,
+                wifi: false,
+                latitude: "-8.8147",
+                longitude: "13.2302",
+                raio: "20",
+                capacidade: 100,
+                premio: 2,
+                regras: ""
             }));
             
             setInfraestruturas(infraMapeadas);
+            
         } catch (error: any) {
-            console.error('Erro ao carregar infraestruturas:', error);
+            console.error('❌ Erro ao carregar infraestruturas:', error);
             toast.error(error.message || 'Erro ao carregar infraestruturas');
-            // Fallback para dados mock em caso de erro
+            
+            // 🔥 Dados mock para teste
             setInfraestruturas([
                 {
                     id: 1,
@@ -84,19 +102,27 @@ export default function Infraestruturas() {
             return;
         }
 
-        // Nova infraestrutura - adiciona à lista
         setInfraestruturas(prev => [...prev, data]);
+        toast.success('Infraestrutura registada com sucesso!');
     }
 
     function eliminarInfraestrutura(id: number) {
-        // TODO: Chamar API de eliminação quando disponível
         setInfraestruturas(prev =>
             prev.filter(item => item.id !== id)
         );
         toast.success("Infraestrutura removida");
     }
 
-    const totalRedes = infraestruturas.length;
+    if (!autenticado) {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mx-auto"></div>
+                    <p className="mt-4 text-gray-500">A verificar sessão...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <>
@@ -108,7 +134,6 @@ export default function Infraestruturas() {
                         <h1 className="text-4xl font-semibold">
                             Infraestruturas
                         </h1>
-
                         <p className="text-gray-500">
                             Gestão das infraestruturas da rede
                         </p>
@@ -135,11 +160,13 @@ export default function Infraestruturas() {
                     ) : infraestruturas.length === 0 ? (
                         <div className="text-center py-8">
                             <p className="text-gray-500">Nenhuma infraestrutura registada.</p>
+                            <p className="text-sm text-gray-400 mt-2">
+                                Clique em "+ Nova Infraestrutura" para registar uma infraestrutura disponível.
+                            </p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto mt-6">
                             <table className="w-full min-w-[900px]">
-
                                 <thead>
                                     <tr className="border-b border-gray-200 text-sm text-gray-500 bg-gray-50">
                                         <th className="text-left py-4 px-3 font-semibold">Infraestrutura</th>
@@ -151,52 +178,30 @@ export default function Infraestruturas() {
                                         <th className="text-left py-4 px-3 font-semibold">Ações</th>
                                     </tr>
                                 </thead>
-
                                 <tbody>
                                     {infraestruturas.map(item => (
-                                        <tr
-                                            key={item.id}
-                                            className="border-b border-gray-100 hover:bg-amber-50 transition-colors"
-                                        >
-                                            <td className="py-4 px-3 font-semibold text-gray-800">
-                                                {item.nome}
-                                            </td>
-
+                                        <tr key={item.id} className="border-b border-gray-100 hover:bg-amber-50 transition-colors">
+                                            <td className="py-4 px-3 font-semibold text-gray-800">{item.nome}</td>
                                             <td className="py-4 px-3">
                                                 <div className="flex gap-2 flex-wrap">
                                                     {item.gps && (
-                                                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                                                            GPS
-                                                        </span>
+                                                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">GPS</span>
                                                     )}
                                                     {item.wifi && (
-                                                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                                                            WiFi
-                                                        </span>
+                                                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">WiFi</span>
                                                     )}
                                                 </div>
                                             </td>
-
                                             <td className="py-4 px-3 text-sm text-gray-600">
-                                                {item.gps
-                                                    ? `[${item.latitude}, ${item.longitude}, ${item.raio}m]`
-                                                    : "--"}
+                                                {item.gps ? `[${item.latitude}, ${item.longitude}, ${item.raio}m]` : "--"}
                                             </td>
-
-                                            <td className="py-4 px-3 font-medium text-gray-700">
-                                                {item.capacidade}
-                                            </td>
-
+                                            <td className="py-4 px-3 font-medium text-gray-700">{item.capacidade}</td>
                                             <td className="py-4 px-3">
                                                 <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-sm font-semibold">
                                                     {item.premio} pts
                                                 </span>
                                             </td>
-
-                                            <td className="py-4 px-3 text-gray-600">
-                                                {item.regras || "—"}
-                                            </td>
-
+                                            <td className="py-4 px-3 text-gray-600">{item.regras || "—"}</td>
                                             <td className="py-4 px-3">
                                                 <div className="flex gap-3">
                                                     <button
@@ -208,7 +213,6 @@ export default function Infraestruturas() {
                                                     >
                                                         <ImPencil size={15} className="text-gray-700" />
                                                     </button>
-
                                                     <button
                                                         onClick={() => eliminarInfraestrutura(item.id)}
                                                         className="w-9 h-9 rounded-lg border border-red-200 hover:bg-red-50 transition flex items-center justify-center"
@@ -220,7 +224,6 @@ export default function Infraestruturas() {
                                         </tr>
                                     ))}
                                 </tbody>
-
                             </table>
                         </div>
                     )}

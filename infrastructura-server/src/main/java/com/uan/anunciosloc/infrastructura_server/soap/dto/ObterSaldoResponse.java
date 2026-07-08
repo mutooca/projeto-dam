@@ -11,7 +11,8 @@ import lombok.*;
 @XmlType(name = "ObterSaldoResponse")
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class ObterSaldoResponse {
-    private String idUtilizador;
+    private boolean sucesso;
+    private String email;
     private float saldo;
-    private boolean encontrado;
+    private String mensagem;
 }

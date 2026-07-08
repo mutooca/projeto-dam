@@ -2,167 +2,109 @@ package ao.uan.fc.dam.mobile.service;
 
 import android.content.Context;
 import android.util.Log;
-
-import com.google.android.gms.nearby.Nearby;
-import com.google.android.gms.nearby.connection.AdvertisingOptions;
-import com.google.android.gms.nearby.connection.ConnectionInfo;
-import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback;
-import com.google.android.gms.nearby.connection.ConnectionResolution;
-import com.google.android.gms.nearby.connection.ConnectionsStatusCodes;
-import com.google.android.gms.nearby.connection.DiscoveredEndpointInfo;
-import com.google.android.gms.nearby.connection.DiscoveryOptions;
-import com.google.android.gms.nearby.connection.EndpointDiscoveryCallback;
-import com.google.android.gms.nearby.connection.Payload;
-import com.google.android.gms.nearby.connection.PayloadCallback;
-import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
-import com.google.android.gms.nearby.connection.Strategy;
-import com.google.gson.Gson;
-
-import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
-
+import java.util.Map;
 import ao.uan.fc.dam.mobile.database.AppDatabase;
 import ao.uan.fc.dam.mobile.model.Anuncio;
-import ao.uan.fc.dam.mobile.model.Utilizador;
+import ao.uan.fc.dam.mobile.model.Neighbor;
 
-/**
- * Arquiteto: Gestor de Entrega Descentralizada (P2P - Requisito 2.1.4)
- * Implementa a lógica de descoberta e troca de mensagens sem servidor central.
- */
 public class DecentralizedManager {
     private static final String TAG = "DecentralizedManager";
-    private static final String SERVICE_ID = "ao.uan.fc.dam.mobile.P2P_SERVICE";
-    
     private final Context context;
-    private final AppDatabase db;
+    private final DiscoveryManager discoveryManager;
+    private final AdvertisementManager advertisementManager;
+    private final UdpServer udpServer;
+    private boolean isRunning = false;
     private final String myEmail;
-    private boolean isScanning = false;
-    private boolean isAdvertising = false;
 
     public DecentralizedManager(Context context, String myEmail) {
         this.context = context;
-        this.db = AppDatabase.getInstance(context);
         this.myEmail = myEmail;
+        this.discoveryManager = new DiscoveryManager(context, myEmail);
+        this.advertisementManager = new AdvertisementManager(context, myEmail);
+        this.udpServer = new UdpServer(discoveryManager, advertisementManager);
+    }
+
+    public void start() {
+        if (!isRunning) {
+            udpServer.start();
+            isRunning = true;
+            Log.i(TAG, "Serviço Descentralizado P2P Iniciado para " + myEmail);
+        }
     }
 
     /**
-     * Inicia a visibilidade do dispositivo para ser "escaneado" por publicadores.
-     * Envia o perfil (Chave=Valor) no nome do endpoint para validação rápida.
+     * Tenta enviar anúncios para todos os vizinhos conhecidos que tenham perfil compatível.
      */
-    public void startBeingDiscoverable() {
-        if (isAdvertising) return;
-        
-        Utilizador profile = db.utilizadorDao().getProfile();
-        String profileInfo = (profile != null && profile.getPreferenciaAnuncio() != null) 
-                ? profile.getPreferenciaAnuncio() : "none";
+    public void syncAdsWithNeighbors() {
+        new Thread(() -> {
+            // Obter todos os anúncios locais da Room
+            List<Anuncio> todosAnuncios = AppDatabase.getInstance(context).anuncioDao().getAll();
+            Map<String, Neighbor> neighbors = discoveryManager.getNeighborMap();
+            Map<String, Map<String, String>> profiles = discoveryManager.getNeighborProfiles();
 
-        AdvertisingOptions options = new AdvertisingOptions.Builder().setStrategy(Strategy.P2P_STAR).build();
+            Log.d(TAG, "Iniciando verificação de envio P2P para " + neighbors.size() + " vizinhos. Total de anúncios na Room: " + todosAnuncios.size());
 
-        Nearby.getConnectionsClient(context)
-                .startAdvertising(myEmail + "|" + profileInfo, SERVICE_ID, connectionLifecycleCallback, options)
-                .addOnSuccessListener(unused -> {
-                    isAdvertising = true;
-                    Log.i(TAG, "P2P: Dispositivo agora é visível para outros nós.");
-                })
-                .addOnFailureListener(e -> Log.e(TAG, "P2P: Falha ao iniciar visibilidade", e));
-    }
+            for (String nodeId : neighbors.keySet()) {
+                Neighbor n = neighbors.get(nodeId);
+                Map<String, String> profile = profiles.get(nodeId);
 
-    /**
-     * Publicador inicia varredura por dispositivos próximos no local de destino.
-     */
-    public void startScanningForReceivers(List<Anuncio> adsToDeliver) {
-        if (isScanning || adsToDeliver.isEmpty()) return;
+                if (profile == null) {
+                    Log.w(TAG, "Perfil do vizinho " + nodeId + " ainda não foi recebido. Pulando.");
+                    continue;
+                }
 
-        DiscoveryOptions options = new DiscoveryOptions.Builder().setStrategy(Strategy.P2P_STAR).build();
-
-        Nearby.getConnectionsClient(context)
-                .startDiscovery(SERVICE_ID, new EndpointDiscoveryCallback() {
-                    @Override
-                    public void onEndpointFound(String endpointId, DiscoveredEndpointInfo info) {
-                        Log.i(TAG, "P2P: Nó encontrado: " + info.getEndpointName());
-                        validateAndDeliver(endpointId, info.getEndpointName(), adsToDeliver);
+                for (Anuncio ad : todosAnuncios) {
+                    // Evitar reenvio de anúncios criados pelo próprio destinatário
+                    if (nodeId.equalsIgnoreCase(ad.getAutorEmail())) {
+                        continue;
                     }
 
-                    @Override
-                    public void onEndpointLost(String endpointId) {}
-                }, options)
-                .addOnSuccessListener(unused -> {
-                    isScanning = true;
-                    Log.i(TAG, "P2P: Varredura iniciada pelo publicador.");
-                });
-    }
+                    // Parse do campo restricaoPerfil (ex: "interesse=leitura")
+                    Map<String, String> restrictionMap = parseRestricao(ad.getRestricaoPerfil());
+                    Map<String, String> whitelist = null;
+                    Map<String, String> blacklist = null;
 
-    private void validateAndDeliver(String endpointId, String info, List<Anuncio> ads) {
-        String[] parts = info.split("\\|");
-        if (parts.length < 2) return;
-        
-        String remoteEmail = parts[0];
-        String remotePrefs = parts[1];
+                    if ("BLACKLIST".equalsIgnoreCase(ad.getTipoPolitica())) {
+                        blacklist = restrictionMap;
+                    } else {
+                        // Padrão ou explicitamente WHITELIST
+                        whitelist = restrictionMap;
+                    }
 
-        for (Anuncio ad : ads) {
-            if (checkPolicy(ad, remotePrefs)) {
-                Log.i(TAG, "P2P: Match de política! Enviando anúncio para " + remoteEmail);
-                Nearby.getConnectionsClient(context).requestConnection(myEmail, endpointId, connectionLifecycleCallback);
-                // O envio real ocorre no onConnectionResult
+                    // Executar correspondência real usando a classe PolicyMatcher
+                    boolean isMatch = PolicyMatcher.match(profile, whitelist, blacklist);
+                    Log.d(TAG, "Verificando anúncio [" + ad.getTitulo() + "] para vizinho [" + nodeId + "]. Match=" + isMatch);
+
+                    if (isMatch) {
+                        Log.i(TAG, "Match de política confirmado! Enviando anúncio via WiFi Direct para: " + n.getIpAddress());
+                        // Altera o estado do anúncio recebido no outro lado para diferenciar
+                        ad.setModo_entrega("DESCENTRALIZADO");
+                        advertisementManager.sendAdvertisement(n.getIpAddress(), ad);
+                    }
+                }
             }
-        }
-    }
-
-    private boolean checkPolicy(Anuncio ad, String remotePrefs) {
-
-        if (ad.getCategoria() == null || ad.getCategoria().equals("WHITELIST")) {
-            String required = ad.getRestricaoPerfil(); // Usando campo de restrição
-            if (required == null || required.isEmpty()) return true;
-            return remotePrefs.contains(required);
-        }
-        return true;
-    }
-
-    private final ConnectionLifecycleCallback connectionLifecycleCallback = new ConnectionLifecycleCallback() {
-        @Override
-        public void onConnectionInitiated(String endpointId, ConnectionInfo info) {
-            Nearby.getConnectionsClient(context).acceptConnection(endpointId, payloadCallback);
-        }
-
-        @Override
-        public void onConnectionResult(String endpointId, ConnectionResolution result) {
-            if (result.getStatus().getStatusCode() == ConnectionsStatusCodes.STATUS_OK) {
-                // Se eu sou o publicador, envio meus anúncios descentralizados
-                // (Para simplificar o fluxo acadêmico, enviamos os pendentes)
-                Log.i(TAG, "P2P: Conectado. Preparando transferência...");
-            }
-        }
-
-        @Override
-        public void onDisconnected(String endpointId) {}
-    };
-
-    private final PayloadCallback payloadCallback = new PayloadCallback() {
-        @Override
-        public void onPayloadReceived(String endpointId, Payload payload) {
-            if (payload.getType() == Payload.Type.BYTES) {
-                String json = new String(payload.asBytes(), StandardCharsets.UTF_8);
-                Anuncio receivedAd = new Gson().fromJson(json, Anuncio.class);
-                saveReceivedAd(receivedAd);
-            }
-        }
-
-        @Override
-        public void onPayloadTransferUpdate(String endpointId, PayloadTransferUpdate update) {}
-    };
-
-    private void saveReceivedAd(Anuncio ad) {
-        // Salva no Room para visualização local (F5)
-        new Thread(() -> {
-            ad.setUsuarioEmail(myEmail);
-            db.anuncioDao().insertAll(List.of(ad));
-            Log.i(TAG, "P2P: Novo anúncio recebido via rede descentralizada!");
         }).start();
     }
 
+    private Map<String, String> parseRestricao(String restricao) {
+        Map<String, String> map = new HashMap<>();
+        if (restricao != null && restricao.contains("=")) {
+            String[] parts = restricao.split("=");
+            if (parts.length == 2) {
+                map.put(parts[0].trim().toLowerCase(), parts[1].trim());
+            }
+        }
+        return map;
+    }
+
+    public void startDiscovery(String ip) {
+        discoveryManager.startDiscovery(ip);
+    }
+
     public void stop() {
-        Nearby.getConnectionsClient(context).stopAllEndpoints();
-        isScanning = false;
-        isAdvertising = false;
+        udpServer.stopServer();
+        isRunning = false;
     }
 }

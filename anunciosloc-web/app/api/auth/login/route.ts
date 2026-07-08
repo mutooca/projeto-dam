@@ -8,7 +8,8 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
 
-        // 🔥 Rota específica para login de ADMIN
+        console.log('📨 Login request:', { email: body.email });
+
         const response = await fetch(`${API_BASE_URL}/auth/login/admin`, {
             method: 'POST',
             headers: {
@@ -20,72 +21,79 @@ export async function POST(request: NextRequest) {
         const data = await response.json();
 
         if (!response.ok) {
+            console.error('❌ Erro no login (backend):', data);
             return NextResponse.json(
                 { success: false, message: data.message || 'Erro no login' },
                 { status: response.status }
             );
         }
 
-        // ✅ Se chegou aqui, o backend já validou que é ADMIN
-        // (não precisamos de verificar novamente, mas mantemos por segurança)
         if (data.role && data.role !== 'ADMIN') {
+            console.warn('⛔ Tentativa de login com role não-ADMIN:', data.role);
             return NextResponse.json(
                 { success: false, message: 'Acesso restrito a administradores' },
                 { status: 403 }
             );
         }
 
-        // Guarda cookies HTTP-only (seguros)
         const cookieStore = await cookies();
 
-        // Ticket - HTTP-only, Secure, SameSite=Strict
+        // 🔐 Ticket - APENAS SERVIDOR (httpOnly)
         cookieStore.set('ticket', data.ticket, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            sameSite: 'lax',
             maxAge: 60 * 60 * 24, // 24 horas
             path: '/',
         });
 
-        // SessionId - HTTP-only
+        // 🔓 SessionId - ACESSÍVEL NO CLIENT (necessário para o api-client)
         cookieStore.set('sessionId', data.sessionId, {
-            httpOnly: true,
+            httpOnly: false,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            sameSite: 'lax',
             maxAge: 60 * 60 * 24,
             path: '/',
         });
 
-        // SessionKey - HTTP-only
+        // 🔐 SessionKey - APENAS SERVIDOR
         cookieStore.set('sessionKey', data.sessionKey, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            sameSite: 'lax',
             maxAge: 60 * 60 * 24,
             path: '/',
         });
 
-        // Email e Role - acessíveis no client (não sensíveis)
+        // 📧 Email - ACESSÍVEL NO CLIENT
         cookieStore.set('userEmail', body.email, {
             httpOnly: false,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            sameSite: 'lax',
             maxAge: 60 * 60 * 24,
             path: '/',
         });
 
+        // 👤 Role - ACESSÍVEL NO CLIENT
         cookieStore.set('userRole', data.role || 'ADMIN', {
             httpOnly: false,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            sameSite: 'lax',
             maxAge: 60 * 60 * 24,
             path: '/',
+        });
+
+        console.log('✅ Login bem-sucedido para:', body.email);
+        console.log('🍪 Cookies guardados:', {
+            ticket: data.ticket ? '✅' : '❌',
+            sessionId: data.sessionId ? '✅' : '❌',
+            sessionKey: data.sessionKey ? '✅' : '❌',
+            userEmail: body.email,
         });
 
         return NextResponse.json({
             success: true,
             message: data.message || 'Login bem-sucedido',
-            // Opcional: retornar dados não sensíveis
             user: {
                 email: body.email,
                 role: data.role || 'ADMIN'
@@ -93,7 +101,7 @@ export async function POST(request: NextRequest) {
         });
 
     } catch (error) {
-        console.error('Erro no login:', error);
+        console.error('❌ Erro no login:', error);
         return NextResponse.json(
             { success: false, message: 'Erro interno do servidor' },
             { status: 500 }

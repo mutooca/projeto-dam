@@ -3,7 +3,7 @@ import { LoginRequest, LoginResponse, AuthenticatorResponse } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8085/api';
 
-// 1. Login - guarda ticket em cookie HTTP-only
+
 export async function login(data: LoginRequest): Promise<LoginResponse> {
   const response = await fetch(`${API_BASE_URL}/auth/login`, {
     method: 'POST',
@@ -53,7 +53,7 @@ export async function generateAuthenticator(
   return data.authenticator;
 }
 
-// 3. Fazer requisição autenticada (com autenticador fresco)
+
 export async function authenticatedRequest<T>(
   endpoint: string,
   options: RequestInit = {},

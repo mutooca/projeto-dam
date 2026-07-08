@@ -145,6 +145,7 @@ public class PerfilFragment extends Fragment {
         
         viewModel.updatePrefsLocal(novo);
         salvarPreferenciasRemoto(novo);
+        removerParPerfilRemoto(targetPair.split("=", 2)[0]);
         Toast.makeText(requireContext(), "Removido", Toast.LENGTH_SHORT).show();
     }
 
@@ -177,6 +178,7 @@ public class PerfilFragment extends Fragment {
                         
                         viewModel.updatePrefsLocal(finalStr);
                         salvarPreferenciasRemoto(finalStr);
+                        salvarParPerfilRemoto(k, v);
                     }
                 })
                 .setNegativeButton("Cancelar", null)
@@ -210,6 +212,27 @@ public class PerfilFragment extends Fragment {
     private void salvarPreferenciasRemoto(String prefs) {
         String email = SessionManager.getEmail(requireContext());
         RetrofitClient.getInstance().getApi().atualizarPreferencias(email, prefs).enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {}
+            @Override public void onFailure(Call<ResponseBody> call, Throwable t) {}
+        });
+    }
+
+    private void salvarParPerfilRemoto(String chave, String valor) {
+        String email = SessionManager.getEmail(requireContext());
+        Map<String, String> req = new HashMap<>();
+        req.put("chave", chave);
+        req.put("valor", valor);
+        RetrofitClient.getInstance().getApi().adicionarParPerfil(email, req).enqueue(new Callback<Map<String, String>>() {
+            @Override
+            public void onResponse(Call<Map<String, String>> call, Response<Map<String, String>> response) {}
+            @Override public void onFailure(Call<Map<String, String>> call, Throwable t) {}
+        });
+    }
+
+    private void removerParPerfilRemoto(String chave) {
+        String email = SessionManager.getEmail(requireContext());
+        RetrofitClient.getInstance().getApi().removerParPerfil(email, chave).enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {}
             @Override public void onFailure(Call<ResponseBody> call, Throwable t) {}

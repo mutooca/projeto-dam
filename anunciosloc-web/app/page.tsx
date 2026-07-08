@@ -1,6 +1,7 @@
 // app/page.tsx
 'use client'
 
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { BsBroadcast } from "react-icons/bs";
 import toast from 'react-hot-toast';
 import { LuMail, LuLock } from "react-icons/lu";
+import { getCookie } from 'cookies-next';
 
 // ============ VALIDAÇÃO ============
 const sanitizeEmail = (value: string) => {
@@ -41,9 +43,46 @@ export default function Login() {
 
     const router = useRouter();
 
+    // 🔍 LOG 1: Verifica cookies quando a página carrega
+    useEffect(() => {
+        console.log('========================================');
+        console.log('🔍 [PÁGINA DE LOGIN] Verificando cookies...');
+        
+        const ticket = getCookie('ticket');
+        const sessionId = getCookie('sessionId');
+        const sessionKey = getCookie('sessionKey');
+        const userEmail = getCookie('userEmail');
+        const userRole = getCookie('userRole');
+        
+        console.log('📊 Cookies encontrados:');
+        console.log('  🎫 ticket:', ticket ? `✅ ${ticket.substring(0, 20)}...` : '❌ Não existe');
+        console.log('  🆔 sessionId:', sessionId ? `✅ ${sessionId.substring(0, 20)}...` : '❌ Não existe');
+        console.log('  🔑 sessionKey:', sessionKey ? `✅ ${sessionKey.substring(0, 20)}...` : '❌ Não existe');
+        console.log('  📧 userEmail:', userEmail || '❌ Não existe');
+        console.log('  👤 userRole:', userRole || '❌ Não existe');
+        
+        // 🔥 Mostra todos os cookies disponíveis
+        console.log('🍪 Todos os cookies (document.cookie):', document.cookie);
+        console.log('========================================');
+        
+        // Se já tiver ticket, redireciona para dashboard
+        if (ticket) {
+            console.log('🔄 [PÁGINA DE LOGIN] Ticket encontrado! Redirecionando para dashboard...');
+            router.push('/dashboard');
+        } else {
+            console.log('🔑 [PÁGINA DE LOGIN] Sem ticket - página de login normal.');
+        }
+    }, [router]);
+
     async function handleLogin(data: loginData) {
+        console.log('========================================');
+        console.log('🔑 [LOGIN] Tentando login com:', data.email);
+        console.log('🔑 [LOGIN] Palavra-passe:', '********');
+        
         try {
             // Chama o route handler (que guarda cookies HTTP-only)
+            console.log('📤 [LOGIN] Enviando requisição para /api/auth/login...');
+            
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: {
@@ -55,23 +94,62 @@ export default function Login() {
                 }),
             });
 
+            console.log(`📥 [LOGIN] Resposta recebida - Status: ${response.status} ${response.statusText}`);
+
             const result = await response.json();
+            console.log('📦 [LOGIN] Dados da resposta:', result);
 
             if (!response.ok) {
+                console.error('❌ [LOGIN] Erro na resposta:', result);
                 throw new Error(result.message || 'Erro no login');
             }
+
+            console.log('✅ [LOGIN] Login bem-sucedido!');
+
+            // 🔍 LOG 2: Verifica cookies IMEDIATAMENTE após o login
+            console.log('🔍 [LOGIN] Verificando cookies imediatamente após login...');
+            
+            // Pequeno delay para os cookies serem guardados
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            const ticket = getCookie('ticket');
+            const sessionId = getCookie('sessionId');
+            const userEmail = getCookie('userEmail');
+            const userRole = getCookie('userRole');
+            
+            console.log('📊 Cookies após login (imediato):');
+            console.log('  🎫 ticket:', ticket ? `✅ ${ticket.substring(0, 20)}...` : '❌ Não existe');
+            console.log('  🆔 sessionId:', sessionId ? `✅ ${sessionId.substring(0, 20)}...` : '❌ Não existe');
+            console.log('  📧 userEmail:', userEmail || '❌ Não existe');
+            console.log('  👤 userRole:', userRole || '❌ Não existe');
+            console.log('🍪 Todos os cookies (document.cookie):', document.cookie);
+
+            // 🔍 LOG 3: Verifica cookies 1 segundo depois
+            setTimeout(() => {
+                console.log('🔍 [LOGIN] Verificando cookies 1s após login...');
+                const ticket2 = getCookie('ticket');
+                const sessionId2 = getCookie('sessionId');
+                const userEmail2 = getCookie('userEmail');
+                
+                console.log('📊 Cookies após 1s:');
+                console.log('  🎫 ticket:', ticket2 ? `✅ ${ticket2.substring(0, 20)}...` : '❌ Não existe');
+                console.log('  🆔 sessionId:', sessionId2 ? `✅ ${sessionId2.substring(0, 20)}...` : '❌ Não existe');
+                console.log('  📧 userEmail:', userEmail2 || '❌ Não existe');
+                console.log('🍪 document.cookie:', document.cookie);
+            }, 1000);
 
             toast.success(result.message || "Login bem-sucedido!", {
                 duration: 3000
             });
 
             // Redireciona para dashboard
+            console.log('🔄 [LOGIN] Redirecionando para /dashboard em 1s...');
             setTimeout(() => {
                 router.push("/dashboard");
             }, 1000);
 
         } catch (error: any) {
-            console.error('Erro no login:', error);
+            console.error('❌ [LOGIN] Erro no login:', error);
             
             let errorMessage = "Erro ao fazer login. Tenta novamente";
             
@@ -87,6 +165,8 @@ export default function Login() {
                 duration: 4000
             });
         }
+        
+        console.log('========================================');
     }
 
     return (

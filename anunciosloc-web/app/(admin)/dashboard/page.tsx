@@ -1,10 +1,10 @@
 import { LuMapPin, LuUsersRound,LuMegaphone } from "react-icons/lu";
 export default function dashboard(){
     const cardStatus = [
-        {title: "Infraestruturas", icon: <LuMapPin size={22}/>,value: 2,  status: "1GPS.2Wifi"},
-        {title:"Utilizadores", icon: <LuUsersRound size={22}/>,value: 4,  status: "6 ativos"},
-        {title: "Conexões Ativas", icon: <LuMapPin size={22}/>,value:7,  status: "de 850(43% capacidade)"},
-        {title:"Entregas totais", icon: <LuMegaphone size={22}/>,value: 8,  status: "24, anúncios ativos"}
+        {title: "Infraestruturas", icon: <LuMapPin size={22}/>,value: 2},
+        {title:"Utilizadores", icon: <LuUsersRound size={22}/>,value: 4},
+        {title: "Conexões Ativas", icon: <LuMapPin size={22}/>,value:7},
+        {title:"Entregas totais", icon: <LuMegaphone size={22}/>}
     ];
 
     const dashboardInfra =[
@@ -30,7 +30,6 @@ export default function dashboard(){
                     </div>
                     <div className="flex flex-col space-y-1">
                          <h2 className={`text-3xl text-black font-semibold ${item.title === "Infraestruturas" ? 'text-white': 'text-black'}`}>{item.value}</h2>
-                         <span className="font-semibold text-sm">{item.status}</span>
                     </div>
                 </div>
               

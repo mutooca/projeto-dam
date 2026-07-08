@@ -12,6 +12,10 @@ import lombok.*;
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class CriarLocalResponse {
     private String idLocal;
-    private boolean sucesso;
+    private String nome;
     private String mensagem;
+    private double latitude;
+    private double longitude;
+    private boolean sucesso;
+    private double raio;;
 }

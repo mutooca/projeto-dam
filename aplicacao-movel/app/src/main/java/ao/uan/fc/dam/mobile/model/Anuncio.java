@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.room.Entity;
 import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
+import com.google.gson.annotations.SerializedName;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -12,23 +13,48 @@ import java.util.UUID;
 public class Anuncio implements Serializable {
     @PrimaryKey
     @NonNull
+    @SerializedName(value = "idAnuncio", alternate = {"id"})
     private UUID idAnuncio;
+    
+    @SerializedName("titulo")
     private String titulo;
+    
+    @SerializedName("conteudo")
     private String conteudo;
+    
+    @SerializedName("dataPublicacao")
     private LocalDateTime dataPublicacao;
+    
+    @SerializedName("estado")
     private String estado;
-    private String categoria; // Usado para "WHITELIST" ou "BLACKLIST" no modo P2P
+    
+    @SerializedName("categoria")
+    private String categoria; 
+    
+    @SerializedName(value = "modoEntrega", alternate = {"modo_entrega"})
     private String modo_entrega;
+    
+    @SerializedName("pontos")
     private int pontos;
-    private String restricaoPerfil; // Requisito 2.1.3: Lista de chaves de perfil
+    
+    @SerializedName(value = "restricaoPerfil", alternate = {"politicaFiltro"})
+    private String restricaoPerfil; 
+
+    @SerializedName("tipoPolitica")
+    private String tipoPolitica;
+
+    @SerializedName(value = "nomeLocal", alternate = {"localNome"})
+    private String nomeLocal;
     
     @Ignore
     private Local local;
     @Ignore
     private Utilizador autor;
 
-    private String usuarioEmail; // Email do utilizador que está a ver (cache context)
-    private String autorEmail;   // Email de quem criou o anúncio
+    private String usuarioEmail; 
+    
+    @SerializedName("autorEmail")
+    private String autorEmail;
 
     public Anuncio() {
         this.idAnuncio = UUID.randomUUID();
@@ -64,6 +90,12 @@ public class Anuncio implements Serializable {
     public String getRestricaoPerfil() { return restricaoPerfil; }
     public void setRestricaoPerfil(String restricaoPerfil) { this.restricaoPerfil = restricaoPerfil; }
 
+    public String getTipoPolitica() { return tipoPolitica; }
+    public void setTipoPolitica(String tipoPolitica) { this.tipoPolitica = tipoPolitica; }
+
+    public String getNomeLocal() { return nomeLocal; }
+    public void setNomeLocal(String nomeLocal) { this.nomeLocal = nomeLocal; }
+
     public Local getLocal() { return local; }
     public void setLocal(Local local) { this.local = local; }
 
@@ -80,6 +112,7 @@ public class Anuncio implements Serializable {
     public void setAutorEmail(String autorEmail) { this.autorEmail = autorEmail; }
 
     public String getNome_local() {
-        return local != null ? local.getNome() : "N/D";
+        if (local != null) return local.getNome();
+        return nomeLocal != null ? nomeLocal : "N/D";
     }
 }

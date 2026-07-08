@@ -18,8 +18,8 @@ public class LocalInfo {
     private String tipoCoordenada;
 
     
-    private CoordenadaGpsInfo coordenadaGps;
+    private CoordenadaGps coordenadaGps;
 
     
-    private List<CoordenadaWifiInfo> coordenadasWifi;
+    private List<CoordenadaWifi> coordenadasWifi;
 }

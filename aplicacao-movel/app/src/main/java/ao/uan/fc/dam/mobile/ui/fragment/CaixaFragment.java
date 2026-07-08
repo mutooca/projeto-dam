@@ -13,6 +13,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
 import ao.uan.fc.dam.mobile.R;
+import ao.uan.fc.dam.mobile.data.repository.AnuncioRepository;
 import ao.uan.fc.dam.mobile.model.Anuncio;
 import ao.uan.fc.dam.mobile.ui.viewmodel.AnunciosViewModel;
 
@@ -37,7 +38,7 @@ public class CaixaFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_caixa, container, false);
         viewModel = new ViewModelProvider(this).get(AnunciosViewModel.class);
-        
+
         TextView txtTitulo = view.findViewById(R.id.txtTituloDetalhe);
         TextView txtLocal = view.findViewById(R.id.txtLocalDetalhe);
         TextView txtMensagem = view.findViewById(R.id.txtMensagemDetalhe);
@@ -49,15 +50,16 @@ public class CaixaFragment extends Fragment {
                 txtTitulo.setText(anuncio.getTitulo());
                 txtLocal.setText(anuncio.getNome_local() != null ? anuncio.getNome_local() : "Global");
                 txtMensagem.setText(anuncio.getConteudo());
-                
-                String autorNome = (anuncio.getAutor() != null && anuncio.getAutor().getNome() != null) 
+
+                String autorNome = (anuncio.getAutor() != null && anuncio.getAutor().getNome() != null)
                         ? anuncio.getAutor().getNome() : anuncio.getAutorEmail();
                 txtAutor.setText(autorNome != null ? autorNome : "Anônimo");
             }
         }
 
         view.findViewById(R.id.btnClose).setOnClickListener(v -> getParentFragmentManager().popBackStack());
-        
+
+        // ⭐ BOTÃO ELIMINAR ⭐
         view.findViewById(R.id.btnDelete).setOnClickListener(v -> confirmarExclusao());
 
         return view;
@@ -65,14 +67,32 @@ public class CaixaFragment extends Fragment {
 
     private void confirmarExclusao() {
         if (anuncio == null) return;
-        
+
         new AlertDialog.Builder(requireContext())
                 .setTitle("Eliminar Anúncio")
                 .setMessage("Tem certeza que deseja eliminar este anúncio permanentemente?")
                 .setPositiveButton("Eliminar", (dialog, which) -> {
-                    viewModel.remover(anuncio.getIdAnuncio());
-                    Toast.makeText(getContext(), "Anúncio removido com sucesso", Toast.LENGTH_SHORT).show();
-                    getParentFragmentManager().popBackStack();
+                    // ⭐ USAR O REPOSITÓRIO DIRETAMENTE ⭐
+                    AnuncioRepository repository = new AnuncioRepository(requireContext());
+                    String email = ao.uan.fc.dam.mobile.security.SessionManager.getEmail(requireContext());
+
+                    if (email == null) {
+                        Toast.makeText(getContext(), "Sessão inválida", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    repository.removerAnuncio(anuncio.getIdAnuncio(), email, new AnuncioRepository.RepoCallback<Void>() {
+                        @Override
+                        public void onSuccess(Void result) {
+                            Toast.makeText(getContext(), "✅ Anúncio removido com sucesso", Toast.LENGTH_SHORT).show();
+                            getParentFragmentManager().popBackStack();
+                        }
+
+                        @Override
+                        public void onError(String message) {
+                            Toast.makeText(getContext(), "❌ Erro ao remover: " + message, Toast.LENGTH_SHORT).show();
+                        }
+                    });
                 })
                 .setNegativeButton("Cancelar", null)
                 .show();

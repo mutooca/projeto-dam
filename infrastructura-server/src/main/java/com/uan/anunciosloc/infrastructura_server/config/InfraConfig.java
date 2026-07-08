@@ -1,5 +1,7 @@
 package com.uan.anunciosloc.infrastructura_server.config;
 
+import com.uan.anunciosloc.infrastructura_server.repository.*;
+import com.uan.anunciosloc.infrastructura_server.service.InfraEstadoService;
 import com.uan.anunciosloc.infrastructura_server.soap.InfraestruturaServiceImpl;
 import com.uan.anunciosloc.infrastructura_server.uddi.UddiRegistrarClient;
 import jakarta.annotation.PreDestroy;
@@ -13,15 +15,21 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 
-
 @Slf4j
 @Configuration
 @EnableScheduling
 @RequiredArgsConstructor
 public class InfraConfig {
 
-    private final InfraestruturaServiceImpl infraService;
-    private final UddiRegistrarClient    uddiClient;
+    private final UddiRegistrarClient uddiClient;
+    private final InfraEstadoService infraEstadoService;
+    private final LocalRepository localRepository;
+    private final AnuncioRepository anuncioRepository;
+    private final SaldoUtilizadorRepository saldoRepository;
+    private final PerfilUtilizadorRepository perfilRepository;
+    private final EntregaAnuncioRepository entregaRepository;
+    private final CoordenadaGpsRepository gpsRepository;
+    private final CoordenadaWifiRepository wifiRepository;
 
     @Value("${infra.nome:D01_Infrastructure1}")
     private String infraNome;
@@ -29,43 +37,53 @@ public class InfraConfig {
     @Value("${infra.public-url:http://localhost:8081}")
     private String publicUrl;
 
-    
+    @Value("${infra.soap-port:8091}")
+    private String soapPort;
+
     private Endpoint endpoint;
 
-    
-    @Value("${infra.soap-port:8091}")
-private String soapPort;
+    @Bean
+    public ApplicationRunner iniciar() {
+        return args -> {
 
-@Bean
-public ApplicationRunner iniciar() {
-    return args -> {
+            InfraestruturaServiceImpl service = new InfraestruturaServiceImpl(
+                    infraEstadoService,
+                    localRepository,
+                    anuncioRepository,
+                    saldoRepository,
+                    perfilRepository,
+                    entregaRepository,
+                    gpsRepository,
+                    wifiRepository);
 
-       
-        String endpointUrl = "http://localhost:" + soapPort + "/ws/InfrastructureService";
-        endpoint = Endpoint.publish(endpointUrl, infraService);
+            String endpointUrl = "http://localhost:" + soapPort + "/ws/InfrastructureService";
 
-        log.info("Endpoint SOAP publicado em: {}", endpointUrl);
-        log.info("WSDL disponível em: {}?wsdl", endpointUrl);
+            endpoint = Endpoint.publish(endpointUrl, service);
 
-        
-        uddiClient.registar(endpointUrl);
-    };
-}
-    @Scheduled(fixedDelay = 120_000)
-    public void heartbeat() {
+            log.info("═══════════════════════════════════════════════════════════════");
+            log.info(" Endpoint SOAP publicado em: {}", endpointUrl);
+            log.info(" WSDL disponível em: {}?wsdl", endpointUrl);
+            log.info("═══════════════════════════════════════════════════════════════");
+
+            uddiClient.registar(endpointUrl);
+        };
+    }
+
+    @Scheduled(fixedDelayString = "${heartbeat.interval:60000}") 
+    public void enviarHeartbeat() {
         uddiClient.ping();
     }
 
-    
     @PreDestroy
     public void aoDesligar() {
-        log.info("A desligar infraestrutura '{}'...", infraNome);
-
-        uddiClient.cancelarRegisto();
+        log.info(" A desligar infraestrutura '{}'...", infraNome);
 
         if (endpoint != null && endpoint.isPublished()) {
             endpoint.stop();
             log.info("Endpoint SOAP parado");
         }
+
+        uddiClient.cancelarRegisto();
     }
+    
 }

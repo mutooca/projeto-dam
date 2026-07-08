@@ -31,12 +31,14 @@ export interface InfraestruturaResponse {
     ssids?: string;
 }
 
-// 1. Buscar infraestruturas disponíveis no UDDI
+// 1. Buscar infraestruturas disponíveis no UDDI (GET)
 export async function buscarInfraestruturasDisponiveis(): Promise<InfraestruturaDisponivel[]> {
-    return authenticatedRequest<InfraestruturaDisponivel[]>('/infraestruturas/disponiveis-uddi');
+    return authenticatedRequest<InfraestruturaDisponivel[]>('/infraestruturas/disponiveis-uddi', {
+        method: 'GET',
+    });
 }
 
-// 2. Registar nova infraestrutura
+// 2. Registar nova infraestrutura (POST)
 export async function registarInfraestrutura(
     data: RegistarInfraestruturaRequest
 ): Promise<InfraestruturaResponse> {
@@ -44,9 +46,4 @@ export async function registarInfraestrutura(
         method: 'POST',
         body: JSON.stringify(data),
     });
-}
-
-// 3. Buscar todas as infraestruturas (para listar)
-export async function buscarTodasInfraestruturas(): Promise<InfraestruturaResponse[]> {
-    return authenticatedRequest<InfraestruturaResponse[]>('/infraestruturas');
 }

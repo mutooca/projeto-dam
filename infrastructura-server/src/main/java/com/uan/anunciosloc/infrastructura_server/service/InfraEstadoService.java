@@ -1,176 +1,267 @@
 package com.uan.anunciosloc.infrastructura_server.service;
 
-import com.uan.anunciosloc.infrastructura_server.model.*;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.uan.anunciosloc.infrastructura_server.model.Infraestrutura;
+import com.uan.anunciosloc.infrastructura_server.model.SaldoUtilizador;
+import com.uan.anunciosloc.infrastructura_server.repository.InfraestruturaRepository;
+import com.uan.anunciosloc.infrastructura_server.repository.SaldoUtilizadorRepository;
+import com.uan.anunciosloc.infrastructura_server.uddi.UddiRegistrarClient;
+
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDateTime;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-
+import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class InfraEstadoService {
+
+    private final InfraestruturaRepository infraRepository;
+    private final SaldoUtilizadorRepository saldoRepository;
+    private final UddiRegistrarClient uddiRegistrarClient; 
+    private final WebClient.Builder webClientBuilder;
+    private final ObjectMapper objectMapper;
 
     @Value("${infra.nome:D01_Infrastructure1}")
     private String infraNome;
 
-    @Value("${infra.capacidade:100}")
-    private int capacidade;
-
-    @Value("${infra.bonus-entrega:2}")
-    private int bonusEntrega;
-
-    @Value("${infra.custo-post:1}")
-    private int custoPost;
-
-    @Value("${infra.public-url:http://localhost:8081}")
+    @Value("${infra.public-url:http://localhost:8091}")
     private String publicUrl;
 
-  
-    private final ConcurrentHashMap<String, LocalInfo> locais
-            = new ConcurrentHashMap<>();
+    @Value("${anunciosloc.server-url:http://localhost:8080}")
+    private String anuncioslocUrl;
 
-    
-    private final ConcurrentHashMap<String, RestricaoInfo> restricoes
-            = new ConcurrentHashMap<>();
+    @Value("${infra.id:}")
+    private String infraIdConfig;
 
-  
-    private final ConcurrentHashMap<String, LocalDateTime> conectados
-            = new ConcurrentHashMap<>();
+    @Value("${infra.capacidade:100}")
+    private int capacidadeConfig;
 
-    // Saldos replica: chave = idUtilizador
-    private final ConcurrentHashMap<String, SaldoReplicaInfo> saldosReplica
-            = new ConcurrentHashMap<>();
+    @Value("${infra.bonus-entrega:2}")
+    private int bonusEntregaConfig;
 
-    // Estatísticas da sessão
-    private final AtomicInteger totalAnuncios  = new AtomicInteger(0);
-    private final AtomicInteger totalEntregas  = new AtomicInteger(0);
-    private final AtomicInteger totalConexoes  = new AtomicInteger(0);
+    @Value("${infra.custo-post:1}")
+    private int custoPostConfig;
 
-    
+    private Infraestrutura infraCache;
 
-    public String getInfraNome()   { return infraNome; }
-    public int getCapacidade()     { return capacidade; }
-    public int getBonusEntrega()   { return bonusEntrega; }
-    public int getCustoPost()      { return custoPost; }
-    public String getPublicUrl()   { return publicUrl; }
+    @SuppressWarnings("null")
+    @PostConstruct
+    @Transactional
+    public void init() {
+        log.info("═══════════════════════════════════════════════════════════════");
+        log.info(" INFRA-SERVER: Inicializando...");
+        log.info("   Nome: {}", infraNome);
+        log.info("   URL: {}", publicUrl);
 
-    
+        // Gerar ou usar ID fornecido
+        UUID idInfra;
+        if (infraIdConfig != null && !infraIdConfig.isEmpty()) {
+            try {
+                idInfra = UUID.fromString(infraIdConfig);
+                log.info("   ID (fornecido): {}", idInfra);
+            } catch (IllegalArgumentException e) {
+                idInfra = UUID.randomUUID();
+                log.info("   ID (gerado automaticamente): {}", idInfra);
+            }
+        } else {
+            idInfra = UUID.randomUUID();
+            log.info("   ID (gerado automaticamente): {}", idInfra);
+        }
 
-    public int getTotalAnuncios()  { return totalAnuncios.get(); }
-    public int getTotalEntregas()  { return totalEntregas.get(); }
-    public int getTotalConexoes()  { return totalConexoes.get(); }
-    public int getConectadosAgora(){ return conectados.size(); }
+        log.info("═══════════════════════════════════════════════════════════════");
 
-    public void incrementarAnuncios() { totalAnuncios.incrementAndGet(); }
-    public void incrementarEntregas() { totalEntregas.incrementAndGet(); }
+      
+        infraCache = infraRepository.findByNome(infraNome).orElse(null);
 
-    
+        if (infraCache == null) {
+            log.info(" Criando nova infraestrutura...");
 
-    public LocalInfo criarLocal(LocalInfo local) {
-        String id = UUID.randomUUID().toString();
-        local.setId(id);
-        locais.put(id, local);
-        log.info("Local criado: {} ({})", local.getNome(), id);
-        return local;
+            Infraestrutura novaInfra = Infraestrutura.builder()
+                    .idInfraestrutura(idInfra)
+                    .nome(infraNome)
+                    .urlEndpoint(publicUrl)
+                    .capacidade(capacidadeConfig)
+                    .bonusEntrega(bonusEntregaConfig)
+                    .custoPost(custoPostConfig)
+                    .dataRegisto(LocalDateTime.now())
+                    .ativa(true)
+                    .totalLocais(0)
+                    .totalAnuncios(0)
+                    .totalEntregas(0)
+                    .totalConexoes(0)
+                    .build();
+
+            infraCache = infraRepository.save(novaInfra);
+            log.info(" Infraestrutura criada com ID: {}", infraCache.getIdInfraestrutura());
+
+        } else {
+            log.info(" Infraestrutura carregada:");
+            log.info("   ID: {}", infraCache.getIdInfraestrutura());
+            log.info("   Nome: {}", infraCache.getNome());
+            log.info("   Ativa: {}", infraCache.isAtiva());
+        }
+
+        registarNoUDDI();
+
+        sincronizarSaldos();
+
+        log.info(" Infraestrutura pronta!");
     }
 
-    public Optional<LocalInfo> obterLocal(String id) {
-        return Optional.ofNullable(locais.get(id));
-    }
+    private void registarNoUDDI() {
+        log.info(" [INFRA] Registando no UDDI...");
 
-    public Collection<LocalInfo> listarLocais() {
-        return Collections.unmodifiableCollection(locais.values());
-    }
-
-    
-
-    public RestricaoInfo adicionarRestricao(RestricaoInfo restricao) {
-        String id = UUID.randomUUID().toString();
-        restricao.setId(id);
-        restricoes.put(id, restricao);
-        log.info("Restrição definida: {} = {}", restricao.getTipoRestricao(),
-                                                restricao.getValorRestricao());
-        return restricao;
-    }
-
-    public Collection<RestricaoInfo> listarRestricoes() {
-        return Collections.unmodifiableCollection(restricoes.values());
-    }
-
-  
-
-    public void registarConexao(String emailUtilizador) {
-        boolean novo = !conectados.containsKey(emailUtilizador);
-        conectados.put(emailUtilizador, LocalDateTime.now());
-        if (novo) {
-            totalConexoes.incrementAndGet();
-            log.debug("Utilizador conectado: {}", emailUtilizador);
+        try {
+            String endpointUrl = publicUrl + "/ws/InfrastructureService";
+            uddiRegistrarClient.registar(endpointUrl);
+            log.info(" Registado no UDDI com sucesso!");
+        } catch (Exception e) {
+            log.error(" Erro ao registar no UDDI: {}", e.getMessage());
         }
     }
 
-    public void removerConexao(String emailUtilizador) {
-        conectados.remove(emailUtilizador);
-        log.debug("Utilizador desconectado: {}", emailUtilizador);
-    }
 
-    public boolean estaConectado(String emailUtilizador) {
-        return conectados.containsKey(emailUtilizador);
-    }
+    @SuppressWarnings("null")
+    private void sincronizarSaldos() {
+        log.info(" [INFRA] Sincronizando saldos com o AnunciosLoc-Server...");
 
-    public boolean capacidadeDisponivel() {
-        return conectados.size() < capacidade;
-    }
+        try {
+            String response = webClientBuilder
+                .baseUrl(anuncioslocUrl)
+                .build()
+                .get()
+                .uri("/api/internal/sincronizacao/saldos")
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
 
-    
+            if (response == null) {
+                log.warn(" Resposta vazia do AnunciosLoc");
+                return;
+            }
 
-    public SaldoReplicaInfo lerSaldo(String idUtilizador) {
-        // Se não existe, devolve saldo inicial de 10 pontos com versão 0
-        return saldosReplica.getOrDefault(idUtilizador,
-                SaldoReplicaInfo.builder()
-                        .idUtilizador(idUtilizador)
-                        .saldo(10.0f)
-                        .versao(0)
-                        .actualizadoEm(LocalDateTime.now())
-                        .build());
-    }
+            Map<String, Integer> saldos = objectMapper.readValue(
+                response,
+                new TypeReference<Map<String, Integer>>() {}
+            );
 
-    public boolean escreverSaldo(String idUtilizador, float novoSaldo, int versao) {
-        SaldoReplicaInfo actual = saldosReplica.get(idUtilizador);
+            log.info(" Recebidos {} saldos do AnunciosLoc", saldos.size());
 
-        // Rejeita se a versão recebida for mais antiga que a réplica local
-        if (actual != null && actual.getVersao() >= versao) {
-            log.warn("escreverSaldo rejeitado: versão {} <= actual {}",
-                     versao, actual.getVersao());
-            return false;
+            UUID infraId = getInfraId();
+            int atualizados = 0;
+
+            for (Map.Entry<String, Integer> entry : saldos.entrySet()) {
+                String email = entry.getKey();
+                Integer saldo = entry.getValue();
+
+                SaldoUtilizador saldoUser = saldoRepository
+                    .findByEmailUtilizadorAndIdInfraestrutura(email, infraId)
+                    .orElseGet(() -> {
+                        SaldoUtilizador novo = new SaldoUtilizador();
+                        novo.setEmailUtilizador(email);
+                        novo.setIdInfraestrutura(infraId);
+                        novo.setSaldoParcial(0);
+                        novo.setPontosGanhos(0);
+                        novo.setPontosGastos(0);
+                        return novo;
+                    });
+
+                saldoUser.setSaldoParcial(saldo);
+                saldoUser.setUltimaAtualizacao(LocalDateTime.now());
+                saldoRepository.save(saldoUser);
+                atualizados++;
+            }
+
+            log.info(" Sincronização concluída! {} saldos atualizados.", atualizados);
+
+        } catch (Exception e) {
+            log.error(" Erro ao sincronizar saldos: {}", e.getMessage());
         }
-
-        saldosReplica.put(idUtilizador, SaldoReplicaInfo.builder()
-                .idUtilizador(idUtilizador)
-                .saldo(novoSaldo)
-                .versao(versao)
-                .actualizadoEm(LocalDateTime.now())
-                .build());
-
-        log.debug("Saldo escrito: utilizador={}, saldo={}, versao={}",
-                  idUtilizador, novoSaldo, versao);
-        return true;
     }
 
-    
+    public UUID getInfraId() {
+        return infraCache.getIdInfraestrutura();
+    }
 
-    public void clear() {
-        locais.clear();
-        restricoes.clear();
-        conectados.clear();
-        saldosReplica.clear();
-        totalAnuncios.set(0);
-        totalEntregas.set(0);
-        totalConexoes.set(0);
-        log.warn("Estado da infraestrutura limpo (clear)");
+    public String getInfraNome() {
+        return infraCache.getNome();
+    }
+
+    public String getPublicUrl() {
+        return infraCache.getUrlEndpoint();
+    }
+
+    public int getCapacidade() {
+        return infraCache.getCapacidade() != null ? infraCache.getCapacidade() : 100;
+    }
+
+    public int getBonusEntrega() {
+        return infraCache.getBonusEntrega() != null ? infraCache.getBonusEntrega() : 2;
+    }
+
+    public int getCustoPost() {
+        return infraCache.getCustoPost() != null ? infraCache.getCustoPost() : 1;
+    }
+
+    public boolean isAtiva() {
+        return infraCache.isAtiva();
+    }
+
+    public Infraestrutura getInfra() {
+        return infraCache;
+    }
+
+    public int getTotalLocais() {
+        return infraCache.getTotalLocais() != null ? infraCache.getTotalLocais() : 0;
+    }
+
+    public int getTotalAnuncios() {
+        return infraCache.getTotalAnuncios() != null ? infraCache.getTotalAnuncios() : 0;
+    }
+
+    public int getTotalEntregas() {
+        return infraCache.getTotalEntregas() != null ? infraCache.getTotalEntregas() : 0;
+    }
+
+    public int getTotalConexoes() {
+        return infraCache.getTotalConexoes() != null ? infraCache.getTotalConexoes() : 0;
+    }
+
+    @SuppressWarnings("null")
+    @Transactional
+    public void incrementarTotalLocais() {
+        infraCache.setTotalLocais(getTotalLocais() + 1);
+        infraRepository.save(infraCache);
+    }
+
+    @SuppressWarnings("null")
+    @Transactional
+    public void incrementarTotalAnuncios() {
+        infraCache.setTotalAnuncios(getTotalAnuncios() + 1);
+        infraRepository.save(infraCache);
+    }
+
+    @SuppressWarnings("null")
+    @Transactional
+    public void incrementarTotalEntregas() {
+        infraCache.setTotalEntregas(getTotalEntregas() + 1);
+        infraRepository.save(infraCache);
+    }
+
+    @SuppressWarnings("null")
+    @Transactional
+    public void incrementarTotalConexoes() {
+        infraCache.setTotalConexoes(getTotalConexoes() + 1);
+        infraRepository.save(infraCache);
     }
 }

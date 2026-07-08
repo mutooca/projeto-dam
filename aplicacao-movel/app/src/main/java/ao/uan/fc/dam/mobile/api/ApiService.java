@@ -1,6 +1,7 @@
 package ao.uan.fc.dam.mobile.api;
 
 import java.util.List;
+import retrofit2.http.Header;
 import java.util.Map;
 import ao.uan.fc.dam.mobile.model.Anuncio;
 import ao.uan.fc.dam.mobile.model.Local;
@@ -28,7 +29,7 @@ public interface ApiService {
     @POST("api/auth/logout")
     Call<ResponseBody> logout(@Body Map<String, String> request);
 
-    @GET("api/locais")
+    @GET("api/locais/todos")
     Call<List<Local>> listarLocais(
             @Query("lat") Double latitude,
             @Query("lon") Double longitude
@@ -47,11 +48,27 @@ public interface ApiService {
             @Query("k") int k
     );
 
-    @POST("api/anuncios")
-    Call<Anuncio> postarAnuncio(@Body Map<String, Object> request);
+    @POST("api/anuncios/postar")
+    Call<Anuncio> postarAnuncio(
+            @Header("X-Kerberos-Ticket") String ticket,
+            @Header("X-Kerberos-Authenticator") String authenticator,
+            @Body Map<String, Object> request
+    );
 
-    @GET("api/anuncios/utilizador/{email}")
-    Call<List<Anuncio>> listarMinhasMensagens(@Path("email") String email);
+    @GET("api/anuncios/listar/minhas/{email}")
+    Call<List<Anuncio>> listarMinhasMensagens(
+            @Header("X-Kerberos-Ticket") String ticket,
+            @Header("X-Kerberos-Authenticator") String authenticator,
+            @Path("email") String email
+    );
+
+    @DELETE("api/anuncios/remover/{id}")
+    Call<ResponseBody> removerAnuncio(
+            @Header("X-Kerberos-Ticket") String ticket,
+            @Header("X-Kerberos-Authenticator") String authenticator,
+            @Path("id") String id,
+            @Query("email") String email
+    );
 
     @GET("api/anuncios/local/{localId}")
     Call<List<Anuncio>> listarPorLocal(@Path("localId") String localId);
@@ -64,17 +81,19 @@ public interface ApiService {
             @Query("lon") Double longitude
     );
 
-    @POST("api/anuncios/anunciar-localizacao")
+    @POST("api/anuncios/sync/localizacao")
     Call<List<Anuncio>> anunciarLocalizacao(@Body Map<String, Object> syncData);
 
-    @DELETE("api/anuncios/{id}")
-    Call<ResponseBody> removerAnuncio(@Path("id") String id, @Query("email") String email);
 
     @PATCH("api/anuncios/{id}/lido")
     Call<ResponseBody> marcarComoLido(@Path("id") String id, @Query("email") String email);
 
     @GET("api/utilizadores/{email}/saldo")
-    Call<SaldoResponse> obterSaldo(@Path("email") String email);
+    Call<SaldoResponse> obterSaldo(
+            @Header("X-Kerberos-Ticket") String ticket,
+            @Header("X-Kerberos-Authenticator") String authenticator,
+            @Path("email") String email
+    );
 
     @PUT("api/utilizadores/{email}/preferencias")
     Call<ResponseBody> atualizarPreferencias(
@@ -82,9 +101,18 @@ public interface ApiService {
             @Query("preferencias") String preferencias
     );
 
-    @PUT("api/utilizadores/perfil")
+    @PUT("api/utilizadores/atualizar")
     Call<Utilizador> editarPerfil(@Body Map<String, Object> request);
 
-    @GET("api/utilizadores/chaves-perfil")
+    @GET("api/perfil/chaves")
     Call<List<String>> listarChavesPerfil();
+
+    @GET("api/perfil")
+    Call<Map<String, Object>> obterPerfil(@Query("email") String email);
+
+    @POST("api/perfil/par")
+    Call<Map<String, String>> adicionarParPerfil(@Query("email") String email, @Body Map<String, String> request);
+
+    @DELETE("api/perfil/par")
+    Call<ResponseBody> removerParPerfil(@Query("email") String email, @Query("chave") String chave);
 }

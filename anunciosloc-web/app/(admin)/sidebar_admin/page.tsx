@@ -10,13 +10,10 @@ export default function SidebarAdmin(){
         {icon: <LuLayoutDashboard size={20}/>, label:'Dashboard', href:"/dashboard"},
         {icon:<LuMapPin size={20}/>, label:'Infraestruturas', href:"/infraestruturas"},
         {icon:<LuUsersRound size={20}/>, label:'Utilizadores', href:"/utilizadores"},
-        {icon:<LuMegaphone size={20}/>, label:'Anúncios', href:'/anuncios'},
-        {icon:<LuAward size={20}/>, label:'Bónus & inatividade', href:"/bonusInatividades"},
         {icon:<LuChartColumn size={20}/>, label:'Estatísticas', href:"/estatisticas"}
     ]
 
     const userName = "João Silva";
-    const iniciais = userName.split(' ').map(n=>n[0]).join('').toUpperCase();
     const [menuOpen, setMenuOpen] =useState(false);
 
     return(
@@ -29,10 +26,6 @@ export default function SidebarAdmin(){
                 </div>
 
                 <div className="flex gap-4 items-center">
-
-                    <div className="flex items-center justify-center w-10 h-10 bg-amber-500 font-semibold shadow-2xl rounded-full border border-amber-500 ">
-                        <span className="text-sm text-white">{iniciais}</span>
-                    </div>
 
                     <button className="p-2 rounded-lg border border-zinc-100 flex items-center justify-center gap-2 text-zinc-600 cursor-pointer hover:bg-amber-500 hover:text-zinc-900">
                         <LuLogOut size={20}/>

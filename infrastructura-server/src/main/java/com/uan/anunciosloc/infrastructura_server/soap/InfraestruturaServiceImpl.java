@@ -1,225 +1,670 @@
 package com.uan.anunciosloc.infrastructura_server.soap;
 
-
 import com.uan.anunciosloc.infrastructura_server.model.*;
+import com.uan.anunciosloc.infrastructura_server.repository.*;
 import com.uan.anunciosloc.infrastructura_server.service.InfraEstadoService;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.*;
-
+import com.uan.anunciosloc.infrastructura_server.soap.dto.LocalInfo;
+import com.uan.anunciosloc.infrastructura_server.util.HaversineUtil;
 import jakarta.jws.WebService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
-import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
-@Component
-@RequiredArgsConstructor
-@WebService(
-    
-    serviceName       = "InfrastructureService",
-    portName          = "InfrastructurePort",
-    targetNamespace   = "http://infrastructura.anunciosloc.uan.com"
-)
-public class InfraestruturaServiceImpl implements InfraestruturaServiceSEI {
+@WebService(serviceName = "InfrastructureService", portName = "InfrastructurePort", targetNamespace = "http://infrastructura.anunciosloc.uan.com", endpointInterface = "com.uan.anunciosloc.infrastructura_server.soap.InfrastructureServiceSEI")
+public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
 
-    private final InfraEstadoService estado;
+        private final InfraEstadoService estadoService;
+        private final InfraEstadoService infraEstadoService;
+        private final InfraestruturaRepository infraRepository;
+        private final LocalRepository localRepository;
+        private final AnuncioRepository anuncioRepository;
+        private final EntregaAnuncioRepository entregaRepository;
+        private final SaldoUtilizadorRepository saldoRepository;
+        private final RestricaoRepository restricaoRepository;
+        private final PerfilUtilizadorRepository perfilRepository;
 
-    
-    @Override
-    public InfraInfoResponse obterInfoInfraestrutura() {
-        log.debug("obterInfoInfraestrutura chamado");
+        private final ConexaoRepository conexaoRepository;
 
-        return InfraInfoResponse.builder()
-                .nome(estado.getInfraNome())
-                .urlEndpoint(estado.getPublicUrl())
-                .capacidade(estado.getCapacidade())
-                .bonusEntrega(estado.getBonusEntrega())
-                .custoPost(estado.getCustoPost())
-                .totalAnuncios(estado.getTotalAnuncios())
-                .totalEntregas(estado.getTotalEntregas())
-                .totalConexoes(estado.getTotalConexoes())
-                .conectadosAgora(estado.getConectadosAgora())
-                .conexoesDisponiveis(
-                    estado.getCapacidade() - estado.getConectadosAgora())
-                .build();
-    }
-
-    
-    @Override
-    public CriarLocalResponse criarLocal(CriarLocalRequest request) {
-        log.debug("criarLocal: nome={}, tipo={}", 
-                  request.getNome(), request.getTipoCoordenada());
-
-        // Valida tipo
-        if (request.getTipoCoordenada() == null ||
-            (!request.getTipoCoordenada().equalsIgnoreCase("GPS") &&
-             !request.getTipoCoordenada().equalsIgnoreCase("WIFI"))) {
-            return CriarLocalResponse.builder()
-                    .sucesso(false)
-                    .mensagem("tipoCoordenada deve ser GPS ou WIFI")
-                    .build();
+        public InfraestruturaServiceImpl(
+                        InfraEstadoService infraEstadoService,
+                        LocalRepository localRepository,
+                        AnuncioRepository anuncioRepository,
+                        SaldoUtilizadorRepository saldoRepository,
+                        PerfilUtilizadorRepository perfilRepository,
+                        EntregaAnuncioRepository entregaRepository,
+                        CoordenadaGpsRepository gpsRepository,
+                        CoordenadaWifiRepository wifiRepository) {
+                this.estadoService = null;
+                this.infraEstadoService = infraEstadoService;
+                this.infraRepository = null;
+                this.localRepository = localRepository;
+                this.anuncioRepository = anuncioRepository;
+                this.saldoRepository = saldoRepository;
+                this.restricaoRepository = null;
+                this.perfilRepository = perfilRepository;
+                this.entregaRepository = entregaRepository;
+                this.conexaoRepository = null;
         }
 
-        LocalInfo local = LocalInfo.builder()
-                .nome(request.getNome())
-                .tipoCoordenada(request.getTipoCoordenada().toUpperCase())
-                .build();
+        @Value("${infra.nome:D01_Infrastructure1}")
+        private String infraNome;
 
-        // GPS
-        if ("GPS".equalsIgnoreCase(request.getTipoCoordenada())) {
-            if (request.getLatitude() == null || request.getLongitude() == null) {
-                return CriarLocalResponse.builder()
-                        .sucesso(false)
-                        .mensagem("latitude e longitude obrigatórios para tipo GPS")
-                        .build();
-            }
-            local.setCoordenadaGps(CoordenadaGpsInfo.builder()
-                    .latitude(request.getLatitude())
-                    .longitude(request.getLongitude())
-                    .raioMetros(request.getRaioMetros() != null 
-                                ? request.getRaioMetros() : 20.0)
-                    .build());
+        @Value("${infra.public-url:http://localhost:8091}")
+        private String publicUrl;
+
+        @Value("${infra.capacidade:100}")
+        private int capacidade;
+
+        @Value("${infra.bonus-entrega:2}")
+        private int bonusEntrega;
+
+        @Value("${infra.custo-post:1}")
+        private int custoPost;
+
+        @Override
+
+        public ObterInfraResponse obterInfoInfraestrutura() {
+                log.info(" [INFRA] Obtendo informações da infraestrutura");
+
+                try {
+
+                        Infraestrutura infra = infraEstadoService.getInfra();
+
+                        if (infra == null) {
+                                return ObterInfraResponse.builder()
+                                                .sucesso(false)
+                                                .mensagem("Infraestrutura não encontrada")
+                                                .build();
+                        }
+
+                        log.info("   ID: {}", infra.getIdInfraestrutura());
+                        log.info("   Nome: {}", infra.getNome());
+                        log.info("   Ativa: {}", infra.isAtiva());
+                        log.info("   Locais: {}", infra.getTotalLocais());
+                        log.info("   Anúncios: {}", infra.getTotalAnuncios());
+
+                        return ObterInfraResponse.builder()
+                                        .sucesso(true)
+                                        .id(infra.getIdInfraestrutura().toString())
+                                        .nome(infra.getNome())
+                                        .url(infra.getUrlEndpoint())
+                                        .capacidade(infra.getCapacidade())
+                                        .bonusEntrega(infra.getBonusEntrega() != null ? infra.getBonusEntrega() : 0)
+                                        .custoPost(infra.getCustoPost() != null ? infra.getCustoPost() : 1)
+                                        .ativa(infra.isAtiva())
+                                        .totalLocais(infra.getTotalLocais() != null ? infra.getTotalLocais() : 0)
+                                        .totalAnuncios(infra.getTotalAnuncios() != null ? infra.getTotalAnuncios() : 0)
+                                        .totalEntregas(infra.getTotalEntregas() != null ? infra.getTotalEntregas() : 0)
+                                        .totalConexoes(infra.getTotalConexoes() != null ? infra.getTotalConexoes() : 0)
+                                        .mensagem("Informações da infraestrutura obtidas com sucesso")
+                                        .build();
+
+                } catch (Exception e) {
+                        log.error("Erro ao obter informações da infraestrutura: {}", e.getMessage(), e);
+                        return ObterInfraResponse.builder()
+                                        .sucesso(false)
+                                        .mensagem("Erro ao obter informações: " + e.getMessage())
+                                        .build();
+                }
         }
 
-        // WIFI
-        if ("WIFI".equalsIgnoreCase(request.getTipoCoordenada())) {
-            if (request.getSsids() == null || request.getSsids().isBlank()) {
-                return CriarLocalResponse.builder()
-                        .sucesso(false)
-                        .mensagem("ssids obrigatório para tipo WIFI")
-                        .build();
-            }
-            List<CoordenadaWifiInfo> wifis = Arrays.stream(
-                    request.getSsids().split(","))
-                    .map(ssid -> CoordenadaWifiInfo.builder()
-                                     .ssid(ssid.trim())
-                                     .build())
-                    .collect(Collectors.toList());
-            local.setCoordenadasWifi(wifis);
+        @Override
+        @Transactional
+        public MensagemResponse criarInfraestrutura(int capacidade,
+                        int bonusEntrega,
+                        int custoPost,
+                        double latitude,
+                        double longitude,
+                        double raio) {
+
+                return MensagemResponse.builder()
+                                .sucesso(true)
+                                .mensagem("Infraestrutura '" + infraNome + "' criada com sucesso")
+                                .build();
         }
 
-        LocalInfo criado = estado.criarLocal(local);
+        // criarLocal
+        @Override
+        @Transactional
+        public CriarLocalResponse criarLocal(CriarLocalRequest request) {
+                log.info("═══════════════════════════════════════════════════════════════");
+                log.info(" [INFRA] Criando local: {}", request.getNome());
+                log.info("   Utilizador: {}", request.getEmailUtilizador());
+                log.info("   Coordenadas: lat={}, lon={}", request.getLatitude(), request.getLongitude());
+                log.info("   WiFi: {}", request.getSsidWifi());
+                log.info("═══════════════════════════════════════════════════════════════");
 
-        return CriarLocalResponse.builder()
-                .idLocal(criado.getId())
-                .sucesso(true)
-                .mensagem("Local criado com sucesso")
-                .build();
-    }
+                try {
 
-    
-    @Override
-    public DefinirRestricaoResponse definirRestricao(DefinirRestricaoRequest request) {
-        log.debug("definirRestricao: tipo={}", request.getTipoRestricao());
+                        boolean nomeExiste = localRepository.existsByNomeIgnoreCase(request.getNome());
+                        if (nomeExiste) {
+                                return CriarLocalResponse.builder()
+                                                .sucesso(false)
+                                                .mensagem("Já existe um local com o nome '" + request.getNome() + "'")
+                                                .build();
+                        }
 
-        if (request.getTipoRestricao() == null || request.getTipoRestricao().isBlank()) {
-            return DefinirRestricaoResponse.builder()
-                    .sucesso(false)
-                    .mensagem("tipoRestricao é obrigatório")
-                    .build();
+                        CoordenadaGps gps = null;
+                        if (request.getLatitude() != null && request.getLongitude() != null) {
+                                gps = new CoordenadaGps();
+                                gps.setLatitude(request.getLatitude());
+                                gps.setLongitude(request.getLongitude());
+                                gps.setRaio(request.getRaio() != null ? request.getRaio() : 50.0);
+                                log.info("   GPS preparado: lat={}, lon={}, raio={}",
+                                                gps.getLatitude(), gps.getLongitude(), gps.getRaio());
+                        } else {
+                                log.info("   GPS não fornecido");
+                        }
+
+                        CoordenadaWifi wifi = null;
+                        if (request.getSsidWifi() != null && !request.getSsidWifi().isEmpty()) {
+                                wifi = new CoordenadaWifi();
+                                wifi.setSsid(request.getSsidWifi());
+                                log.info("   WiFi preparado: {}", wifi.getSsid());
+                        } else {
+                                log.info("    WiFi não fornecido");
+                        }
+
+                        if (gps == null && wifi == null) {
+                                return CriarLocalResponse.builder()
+                                                .sucesso(false)
+                                                .mensagem("É necessário fornecer pelo menos GPS ou WiFi para criar um local")
+                                                .build();
+                        }
+
+                        UUID infraId = infraEstadoService.getInfraId();
+                        log.info("   Infra ID: {}", infraId);
+
+                        Local local = new Local();
+                        local.setNome(request.getNome());
+                        local.setCoordenadaGps(gps);
+                        local.setCriadoPor(request.getEmailUtilizador());
+                        local.setCoordenadaWifi(wifi);
+                        local.setIdInfraestrutura(infraId);
+                        local.setDataCriacao(LocalDateTime.now());
+
+                        log.info("  Local: nome={}, infraId={}, temGPS={}, temWiFi={}",
+                                        local.getNome(),
+                                        local.getIdInfraestrutura(),
+                                        local.getCoordenadaGps() != null,
+                                        local.getCoordenadaWifi() != null);
+
+                        Local savedLocal = localRepository.save(local);
+                        log.info(" Local salvo com ID: {}", savedLocal.getIdLocal());
+
+                        infraEstadoService.incrementarTotalLocais();
+                        log.info("   Total locais: {}", infraEstadoService.getTotalLocais());
+
+                        return CriarLocalResponse.builder()
+                                        .sucesso(true)
+                                        .idLocal(savedLocal.getIdLocal().toString())
+                                        .mensagem("Local criado com sucesso")
+                                        .build();
+
+                } catch (Exception e) {
+                        log.error(" [INFRA] Erro ao criar local: {}", e.getMessage(), e);
+                        return CriarLocalResponse.builder()
+                                        .sucesso(false)
+                                        .mensagem("Erro ao criar local: " + e.getMessage())
+                                        .build();
+                }
         }
 
-        RestricaoInfo restricao = RestricaoInfo.builder()
-                .tipoRestricao(request.getTipoRestricao())
-                .valorRestricao(request.getValorRestricao())
-                .descricao(request.getDescricao())
-                .build();
+        // listarLocais
+        @Override
+        public ListarLocaisResponse listarLocais(Double latUtilizador, Double lonUtilizador) {
+                log.info(" [INFRA-SERVER] Listando locais da própria infra para lat={}, lon={}",
+                                latUtilizador, lonUtilizador);
 
-        RestricaoInfo criada = estado.adicionarRestricao(restricao);
+                List<Local> todosLocais = localRepository.findAll();
 
-        return DefinirRestricaoResponse.builder()
-                .idRestricao(criada.getId())
-                .sucesso(true)
-                .mensagem("Restrição definida com sucesso")
-                .build();
-    }
+                List<LocalInfo> locaisFiltrados = todosLocais.stream()
 
-   
-    @Override
-    public ObterSaldoResponse obterSaldo(String idUtilizador) {
-        log.debug("obterSaldo: utilizador={}", idUtilizador);
+                                .filter(l -> {
 
-        SaldoReplicaInfo saldo = estado.lerSaldo(idUtilizador);
+                                        if (latUtilizador == null || lonUtilizador == null) {
+                                                return true;
+                                        }
 
-        return ObterSaldoResponse.builder()
-                .idUtilizador(idUtilizador)
-                .saldo(saldo.getSaldo())
-                .encontrado(saldo.getVersao() > 0)
-                .build();
-    }
+                                        if (l.getCoordenadaGps() == null) {
+                                                return false;
+                                        }
 
-   
-    @Override
-    public LerSaldoResponse lerSaldo(String idUtilizador) {
-        log.debug("lerSaldo: utilizador={}", idUtilizador);
+                                        double distancia = HaversineUtil.calcularDistancia(
+                                                        latUtilizador, lonUtilizador,
+                                                        l.getCoordenadaGps().getLatitude(),
+                                                        l.getCoordenadaGps().getLongitude());
+                                        return distancia <= l.getCoordenadaGps().getRaio();
+                                })
+                                .map(l -> LocalInfo.builder()
+                                                .idLocal(l.getIdLocal().toString())
+                                                .nome(l.getNome())
+                                                .latitude(l.getCoordenadaGps() != null
+                                                                ? l.getCoordenadaGps().getLatitude()
+                                                                : null)
+                                                .longitude(l.getCoordenadaGps() != null
+                                                                ? l.getCoordenadaGps().getLongitude()
+                                                                : null)
+                                                .raio(l.getCoordenadaGps() != null ? l.getCoordenadaGps().getRaio()
+                                                                : null)
+                                                .ssid(l.getCoordenadaWifi() != null ? l.getCoordenadaWifi().getSsid()
+                                                                : null)
+                                                .build())
+                                .collect(Collectors.toList());
 
-        SaldoReplicaInfo saldo = estado.lerSaldo(idUtilizador);
+                log.info(" [INFRA-SERVER] Encontrados {} locais na própria infra", locaisFiltrados.size());
 
-        return LerSaldoResponse.builder()
-                .idUtilizador(idUtilizador)
-                .saldo(saldo.getSaldo())
-                .versao(saldo.getVersao())
-                .encontrado(saldo.getVersao() > 0)
-                .build();
-    }
-
-    
-    @Override
-    public EscreverSaldoResponse escreverSaldo(String idUtilizador,
-                                                float novoSaldo,
-                                                int versao) {
-        log.debug("escreverSaldo: utilizador={}, saldo={}, versao={}",
-                  idUtilizador, novoSaldo, versao);
-
-        boolean sucesso = estado.escreverSaldo(idUtilizador, novoSaldo, versao);
-
-        if (!sucesso) {
-            SaldoReplicaInfo actual = estado.lerSaldo(idUtilizador);
-            return EscreverSaldoResponse.builder()
-                    .sucesso(false)
-                    .versaoActual(actual.getVersao())
-                    .mensagem("Versão desactualizada. Versão actual: "
-                              + actual.getVersao())
-                    .build();
+                return ListarLocaisResponse.builder()
+                                .sucesso(true)
+                                .mensagem(locaisFiltrados.size() + " local(is) encontrado(s) nesta infraestrutura")
+                                .locais(locaisFiltrados)
+                                .build();
         }
 
-        return EscreverSaldoResponse.builder()
-                .sucesso(true)
-                .versaoActual(versao)
-                .mensagem("Saldo actualizado com sucesso")
-                .build();
-    }
+        @SuppressWarnings("null")
+        @Override
+        @Transactional
+        public PostarAnuncioResponse postarAnuncio(PostarAnuncioRequest request) {
+                log.info("[INFRA] Postando anúncio");
+                log.info("   Autor: {}", request.getEmailAutor());
+                log.info("   Título: {}", request.getTitulo());
+                log.info("   ID Local: {}", request.getIdLocal());
 
-    
-    @Override
-    public String ping() {
-        return String.format(
-            "PONG | %s | URL: %s | Capacidade: %d | Conectados: %d | " +
-            "Anúncios: %d | Entregas: %d | Estado: OK",
-            estado.getInfraNome(),
-            estado.getPublicUrl(),
-            estado.getCapacidade(),
-            estado.getConectadosAgora(),
-            estado.getTotalAnuncios(),
-            estado.getTotalEntregas()
-        );
-    }
+                try {
 
-    
-    @Override
-    public void clear() {
-        log.warn("clear() chamado em {}", estado.getInfraNome());
-        estado.clear();
-    }
+                        if (request.getIdLocal() == null || request.getIdLocal().isEmpty()) {
+                                return PostarAnuncioResponse.builder()
+                                                .sucesso(false)
+                                                .mensagem("ID do local é obrigatório")
+                                                .build();
+                        }
 
-    
-    @Override
-    public void initInfraestrutura(int capacidade, int bonusEntrega, int custoPost) {
-        log.info("initInfraestrutura: cap={}, bonus={}, custo={}",
-                 capacidade, bonusEntrega, custoPost);
-       
-    }
+                        UUID localId = UUID.fromString(request.getIdLocal());
+
+                        Local local = localRepository.findById(localId)
+                                        .orElseThrow(() -> new RuntimeException("Local não encontrado"));
+
+                        log.info("   Local: {}", local.getNome());
+
+                        UUID infraId = infraEstadoService.getInfraId();
+                        log.info("   Infra ID: {}", infraId);
+
+                        SaldoUtilizador saldo = saldoRepository
+                                        .findByEmailUtilizadorAndIdInfraestrutura(request.getEmailAutor(), infraId)
+                                        .orElseThrow(() -> new RuntimeException(
+                                                        "Utilizador não tem saldo nesta infraestrutura"));
+
+                        int custoPost = infraEstadoService.getCustoPost();
+                        if (saldo.getSaldoParcial() < custoPost) {
+                                return PostarAnuncioResponse.builder()
+                                                .sucesso(false)
+                                                .mensagem(String.format(
+                                                                "Saldo insuficiente. Disponível: %d, Necessário: %d",
+                                                                saldo.getSaldoParcial(), custoPost))
+                                                .build();
+                        }
+
+                        log.info("   Saldo antes: {}", saldo.getSaldoParcial());
+
+                        saldo.setSaldoParcial(saldo.getSaldoParcial() - custoPost);
+                        saldo.setPontosGastos(saldo.getPontosGastos() + custoPost);
+                        saldo.setUltimaAtualizacao(LocalDateTime.now());
+                        saldoRepository.save(saldo);
+                        log.info("   Saldo depois: {}", saldo.getSaldoParcial());
+                        log.info("   Pontos gastos: {}", saldo.getPontosGastos());
+
+                        Anuncio anuncio = new Anuncio();
+                        anuncio.setTitulo(request.getTitulo());
+                        anuncio.setConteudo(request.getConteudo());
+                        anuncio.setEstado("ATIVO");
+                        anuncio.setDataPublicacao(LocalDateTime.now());
+                        anuncio.setIdLocal(localId);
+                        anuncio.setIdInfraestrutura(infraId);
+                        anuncio.setAutorEmail(request.getEmailAutor());
+                        anuncio.setTipoPolitica(request.getTipoPolitica());
+                        anuncio.setPoliticaFiltro(request.getPoliticaFiltro());
+
+                        if (request.getVisivelDe() != null && !request.getVisivelDe().isEmpty()) {
+                                anuncio.setVisivelDe(LocalDateTime.parse(request.getVisivelDe()));
+                        } else {
+                                anuncio.setVisivelDe(LocalDateTime.now());
+                        }
+
+                        if (request.getVisivelAte() != null && !request.getVisivelAte().isEmpty()) {
+                                anuncio.setVisivelAte(LocalDateTime.parse(request.getVisivelAte()));
+                        }
+
+                        Anuncio saved = anuncioRepository.save(anuncio);
+                        log.info("   Anúncio criado com ID: {}", saved.getIdAnuncio());
+
+                        infraEstadoService.incrementarTotalAnuncios();
+
+                        return PostarAnuncioResponse.builder()
+                                        .sucesso(true)
+                                        .idAnuncio(saved.getIdAnuncio().toString())
+                                        .mensagem("Anúncio publicado com sucesso")
+                                        .build();
+
+                } catch (Exception e) {
+                        log.error(" Erro ao postar anúncio: {}", e.getMessage(), e);
+                        return PostarAnuncioResponse.builder()
+                                        .sucesso(false)
+                                        .mensagem("Erro ao postar anúncio: " + e.getMessage())
+                                        .build();
+                }
+        }
+
+        @SuppressWarnings("null")
+        @Override
+        @Transactional
+        public ReceberAnunciosResponse receberAnuncios(ReceberAnunciosRequest request) {
+                log.info(" [INFRA] Recebendo anúncios para: {}", request.getEmail());
+                log.info("   Local ID: {}", request.getIdLocal());
+
+                try {
+                        String email = request.getEmail();
+                        UUID localUUID = UUID.fromString(request.getIdLocal());
+
+                        Local local = localRepository.findById(localUUID)
+                                        .orElseThrow(() -> new RuntimeException("Local não encontrado"));
+
+                        log.info("   Local: {}", local.getNome());
+
+                        List<Anuncio> anuncios = anuncioRepository.findAtivosByLocal(localUUID);
+
+                        if (anuncios.isEmpty()) {
+                                log.info("   Nenhum anúncio ativo encontrado");
+                                return ReceberAnunciosResponse.builder()
+                                                .sucesso(true)
+                                                .anuncios(List.of())
+                                                .mensagem("Nenhum anúncio disponível")
+                                                .build();
+                        }
+
+                        log.info("   Anúncios encontrados: {}", anuncios.size());
+
+                        List<PerfilUtilizador> perfil = perfilRepository.findByEmail(email);
+                        log.info("   Perfil: {} atributos", perfil.size());
+
+                        List<AnuncioInfo> anunciosFiltrados = anuncios.stream()
+                                        .filter(a -> passaNaPolitica(a, perfil))
+                                        .map(a -> toAnuncioInfo(a))
+                                        .collect(Collectors.toList());
+
+                        log.info("   Anúncios após filtros: {}", anunciosFiltrados.size());
+
+                        UUID infraId = infraEstadoService.getInfraId();
+                        int entregasRegistadas = 0;
+
+                        for (Anuncio anuncio : anuncios) {
+                                boolean jaEntregue = entregaRepository
+                                                .existsByAnuncioIdAndEmail(anuncio.getIdAnuncio(), email);
+
+                                if (!jaEntregue) {
+                                        EntregaAnuncio entrega = new EntregaAnuncio();
+                                        entrega.setIdAnuncio(anuncio.getIdAnuncio());
+                                        entrega.setEmailUtilizador(email);
+                                        entrega.setIdInfraestrutura(infraId);
+                                        entrega.setDataEntrega(LocalDateTime.now());
+                                        entrega.setEstadoEntrega("ENTREGUE");
+                                        entregaRepository.save(entrega);
+                                        entregasRegistadas++;
+                                }
+                        }
+
+                        log.info("   Entregas registadas: {}", entregasRegistadas);
+
+                        if (entregasRegistadas > 0) {
+                                infraEstadoService.incrementarTotalEntregas();
+                        }
+
+                        return ReceberAnunciosResponse.builder()
+                                        .sucesso(true)
+                                        .anuncios(anunciosFiltrados)
+                                        .mensagem(anunciosFiltrados.size() + " anúncio(s) encontrado(s)")
+                                        .build();
+
+                } catch (Exception e) {
+                        log.error(" Erro ao receber anúncios: {}", e.getMessage(), e);
+                        return ReceberAnunciosResponse.builder()
+                                        .sucesso(false)
+                                        .mensagem("Erro: " + e.getMessage())
+                                        .anuncios(List.of())
+                                        .build();
+                }
+        }
+
+        @Override
+        @Transactional
+        public MensagemResponse marcarComoLido(String idAnuncio,
+                        String emailUtilizador) {
+
+                return MensagemResponse.builder()
+                                .sucesso(true)
+                                .mensagem("Anúncio marcado como lido")
+                                .build();
+        }
+
+        @Override
+        public LerSaldoResponse lerSaldo(String email) {
+                log.info("[INFRA] Lendo saldo para: {}", email);
+
+                try {
+                        UUID infraId = infraEstadoService.getInfraId();
+
+                        SaldoUtilizador saldo = saldoRepository
+                                        .findByEmailUtilizadorAndIdInfraestrutura(email, infraId)
+                                        .orElse(null);
+
+                        if (saldo == null) {
+                                return LerSaldoResponse.builder()
+                                                .sucesso(true)
+                                                .email(email)
+                                                .saldo(0)
+                                                .versao(0)
+                                                .mensagem("Saldo inicial (utilizador não tem saldo nesta infra)")
+                                                .build();
+                        }
+
+                        return LerSaldoResponse.builder()
+                                        .sucesso(true)
+                                        .email(email)
+                                        .saldo(saldo.getSaldoParcial())
+                                        .versao(saldo.getVersao())
+                                        .mensagem("Saldo obtido com sucesso")
+                                        .build();
+
+                } catch (Exception e) {
+                        log.error(" Erro ao ler saldo: {}", e.getMessage());
+                        return LerSaldoResponse.builder()
+                                        .sucesso(false)
+                                        .mensagem("Erro: " + e.getMessage())
+                                        .build();
+                }
+        }
+
+        @SuppressWarnings("null")
+        @Override
+        @Transactional
+        public EscreverSaldoResponse escreverSaldo(String email, float novoSaldo, int versao) {
+                log.info(" [INFRA] Escrevendo saldo para {}: {} (versão {})", email, novoSaldo, versao);
+
+                try {
+                        UUID infraId = infraEstadoService.getInfraId();
+
+                        SaldoUtilizador saldo = saldoRepository
+                                        .findByEmailUtilizadorAndIdInfraestrutura(email, infraId)
+                                        .orElse(null);
+
+                        if (saldo != null && saldo.getVersao() >= versao) {
+                                log.warn(" Versão rejeitada: actual={}, recebida={}", saldo.getVersao(), versao);
+                                return EscreverSaldoResponse.builder()
+                                                .sucesso(false)
+                                                .mensagem("Versão desatualizada. Actual: " + saldo.getVersao())
+                                                .versaoActual(saldo.getVersao())
+                                                .build();
+                        }
+
+                        if (saldo == null) {
+
+                                saldo = SaldoUtilizador.builder()
+                                                .emailUtilizador(email)
+                                                .idInfraestrutura(infraId)
+                                                .saldoParcial((int) novoSaldo)
+                                                .versao(versao)
+                                                .pontosGanhos(0)
+                                                .pontosGastos(0)
+                                                .ultimaAtualizacao(LocalDateTime.now())
+                                                .build();
+                        } else {
+                                saldo.setSaldoParcial((int) novoSaldo);
+                                saldo.setVersao(versao);
+                                saldo.setUltimaAtualizacao(LocalDateTime.now());
+                        }
+
+                        saldoRepository.save(saldo);
+                        log.info(" Saldo escrito: {} = {} (versão {})", email, novoSaldo, versao);
+
+                        return EscreverSaldoResponse.builder()
+                                        .sucesso(true)
+                                        .mensagem("Saldo escrito com sucesso")
+                                        .versaoActual(versao)
+                                        .build();
+
+                } catch (Exception e) {
+                        log.error(" Erro ao escrever saldo: {}", e.getMessage(), e);
+                        return EscreverSaldoResponse.builder()
+                                        .sucesso(false)
+                                        .mensagem("Erro: " + e.getMessage())
+                                        .versaoActual(0)
+                                        .build();
+                }
+        }
+
+        @Override
+        public ObterSaldoResponse obterSaldo(String email) {
+                log.info(" [INFRA] Obtendo saldo para: {}", email);
+
+                try {
+                        UUID infraId = infraEstadoService.getInfraId();
+
+                        SaldoUtilizador saldo = saldoRepository
+                                        .findByEmailUtilizadorAndIdInfraestrutura(email, infraId)
+                                        .orElse(null);
+
+                        if (saldo == null) {
+                                return ObterSaldoResponse.builder()
+                                                .sucesso(true)
+                                                .email(email)
+                                                .saldo(0)
+                                                .mensagem("Saldo não encontrado (0)")
+                                                .build();
+                        }
+
+                        return ObterSaldoResponse.builder()
+                                        .sucesso(true)
+                                        .email(email)
+                                        .saldo(saldo.getSaldoParcial())
+                                        .mensagem("Saldo obtido com sucesso")
+                                        .build();
+
+                } catch (Exception e) {
+                        log.error(" Erro ao obter saldo: {}", e.getMessage());
+                        return ObterSaldoResponse.builder()
+                                        .sucesso(false)
+                                        .email(email)
+                                        .saldo(0)
+                                        .mensagem("Erro: " + e.getMessage())
+                                        .build();
+                }
+        }
+
+        @Override
+        public String ping() {
+                return String.format(
+                                "PONG | %s | Anúncios: %d | Entregas: %d | OK",
+                                infraNome,
+                                estadoService.getTotalAnuncios(),
+                                estadoService.getTotalEntregas());
+        }
+
+        @Override
+        @Transactional
+        public void clear() {
+                log.warn("clear() chamado em {}", infraNome);
+                entregaRepository.deleteAll();
+                anuncioRepository.deleteAll();
+                perfilRepository.deleteAll();
+                saldoRepository.deleteAll();
+                conexaoRepository.deleteAll();
+                localRepository.deleteAll();
+                restricaoRepository.deleteAll();
+                infraRepository.deleteAll();
+
+        }
+
+        private AnuncioInfo toAnuncioInfo(Anuncio anuncio) {
+                return AnuncioInfo.builder()
+                                .id(anuncio.getIdAnuncio().toString())
+                                .titulo(anuncio.getTitulo())
+                                .conteudo(anuncio.getConteudo())
+                                .categoria(anuncio.getCategoria())
+                                .autorEmail(anuncio.getAutorEmail())
+                                .dataPublicacao(anuncio.getDataPublicacao() != null
+                                                ? anuncio.getDataPublicacao().toString()
+                                                : null)
+                                .visivelDe(anuncio.getVisivelDe() != null
+                                                ? anuncio.getVisivelDe().toString()
+                                                : null)
+                                .visivelAte(anuncio.getVisivelAte() != null
+                                                ? anuncio.getVisivelAte().toString()
+                                                : null)
+                                .tipoPolitica(anuncio.getTipoPolitica())
+                                .politicaFiltro(anuncio.getPoliticaFiltro())
+                                .build();
+        }
+
+        // Helper politica whitelist/blacklist
+        @SuppressWarnings("null")
+        private boolean passaNaPolitica(Anuncio anuncio, List<PerfilUtilizador> perfil) {
+                if (anuncio.getTipoPolitica() == null || anuncio.getTipoPolitica().isBlank()) {
+                        return true;
+                }
+                if (anuncio.getPoliticaFiltro() == null || anuncio.getPoliticaFiltro().isBlank()) {
+                        return true;
+                }
+
+                var perfilMap = perfil.stream()
+                                .collect(Collectors.toMap(
+                                                PerfilUtilizador::getChave,
+                                                PerfilUtilizador::getValor,
+                                                (a, b) -> a));
+
+                String[] pares = anuncio.getPoliticaFiltro().split(",");
+
+                boolean corresponde = java.util.Arrays.stream(pares)
+                                .map(par -> par.split("="))
+                                .filter(kv -> kv.length == 2)
+                                .allMatch(kv -> {
+                                        String chave = kv[0].trim();
+                                        String valor = kv[1].trim();
+                                        String valorPerfil = perfilMap.get(chave);
+                                        return valorPerfil != null && valorPerfil.equalsIgnoreCase(valor);
+                                });
+
+                if ("WHITELIST".equalsIgnoreCase(anuncio.getTipoPolitica())) {
+                        return corresponde;
+                } else if ("BLACKLIST".equalsIgnoreCase(anuncio.getTipoPolitica())) {
+                        return !corresponde;
+                }
+                return true;
+        }
+
 }
