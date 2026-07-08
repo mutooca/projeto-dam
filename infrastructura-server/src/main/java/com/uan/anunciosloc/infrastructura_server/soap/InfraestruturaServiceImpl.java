@@ -382,7 +382,7 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                         if (anuncios.isEmpty()) {
                                 log.info("   Nenhum anúncio ativo encontrado");
                                 return ReceberAnunciosResponse.builder()
-                                                .sucesso(true)
+                                                .sucesso(true) // <-- MUDAR PARA true
                                                 .anuncios(List.of())
                                                 .mensagem("Nenhum anúncio disponível")
                                                 .build();
@@ -395,7 +395,7 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
 
                         List<AnuncioInfo> anunciosFiltrados = anuncios.stream()
                                         .filter(a -> passaNaPolitica(a, perfil))
-                                        .map(a -> toAnuncioInfo(a))
+                                        .map(this::toAnuncioInfo)
                                         .collect(Collectors.toList());
 
                         log.info("   Anúncios após filtros: {}", anunciosFiltrados.size());
@@ -425,11 +425,19 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                                 infraEstadoService.incrementarTotalEntregas();
                         }
 
-                        return ReceberAnunciosResponse.builder()
-                                        .sucesso(true)
+                       
+                        ReceberAnunciosResponse response = ReceberAnunciosResponse.builder()
+                                        .sucesso(true) // 
                                         .anuncios(anunciosFiltrados)
                                         .mensagem(anunciosFiltrados.size() + " anúncio(s) encontrado(s)")
                                         .build();
+
+                        log.info("   Resposta criada: sucesso={}, mensagem={}, tamanho={}",
+                                        response.isSucesso(),
+                                        response.getMensagem(),
+                                        response.getAnuncios() != null ? response.getAnuncios().size() : 0);
+
+                        return response;
 
                 } catch (Exception e) {
                         log.error(" Erro ao receber anúncios: {}", e.getMessage(), e);

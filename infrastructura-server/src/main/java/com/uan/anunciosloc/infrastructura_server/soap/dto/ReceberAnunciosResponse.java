@@ -9,19 +9,21 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlType(name = "ReceberAnunciosResponse", propOrder = {"sucesso", "anuncios", "mensagem"})
+@XmlType(name = "ReceberAnunciosResponse", 
+         namespace = "http://infrastructura.anunciosloc.uan.com",
+         propOrder = {"sucesso", "anuncios", "mensagem"})
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ReceberAnunciosResponse {
 
-    @XmlElement(name = "sucesso")
+    @XmlElement(name = "sucesso", namespace = "http://infrastructura.anunciosloc.uan.com")
     private boolean sucesso;
 
-    @XmlElement(name = "anuncios")
+    @XmlElement(name = "anuncios", namespace = "http://infrastructura.anunciosloc.uan.com")
     private List<AnuncioInfo> anuncios;
 
-    @XmlElement(name = "mensagem")
+    @XmlElement(name = "mensagem", namespace = "http://infrastructura.anunciosloc.uan.com")
     private String mensagem;
 }
