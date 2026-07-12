@@ -54,13 +54,27 @@ public interface InfrastructureServiceSEI {
                         @WebParam(name = "request") ReceberAnunciosRequestSOAP request);
 
         @WebMethod(operationName = "listarAnunciosPorEmail")
-        @WebResult(name = "AnunciosResponse") 
+        @WebResult(name = "AnunciosResponse")
         List<AnuncioInfoSOAP> listarAnunciosPorEmail(
-                        @WebParam(name = "email") String email); 
+                        @WebParam(name = "email") String email);
 
         @WebMethod(operationName = "marcarComoLido")
         @WebResult(name = "MensagemResponse")
         MensagemResponse marcarComoLido(
                         @WebParam(name = "idAnuncio") String idAnuncio,
                         @WebParam(name = "emailUtilizador") String emailUtilizador);
+
+        @WebMethod(operationName = "eliminarLocal")
+        @WebResult(name = "MensagemResponse")
+        MensagemResponse eliminarLocal(
+                        @WebParam(name = "idLocal") String idLocal,
+                        @WebParam(name = "emailUtilizador") String emailUtilizador);
+
+        @WebMethod(operationName = "eliminarAnuncio")
+        @WebResult(name = "MensagemResponse")
+        MensagemResponse eliminarAnuncio(
+                        @WebParam(name = "idAnuncio") String idAnuncio,
+                        @WebParam(name = "emailUtilizador") String emailUtilizador,
+                        @WebParam(name = "role") String role);
+
 }

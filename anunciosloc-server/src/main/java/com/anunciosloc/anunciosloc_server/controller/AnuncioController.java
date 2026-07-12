@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -94,6 +95,28 @@ public class AnuncioController {
             return ResponseEntity.ok(anuncios);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{idAnuncio}")
+    public ResponseEntity<?> eliminarAnuncio( 
+            @PathVariable String idAnuncio,
+            @RequestParam String emailUtilizador,
+            @RequestParam String role) {
+
+        log.info(" [ANUNCIOSLOC] Eliminando anúncio: {} por {} (role: {})",
+                idAnuncio, emailUtilizador, role);
+
+        try {
+            String resultado = anuncioService.eliminarAnuncio(idAnuncio, emailUtilizador, role);
+            return ResponseEntity.ok(Map.of(
+                    "sucesso", true,
+                    "mensagem", resultado));
+        } catch (Exception e) {
+            log.error(" Erro ao eliminar anúncio: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "sucesso", false,
+                    "mensagem", e.getMessage()));
         }
     }
 

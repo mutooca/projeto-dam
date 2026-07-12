@@ -2,6 +2,7 @@ package com.anunciosloc.anunciosloc_server.service;
 
 import com.anunciosloc.anunciosloc_server.uddi.dto.CriarLocalRequestSOAP;
 import com.anunciosloc.anunciosloc_server.uddi.dto.LocalInfoSOAP;
+import com.anunciosloc.anunciosloc_server.uddi.dto.MensagemResponse;
 import com.anunciosloc.anunciosloc_server.dto.InfraestruturaAtivaDTO;
 import com.anunciosloc.anunciosloc_server.model.Infraestrutura;
 import com.anunciosloc.anunciosloc_server.repository.InfraestruturaRepository;
@@ -105,6 +106,31 @@ public class LocalService {
         log.info("Local criado na infra: {}", nomeSelecionada);
 
         return resultado;
+    }
+
+    public String eliminarLocal(String idLocal, String emailUtilizador) {
+        log.info(" [ANUNCIOSLOC] Eliminando local: {} por {}", idLocal, emailUtilizador);
+
+        List<InfraProxy> infras = soapClient.obterClientes();
+        if (infras.isEmpty()) {
+            throw new RuntimeException("Nenhuma infraestrutura disponível");
+        }
+
+        
+        for (InfraProxy infra : infras) {
+            try {
+                MensagemResponse response = infra.eliminarLocal(idLocal, emailUtilizador);
+                if (response != null && response.isSucesso()) {
+                    log.info(" Local eliminado na infra: {}", infra.getServiceUrl());
+                    return response.getMensagem();
+                }
+            } catch (Exception e) {
+                log.warn(" Falha ao eliminar local na infra {}: {}",
+                        infra.getServiceUrl(), e.getMessage());
+            }
+        }
+
+        throw new RuntimeException("Não foi possível eliminar o local");
     }
 
     public List<LocalInfoSOAP> listarLocais(double latUser, double lonUser) {

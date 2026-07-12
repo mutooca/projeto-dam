@@ -55,4 +55,5 @@ public interface AnuncioRepository extends JpaRepository<Anuncio, UUID> {
     List<Anuncio> findAtivosByAutorEmail(@Param("email") String email);
 
     List<Anuncio> findByAutorEmailAndEstado(String autorEmail, String estado);
+    List<Anuncio> findByIdLocal(UUID idLocal);
 }

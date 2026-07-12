@@ -44,6 +44,12 @@ public interface InfrastructureServiceSEI {
         CriarLocalResponse criarLocal(
                         @WebParam(name = "request") CriarLocalRequest request);
 
+        @WebMethod(operationName = "eliminarLocal")
+        @WebResult(name = "MensagemResponse")
+        MensagemResponse eliminarLocal(
+                        @WebParam(name = "idLocal") String idLocal,
+                        @WebParam(name = "emailUtilizador") String emailUtilizador);
+
         @WebMethod(operationName = "listarLocais")
         @WebResult(name = "ListarLocaisResponse")
         ListarLocaisResponse listarLocais(
@@ -85,6 +91,13 @@ public interface InfrastructureServiceSEI {
         @WebResult(name = "ReceberAnunciosResponse")
         ReceberAnunciosResponse receberAnuncios(
                         @WebParam(name = "request") ReceberAnunciosRequest request);
+
+        @WebMethod(operationName = "eliminarAnuncio")
+        @WebResult(name = "MensagemResponse")
+        MensagemResponse eliminarAnuncio(
+                        @WebParam(name = "idAnuncio") String idAnuncio,
+                        @WebParam(name = "emailUtilizador") String emailUtilizador,
+                        @WebParam(name = "role") String role);
 
         @WebMethod(operationName = "listarAnunciosPorEmail")
         @WebResult(name = "AnunciosResponse")

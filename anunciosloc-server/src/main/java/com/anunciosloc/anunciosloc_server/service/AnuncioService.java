@@ -40,14 +40,13 @@ public class AnuncioService {
     public List<AnuncioInfoSOAP> receberAnuncios(String email, String localId) {
         log.info(" [ANUNCIOSLOC] Recebendo anúncios para: {} no local: {}", email, localId);
 
-        
         List<InfraProxy> infras = soapClient.obterClientes();
         if (infras.isEmpty()) {
             log.warn(" Nenhuma infraestrutura disponível");
             return List.of();
         }
 
-        //  Para cada infraestrutura, tenta buscar os anúncios
+        // Para cada infraestrutura, tenta buscar os anúncios
         for (InfraProxy infra : infras) {
             try {
                 ReceberAnunciosRequestSOAP request = ReceberAnunciosRequestSOAP.builder()
@@ -56,14 +55,14 @@ public class AnuncioService {
                         .build();
 
                 List<AnuncioInfoSOAP> anuncios = soapClient.receberAnunciosList(request);
-                
+
                 if (anuncios != null && !anuncios.isEmpty()) {
-                    log.info(" {} anúncios encontrados na infra: {}", 
+                    log.info(" {} anúncios encontrados na infra: {}",
                             anuncios.size(), infra.getServiceUrl());
                     return anuncios;
                 }
             } catch (Exception e) {
-                log.warn(" Falha ao buscar anúncios na infra {}: {}", 
+                log.warn(" Falha ao buscar anúncios na infra {}: {}",
                         infra.getServiceUrl(), e.getMessage());
             }
         }
@@ -72,10 +71,34 @@ public class AnuncioService {
         return List.of();
     }
 
+    public String eliminarAnuncio(String idAnuncio, String emailUtilizador, String role) {
+        log.info(" [ANUNCIOSLOC] Eliminando anúncio: {} por {} (role: {})",
+                idAnuncio, emailUtilizador, role);
+
+        List<InfraProxy> infras = soapClient.obterClientes();
+        if (infras.isEmpty()) {
+            throw new RuntimeException("Nenhuma infraestrutura disponível");
+        }
+
+        for (InfraProxy infra : infras) {
+            try {
+                MensagemResponse response = infra.eliminarAnuncio(idAnuncio, emailUtilizador, role);
+                if (response != null && response.isSucesso()) {
+                    log.info(" Anúncio eliminado na infra: {}", infra.getServiceUrl());
+                    return response.getMensagem();
+                }
+            } catch (Exception e) {
+                log.warn(" Falha ao eliminar anúncio na infra {}: {}",
+                        infra.getServiceUrl(), e.getMessage());
+            }
+        }
+
+        throw new RuntimeException("Não foi possível eliminar o anúncio");
+    }
+
     public List<AnuncioInfoSOAP> listarMeusAnuncios(String email) {
         log.info(" [ANUNCIOSLOC] Listando meus anúncios: {}", email);
 
-        
         List<InfraProxy> infras = soapClient.obterClientes();
 
         if (infras.isEmpty()) {
@@ -85,7 +108,6 @@ public class AnuncioService {
 
         log.info(" {} infraestruturas disponíveis", infras.size());
 
-        
         List<AnuncioInfoSOAP> todosAnuncios = new ArrayList<>();
 
         for (InfraProxy infra : infras) {
@@ -109,10 +131,12 @@ public class AnuncioService {
 
         log.info(" Total de anúncios encontrados: {}", todosAnuncios.size());
 
-        //ordenar por data de post mais recente, sao first 
+        // ordenar por data de post mais recente, sao first
         todosAnuncios.sort((a1, a2) -> {
-            if (a1.getDataPublicacao() == null) return 1;
-            if (a2.getDataPublicacao() == null) return -1;
+            if (a1.getDataPublicacao() == null)
+                return 1;
+            if (a2.getDataPublicacao() == null)
+                return -1;
             return a2.getDataPublicacao().compareTo(a1.getDataPublicacao());
         });
 
@@ -122,23 +146,21 @@ public class AnuncioService {
     public MensagemResponse marcarComoLido(String idAnuncio, String emailUtilizador) {
         log.info(" [ANUNCIOSLOC] Marcando anúncio como lido");
 
-       
         List<InfraProxy> infras = soapClient.obterClientes();
-        
+
         if (infras.isEmpty()) {
             throw new RuntimeException("Nenhuma infraestrutura disponível");
         }
 
-        
         for (InfraProxy infra : infras) {
             try {
                 MensagemResponse resultado = infra.marcarComoLido(idAnuncio, emailUtilizador);
-                log.info(" Anúncio marcado como lido na infra: {}", 
-                         infra.getServiceUrl());
+                log.info(" Anúncio marcado como lido na infra: {}",
+                        infra.getServiceUrl());
                 return resultado;
             } catch (Exception e) {
-                log.warn("  Falha ao marcar como lido na infra {}: {}", 
-                         infra.getServiceUrl(), e.getMessage());
+                log.warn("  Falha ao marcar como lido na infra {}: {}",
+                        infra.getServiceUrl(), e.getMessage());
             }
         }
 

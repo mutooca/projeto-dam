@@ -33,11 +33,13 @@ public interface InfraProxy {
     ObterSaldoResponse obterSaldo(String email);
 
     String criarLocal(CriarLocalRequestSOAP request);
+    MensagemResponse eliminarLocal(String idLocal, String emailUtilizador);
 
     ListarLocaisResponse listarLocais(Double lat, Double lon);
 
     String postarAnuncio(PostarAnuncioRequestSOAP request);
     ReceberAnunciosResponse receberAnuncios(ReceberAnunciosRequestSOAP request);
+    MensagemResponse eliminarAnuncio(String idAnuncio, String emailUtilizador, String role);
     List<AnuncioInfoSOAP> listarAnunciosPorEmail(String email);
     MensagemResponse marcarComoLido(String idAnuncio, String emailUtilizador);
 

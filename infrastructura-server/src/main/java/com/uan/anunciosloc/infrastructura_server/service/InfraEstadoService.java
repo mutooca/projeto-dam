@@ -27,7 +27,7 @@ public class InfraEstadoService {
 
     private final InfraestruturaRepository infraRepository;
     private final SaldoUtilizadorRepository saldoRepository;
-    private final UddiRegistrarClient uddiRegistrarClient; 
+    private final UddiRegistrarClient uddiRegistrarClient;
     private final WebClient.Builder webClientBuilder;
     private final ObjectMapper objectMapper;
 
@@ -80,7 +80,6 @@ public class InfraEstadoService {
 
         log.info("═══════════════════════════════════════════════════════════════");
 
-      
         infraCache = infraRepository.findByNome(infraNome).orElse(null);
 
         if (infraCache == null) {
@@ -130,20 +129,19 @@ public class InfraEstadoService {
         }
     }
 
-
     @SuppressWarnings("null")
     private void sincronizarSaldos() {
         log.info(" [INFRA] Sincronizando saldos com o AnunciosLoc-Server...");
 
         try {
             String response = webClientBuilder
-                .baseUrl(anuncioslocUrl)
-                .build()
-                .get()
-                .uri("/api/internal/sincronizacao/saldos")
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
+                    .baseUrl(anuncioslocUrl)
+                    .build()
+                    .get()
+                    .uri("/api/internal/sincronizacao/saldos")
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
 
             if (response == null) {
                 log.warn(" Resposta vazia do AnunciosLoc");
@@ -151,9 +149,9 @@ public class InfraEstadoService {
             }
 
             Map<String, Integer> saldos = objectMapper.readValue(
-                response,
-                new TypeReference<Map<String, Integer>>() {}
-            );
+                    response,
+                    new TypeReference<Map<String, Integer>>() {
+                    });
 
             log.info(" Recebidos {} saldos do AnunciosLoc", saldos.size());
 
@@ -165,16 +163,16 @@ public class InfraEstadoService {
                 Integer saldo = entry.getValue();
 
                 SaldoUtilizador saldoUser = saldoRepository
-                    .findByEmailUtilizadorAndIdInfraestrutura(email, infraId)
-                    .orElseGet(() -> {
-                        SaldoUtilizador novo = new SaldoUtilizador();
-                        novo.setEmailUtilizador(email);
-                        novo.setIdInfraestrutura(infraId);
-                        novo.setSaldoParcial(0);
-                        novo.setPontosGanhos(0);
-                        novo.setPontosGastos(0);
-                        return novo;
-                    });
+                        .findByEmailUtilizadorAndIdInfraestrutura(email, infraId)
+                        .orElseGet(() -> {
+                            SaldoUtilizador novo = new SaldoUtilizador();
+                            novo.setEmailUtilizador(email);
+                            novo.setIdInfraestrutura(infraId);
+                            novo.setSaldoParcial(0);
+                            novo.setPontosGanhos(0);
+                            novo.setPontosGastos(0);
+                            return novo;
+                        });
 
                 saldoUser.setSaldoParcial(saldo);
                 saldoUser.setUltimaAtualizacao(LocalDateTime.now());
@@ -263,5 +261,23 @@ public class InfraEstadoService {
     public void incrementarTotalConexoes() {
         infraCache.setTotalConexoes(getTotalConexoes() + 1);
         infraRepository.save(infraCache);
+    }
+
+    @SuppressWarnings("null")
+    @Transactional
+    public void decrementarTotalLocais() {
+        int total = getTotalLocais() - 1;
+        infraCache.setTotalLocais(total < 0 ? 0 : total);
+        infraRepository.save(infraCache);
+        log.info("   Total de locais decrementado para: {}", infraCache.getTotalLocais());
+    }
+
+    @SuppressWarnings("null")
+    @Transactional
+    public void decrementarTotalAnuncios(int quantidade) {
+        int total = getTotalAnuncios() - quantidade;
+        infraCache.setTotalAnuncios(total < 0 ? 0 : total);
+        infraRepository.save(infraCache);
+        log.info("   Total de anúncios decrementado para: {}", infraCache.getTotalAnuncios());
     }
 }

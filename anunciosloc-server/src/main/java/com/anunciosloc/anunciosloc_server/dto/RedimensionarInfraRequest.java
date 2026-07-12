@@ -1,27 +1,27 @@
 package com.anunciosloc.anunciosloc_server.dto;
 
-import jakarta.validation.constraints.*;
-import lombok.*;
+import jakarta.validation.constraints.Min;
+//import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class RedimensionarInfraRequest {
 
-    @NotBlank(message = "Email do gestor é obrigatório")
-    @Email
-    private String emailGestor;
-
-    @NotNull
     @Min(value = 1, message = "Capacidade deve ser pelo menos 1")
-    private Integer novaCapacidade;
+    private Integer capacidade;
 
-    @NotNull
-    @Min(value = 0)
-    private Integer novoBonusEntrega;
+    @Min(value = 0, message = "Bónus de entrega não pode ser negativo")
+    private Integer bonusEntrega;
 
-    @NotNull
-    @Min(value = 0)
-    private Integer novoCustoPost;
+    @Min(value = 0, message = "Custo de post não pode ser negativo")
+    private Integer custoPost;
+
+    @Min(value = 1, message = "Raio deve ser pelo menos 1 metro")
+    private Double raio;
 }

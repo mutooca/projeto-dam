@@ -54,6 +54,10 @@ public class Infraestrutura {
     @Column(columnDefinition = "TEXT")
     private String restricoes;
 
+    @Version
+    @Column(name = "versao")
+    private Integer versao;
+
     
     
 }

@@ -181,6 +181,25 @@ public class InfrastruturaSoapClient {
                 return port.criarLocal(request);
             }
 
+            @Override
+            public MensagemResponse eliminarLocal(String idLocal, String emailUtilizador) {
+                log.info(" SOAP: eliminarLocal - idLocal={}, email={}", idLocal, emailUtilizador);
+                try {
+                    MensagemResponse response = port.eliminarLocal(idLocal, emailUtilizador);
+                    if (response != null) {
+                        log.info(" Resposta: sucesso={}, mensagem={}",
+                                response.isSucesso(), response.getMensagem());
+                    }
+                    return response;
+                } catch (Exception e) {
+                    log.error(" Erro ao eliminar local: {}", e.getMessage());
+                    return MensagemResponse.builder()
+                            .sucesso(false)
+                            .mensagem("Erro: " + e.getMessage())
+                            .build();
+                }
+            }
+
             public ListarLocaisResponse listarLocais(Double lat, Double lon) {
                 log.info(" SOAP: listarLocais - lat={}, lon={}", lat, lon);
                 try {
@@ -255,6 +274,26 @@ public class InfrastruturaSoapClient {
                             .sucesso(false)
                             .mensagem("Erro: " + e.getMessage())
                             .anuncios(List.of())
+                            .build();
+                }
+            }
+
+            @Override
+            public MensagemResponse eliminarAnuncio(String idAnuncio, String emailUtilizador, String role) {
+                log.info(" SOAP: eliminarAnuncio - idAnuncio={}, email={}, role={}",
+                        idAnuncio, emailUtilizador, role);
+                try {
+                    MensagemResponse response = port.eliminarAnuncio(idAnuncio, emailUtilizador, role);
+                    if (response != null) {
+                        log.info(" Resposta: sucesso={}, mensagem={}",
+                                response.isSucesso(), response.getMensagem());
+                    }
+                    return response;
+                } catch (Exception e) {
+                    log.error(" Erro ao eliminar anúncio: {}", e.getMessage());
+                    return MensagemResponse.builder()
+                            .sucesso(false)
+                            .mensagem("Erro: " + e.getMessage())
                             .build();
                 }
             }

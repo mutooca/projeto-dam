@@ -1,29 +1,30 @@
 package com.anunciosloc.anunciosloc_server.dto;
 
-import jakarta.validation.constraints.*;
-import lombok.*;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class RecolocarInfraRequest {
 
-    @NotBlank(message = "Email do gestor é obrigatório")
-    @Email
-    private String emailGestor;
+    @NotNull(message = "Latitude é obrigatória")
+    @Min(value = -90, message = "Latitude deve estar entre -90 e 90")
+    @Max(value = 90, message = "Latitude deve estar entre -90 e 90")
+    private Double latitude;
 
-    @NotNull
-    @DecimalMin(value = "-90.0")
-    @DecimalMax(value = "90.0")
-    private Double novaLatitude;
+    @NotNull(message = "Longitude é obrigatória")
+    @Min(value = -180, message = "Longitude deve estar entre -180 e 180")
+    @Max(value = 180, message = "Longitude deve estar entre -180 e 180")
+    private Double longitude;
 
-    @NotNull
-    @DecimalMin(value = "-180.0")
-    @DecimalMax(value = "180.0")
-    private Double novaLongitude;
-
-    @NotNull
-    @DecimalMin(value = "1.0")
-    private Double novoRaio;
+    @NotNull(message = "Raio é obrigatório")
+    @Min(value = 1, message = "Raio deve ser pelo menos 1 metro")
+    private Double raio;
 }

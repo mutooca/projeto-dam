@@ -318,6 +318,71 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
         @SuppressWarnings("null")
         @Override
         @Transactional
+        public MensagemResponse eliminarLocal(String idLocal, String emailUtilizador) {
+                log.info(" [INFRA] Eliminando local: {} por {}", idLocal, emailUtilizador);
+
+                try {
+                        UUID localUUID = UUID.fromString(idLocal);
+
+                        Local local = localRepository.findById(localUUID)
+                                        .orElseThrow(() -> new RuntimeException("Local não encontrado"));
+
+                        log.info("   Local encontrado: {}", local.getNome());
+
+                        List<Anuncio> anuncios = anuncioRepository.findByIdLocal(localUUID);
+
+                        int totalAnunciosEliminados = 0;
+                        int totalEntregasEliminadas = 0;
+
+                        if (!anuncios.isEmpty()) {
+                                log.info("   Eliminando {} anúncios associados", anuncios.size());
+
+                                for (Anuncio anuncio : anuncios) {
+
+                                        List<EntregaAnuncio> entregas = entregaRepository
+                                                        .findByIdAnuncio(anuncio.getIdAnuncio());
+                                        if (!entregas.isEmpty()) {
+                                                totalEntregasEliminadas += entregas.size();
+                                                entregaRepository.deleteAll(entregas);
+                                                log.info("     Entregas do anúncio {} eliminadas: {}",
+                                                                anuncio.getIdAnuncio(), entregas.size());
+                                        }
+
+                                        totalAnunciosEliminados++;
+                                }
+
+                                anuncioRepository.deleteAll(anuncios);
+
+                                infraEstadoService.decrementarTotalAnuncios(totalAnunciosEliminados);
+                        }
+
+                        localRepository.delete(local);
+                        infraEstadoService.decrementarTotalLocais();
+
+                        log.info("  Local eliminado com sucesso");
+                        log.info("   Anúncios eliminados: {}", totalAnunciosEliminados);
+                        log.info("   Entregas eliminadas: {}", totalEntregasEliminadas);
+                        log.info("   Saldos dos utilizadores NÃO foram alterados");
+
+                        return MensagemResponse.builder()
+                                        .sucesso(true)
+                                        .mensagem(String.format(
+                                                        "Local eliminado com sucesso! %d anúncios e %d entregas removidos.",
+                                                        totalAnunciosEliminados, totalEntregasEliminadas))
+                                        .build();
+
+                } catch (Exception e) {
+                        log.error("  Erro ao eliminar local: {}", e.getMessage(), e);
+                        return MensagemResponse.builder()
+                                        .sucesso(false)
+                                        .mensagem("Erro ao eliminar local: " + e.getMessage())
+                                        .build();
+                }
+        }
+
+        @SuppressWarnings("null")
+        @Override
+        @Transactional
         public PostarAnuncioResponse postarAnuncio(PostarAnuncioRequest request) {
                 log.info("[INFRA] Postando anúncio");
                 log.info("   Autor: {}", request.getEmailAutor());
@@ -508,6 +573,75 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                                         .sucesso(false)
                                         .mensagem("Erro: " + e.getMessage())
                                         .anuncios(List.of())
+                                        .build();
+                }
+        }
+
+        @SuppressWarnings("null")
+        @Override
+        @Transactional
+        public MensagemResponse eliminarAnuncio(String idAnuncio, String emailUtilizador, String role) {
+                log.info(" [INFRA] Eliminando anúncio: {} por {} (role: {})",
+                                idAnuncio, emailUtilizador, role);
+
+                try {
+                        UUID anuncioUUID = UUID.fromString(idAnuncio);
+
+                        
+                        Anuncio anuncio = anuncioRepository.findById(anuncioUUID)
+                                        .orElseThrow(() -> new RuntimeException("Anúncio não encontrado"));
+
+                        log.info("   Anúncio encontrado: {}", anuncio.getTitulo());
+                        log.info("   Autor: {}", anuncio.getAutorEmail());
+
+                        
+                        boolean isDono = anuncio.getAutorEmail().equalsIgnoreCase(emailUtilizador);
+                        boolean isAdmin = "ADMIN".equalsIgnoreCase(role);
+
+                        if (!isDono && !isAdmin) {
+                                log.warn("  Utilizador {} não tem permissão para eliminar", emailUtilizador);
+                                return MensagemResponse.builder()
+                                                .sucesso(false)
+                                                .mensagem("Apenas o dono do anúncio ou administrador podem eliminar")
+                                                .build();
+                        }
+
+                        log.info("    Permissão concedida: {} {}",
+                                        isDono ? "(DONO)" : "",
+                                        isAdmin ? "(ADMIN)" : "");
+
+                        
+                        List<EntregaAnuncio> entregas = entregaRepository.findByIdAnuncio(anuncioUUID);
+                        int totalEntregasEliminadas = 0;
+
+                        if (!entregas.isEmpty()) {
+                                totalEntregasEliminadas = entregas.size();
+                                entregaRepository.deleteAll(entregas);
+                                log.info("   {} entregas eliminadas", totalEntregasEliminadas);
+                        }
+
+                        
+                        anuncioRepository.delete(anuncio);
+
+                        
+                        infraEstadoService.decrementarTotalAnuncios(1);
+
+                        log.info("  Anúncio eliminado com sucesso");
+                        log.info("   Entregas eliminadas: {}", totalEntregasEliminadas);
+                        log.info("   Saldos dos utilizadores NÃO foram alterados");
+
+                        return MensagemResponse.builder()
+                                        .sucesso(true)
+                                        .mensagem(String.format(
+                                                        "Anúncio eliminado com sucesso! %d entregas removidas.",
+                                                        totalEntregasEliminadas))
+                                        .build();
+
+                } catch (Exception e) {
+                        log.error("  Erro ao eliminar anúncio: {}", e.getMessage(), e);
+                        return MensagemResponse.builder()
+                                        .sucesso(false)
+                                        .mensagem("Erro ao eliminar anúncio: " + e.getMessage())
                                         .build();
                 }
         }
