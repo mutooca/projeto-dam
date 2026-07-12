@@ -1,5 +1,7 @@
 package com.anunciosloc.anunciosloc_server.uddi;
 
+import java.util.List;
+
 import com.anunciosloc.anunciosloc_server.uddi.dto.*;
 import jakarta.jws.WebMethod;
 import jakarta.jws.WebParam;
@@ -50,6 +52,11 @@ public interface InfrastructureServiceSEI {
         @WebResult(name = "ReceberAnunciosResponse")
         ReceberAnunciosResponse receberAnuncios(
                         @WebParam(name = "request") ReceberAnunciosRequestSOAP request);
+
+        @WebMethod(operationName = "listarAnunciosPorEmail")
+        @WebResult(name = "AnunciosResponse") 
+        List<AnuncioInfoSOAP> listarAnunciosPorEmail(
+                        @WebParam(name = "email") String email); 
 
         @WebMethod(operationName = "marcarComoLido")
         @WebResult(name = "MensagemResponse")

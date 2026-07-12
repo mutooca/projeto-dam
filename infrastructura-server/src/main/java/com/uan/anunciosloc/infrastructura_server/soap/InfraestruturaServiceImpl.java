@@ -268,10 +268,10 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                                 if (distancia <= raioLocal) {
                                         LocalInfo localInfo = toLocalInfo(local, distancia);
                                         locaisComDistancia.add(localInfo);
-                                        log.info("   ✅ Local '{}' está DENTRO do raio ({}m <= {}m)",
+                                        log.info("    Local '{}' está DENTRO do raio ({}m <= {}m)",
                                                         local.getNome(), Math.round(distancia), raioLocal);
                                 } else {
-                                        log.info("   ❌ Local '{}' está FORA do raio ({}m > {}m)",
+                                        log.info("    Local '{}' está FORA do raio ({}m > {}m)",
                                                         local.getNome(), Math.round(distancia), raioLocal);
                                 }
                         }
@@ -282,7 +282,6 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
 
                         log.info(" [INFRA-SERVER] Encontrados {} locais próximos", locaisComDistancia.size());
 
-                        // ✅ LOG DA RESPOSTA ANTES DE RETORNAR
                         ListarLocaisResponse response = ListarLocaisResponse.builder()
                                         .sucesso(true)
                                         .locais(locaisComDistancia)
@@ -294,7 +293,6 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                                         response.getMensagem(),
                                         response.getLocais() != null ? response.getLocais().size() : 0);
 
-                        // ✅ LOG DETALHADO DOS LOCAIS NA RESPOSTA
                         if (response.getLocais() != null) {
                                 for (LocalInfo info : response.getLocais()) {
                                         log.info("   Local na resposta: id={}, nome={}, distância={}m",
@@ -444,7 +442,7 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
 
                         List<AnuncioInfo> anunciosFiltrados = anuncios.stream()
                                         .filter(a -> passaNaPolitica(a, perfil))
-                                        .map(this::toAnuncioInfo)
+                                        .map(a -> toAnuncioInfo(a, email))
                                         .collect(Collectors.toList());
 
                         log.info("   Anúncios após filtros: {}", anunciosFiltrados.size());
@@ -514,6 +512,40 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                 }
         }
 
+        public List<AnuncioInfo> listarAnunciosPorEmail(String email) {
+                log.info(" [INFRA] Listando anúncios do autor: {}", email);
+
+                try {
+
+                        List<Anuncio> anuncios = anuncioRepository.findByAutorEmail(email);
+
+                        if (anuncios.isEmpty()) {
+                                log.info(" Nenhum anúncio encontrado para: {}", email);
+                                return List.of();
+                        }
+
+                        log.info(" Encontrados {} anúncios para: {}", anuncios.size(), email);
+
+                        List<AnuncioInfo> result = anuncios.stream()
+                                        .map(a -> toAnuncioInfo(a, email))
+                                        .collect(Collectors.toList());
+
+                        for (AnuncioInfo info : result) {
+                                log.info("   Anúncio: id={}, título={}, estado={}, local={}",
+                                                info.getId(),
+                                                info.getTitulo(),
+                                                info.getEstado(),
+                                                info.getNomeLocal());
+                        }
+
+                        return result;
+
+                } catch (Exception e) {
+                        log.error(" Erro ao listar anúncios do autor {}: {}", email, e.getMessage(), e);
+                        return List.of();
+                }
+        }
+
         @SuppressWarnings("null")
         @Override
         @Transactional
@@ -541,6 +573,7 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                                 return MensagemResponse.builder()
                                                 .sucesso(true)
                                                 .mensagem("Anúncio já foi lido anteriormente")
+                                                .estado("LIDO")
                                                 .build();
                         }
 
@@ -626,6 +659,8 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                                         .mensagem(String.format(
                                                         " Anúncio lido! Dono ganhou %d pontos, Leitor ganhou %d pontos",
                                                         bonusEntrega, bonusLeitor))
+                                        .estado("LIDO")
+                                        .idAnuncio(idAnuncio)
                                         .build();
 
                 } catch (Exception e) {
@@ -859,7 +894,29 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
 
         }
 
-        private AnuncioInfo toAnuncioInfo(Anuncio anuncio) {
+        @SuppressWarnings({ "null" })
+        private AnuncioInfo toAnuncioInfo(Anuncio anuncio, String emailUtilizador) {
+                String nomeLocal = null;
+                if (anuncio.getIdLocal() != null) {
+                        Local local = localRepository.findById(anuncio.getIdLocal()).orElse(null);
+                        if (local != null) {
+                                nomeLocal = local.getNome();
+                        }
+                }
+
+                String estado = "NAO_ENTREGUE";
+                if (emailUtilizador != null && !emailUtilizador.isEmpty()) {
+                        Optional<EntregaAnuncio> entrega = entregaRepository
+                                        .findByIdAnuncioAndEmailUtilizador(anuncio.getIdAnuncio(), emailUtilizador);
+                        if (entrega.isPresent()) {
+                                estado = entrega.get().getEstadoEntrega();
+                        }
+                }
+
+                UUID idAnuncio = anuncio.getIdAnuncio();
+                long totalEntregas = entregaRepository.countEntregasByAnuncio(idAnuncio);
+                long totalLeituras = entregaRepository.countLeiturasByAnuncio(idAnuncio);
+
                 return AnuncioInfo.builder()
                                 .id(anuncio.getIdAnuncio().toString())
                                 .titulo(anuncio.getTitulo())
@@ -877,13 +934,17 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                                                 : null)
                                 .tipoPolitica(anuncio.getTipoPolitica())
                                 .politicaFiltro(anuncio.getPoliticaFiltro())
+                                .nomeLocal(nomeLocal)
+                                .estado(estado)
+                                .totalEntregas((int) totalEntregas)
+                                .totalLeituras((int) totalLeituras)
                                 .build();
         }
 
         // Helper para converter Local ---> LocalInfo com distância
         private LocalInfo toLocalInfo(Local local, Double distancia) {
                 log.info("   Convertendo Local para LocalInfo: id={}, nome={}, distancia={}",
-            local.getIdLocal(), local.getNome(), distancia != null ? Math.round(distancia) : "?");
+                                local.getIdLocal(), local.getNome(), distancia != null ? Math.round(distancia) : "?");
 
                 LocalInfo info = LocalInfo.builder()
                                 .idLocal(local.getIdLocal() != null ? local.getIdLocal().toString() : null)

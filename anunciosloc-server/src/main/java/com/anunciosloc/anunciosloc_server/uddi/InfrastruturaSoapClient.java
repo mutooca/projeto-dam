@@ -90,7 +90,6 @@ public class InfrastruturaSoapClient {
 
         Service service = Service.create(wsdlUrl, SERVICE_QNAME);
 
-       
         service.setHandlerResolver(new HandlerResolver() {
             @Override
             @SuppressWarnings("rawtypes")
@@ -257,6 +256,33 @@ public class InfrastruturaSoapClient {
                             .mensagem("Erro: " + e.getMessage())
                             .anuncios(List.of())
                             .build();
+                }
+            }
+
+            @Override
+            public List<AnuncioInfoSOAP> listarAnunciosPorEmail(String email) {
+                log.info(" SOAP: listarAnunciosPorEmail - email={}", email);
+                try {
+                    List<AnuncioInfoSOAP> response = port.listarAnunciosPorEmail(email);
+
+                    if (response != null) {
+                        log.info(" Resposta SOAP: {} anúncios encontrados", response.size());
+                        for (AnuncioInfoSOAP a : response) {
+                            log.info("   - ID: {}, Título: {}, Local: {}, Estado: {}",
+                                    a.getId(),
+                                    a.getTitulo(),
+                                    a.getNomeLocal(),
+                                    a.getEstado());
+                        }
+                    } else {
+                        log.warn(" Resposta SOAP é null");
+                    }
+
+                    return response != null ? response : List.of();
+
+                } catch (Exception e) {
+                    log.error(" Erro ao listar anúncios por email: {}", e.getMessage());
+                    return List.of();
                 }
             }
 

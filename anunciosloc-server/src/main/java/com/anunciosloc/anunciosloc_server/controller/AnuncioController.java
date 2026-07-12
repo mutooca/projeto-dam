@@ -97,6 +97,25 @@ public class AnuncioController {
         }
     }
 
+    @GetMapping("/meus")
+    public ResponseEntity<?> listarMeusAnuncios(
+            @RequestParam String email) {
+
+        log.info(" [ANUNCIOSLOC] Listando meus anúncios para: {}", email);
+
+        try {
+            List<AnuncioInfoSOAP> anuncios = anuncioService.listarMeusAnuncios(email);
+
+            log.info(" {} anúncios encontrados para: {}", anuncios.size(), email);
+
+            return ResponseEntity.ok(anuncios);
+
+        } catch (Exception e) {
+            log.error(" Erro ao listar meus anúncios: {}", e.getMessage());
+            return ResponseEntity.badRequest().body("Erro: " + e.getMessage());
+        }
+    }
+
     @PostMapping("/marcar-lido")
     public ResponseEntity<?> marcarComoLido(
             @RequestBody MarcarLidoRequest request) {

@@ -49,4 +49,10 @@ public interface AnuncioRepository extends JpaRepository<Anuncio, UUID> {
     @Query("SELECT a FROM Anuncio a WHERE a.autorEmail = :email " +
            "ORDER BY a.dataPublicacao DESC LIMIT 1")
     Anuncio findUltimoAnuncioByEmail(@Param("email") String email);
+
+    
+    @Query("SELECT a FROM Anuncio a WHERE a.autorEmail = :email AND a.estado = 'ATIVO'")
+    List<Anuncio> findAtivosByAutorEmail(@Param("email") String email);
+
+    List<Anuncio> findByAutorEmailAndEstado(String autorEmail, String estado);
 }

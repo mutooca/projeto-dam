@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
              "id", "titulo", "conteudo", "categoria", 
              "autorEmail", "dataPublicacao", "visivelDe", 
              "visivelAte", "tipoPolitica", "politicaFiltro",
-             "nomeLocal"  
+             "nomeLocal","estado", "totalEntregas", "totalLeituras"
          })
 @Data
 @Builder
@@ -53,4 +53,13 @@ public class AnuncioInfoSOAP {
 
     @XmlElement(name = "nomeLocal", namespace = "http://infrastructura.anunciosloc.uan.com")
     private String nomeLocal;
+
+    @XmlElement(name = "estado", namespace = "http://infrastructura.anunciosloc.uan.com")
+    private String estado;
+
+    @XmlElement(name = "totalEntregas", namespace = "http://infrastructura.anunciosloc.uan.com")
+    private Integer totalEntregas;
+
+    @XmlElement(name = "totalLeituras", namespace = "http://infrastructura.anunciosloc.uan.com")
+    private Integer totalLeituras;
 }

@@ -23,6 +23,14 @@ public interface EntregaAnuncioRepository extends JpaRepository<EntregaAnuncio, 
     List<EntregaAnuncio> findByEmailUtilizador(String emailUtilizador);
 
     
+    @Query("SELECT COUNT(e) FROM EntregaAnuncio e WHERE e.idAnuncio = :idAnuncio")
+    long countEntregasByAnuncio(@Param("idAnuncio") UUID idAnuncio);
+
+    
+    @Query("SELECT COUNT(e) FROM EntregaAnuncio e WHERE e.idAnuncio = :idAnuncio AND e.estadoEntrega = 'LIDO'")
+    long countLeiturasByAnuncio(@Param("idAnuncio") UUID idAnuncio);
+
+    
     @Query("SELECT e FROM EntregaAnuncio e " +
            "WHERE e.emailUtilizador = :email " +
            "AND e.estadoEntrega = 'ENTREGUE' " +
@@ -35,11 +43,6 @@ public interface EntregaAnuncioRepository extends JpaRepository<EntregaAnuncio, 
            "ORDER BY e.dataLeitura DESC")
     List<EntregaAnuncio> findEntregasLidasByEmail(@Param("email") String email);
 
-    
-    @Query("SELECT COUNT(e) FROM EntregaAnuncio e " +
-           "WHERE e.idAnuncio = :idAnuncio " +
-           "AND e.estadoEntrega = 'LIDO'")
-    long countLeiturasByAnuncio(@Param("idAnuncio") UUID idAnuncio);
 
     @Query("SELECT e FROM EntregaAnuncio e " +
            "WHERE e.idAnuncio = :idAnuncio " +

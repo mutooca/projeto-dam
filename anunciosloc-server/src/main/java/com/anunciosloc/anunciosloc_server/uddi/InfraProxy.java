@@ -2,6 +2,9 @@ package com.anunciosloc.anunciosloc_server.uddi;
 
 
 
+import java.util.List;
+
+import com.anunciosloc.anunciosloc_server.uddi.dto.AnuncioInfoSOAP;
 import com.anunciosloc.anunciosloc_server.uddi.dto.CriarLocalRequestSOAP;
 import com.anunciosloc.anunciosloc_server.uddi.dto.EscreverSaldoResponse;
 import com.anunciosloc.anunciosloc_server.uddi.dto.InfraInfoResponse;
@@ -35,6 +38,7 @@ public interface InfraProxy {
 
     String postarAnuncio(PostarAnuncioRequestSOAP request);
     ReceberAnunciosResponse receberAnuncios(ReceberAnunciosRequestSOAP request);
+    List<AnuncioInfoSOAP> listarAnunciosPorEmail(String email);
     MensagemResponse marcarComoLido(String idAnuncio, String emailUtilizador);
 
 }

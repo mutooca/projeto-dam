@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -69,6 +70,53 @@ public class AnuncioService {
 
         log.info(" Nenhum anúncio encontrado para o local: {}", localId);
         return List.of();
+    }
+
+    public List<AnuncioInfoSOAP> listarMeusAnuncios(String email) {
+        log.info(" [ANUNCIOSLOC] Listando meus anúncios: {}", email);
+
+        
+        List<InfraProxy> infras = soapClient.obterClientes();
+
+        if (infras.isEmpty()) {
+            log.warn(" Nenhuma infraestrutura disponível");
+            return List.of();
+        }
+
+        log.info(" {} infraestruturas disponíveis", infras.size());
+
+        
+        List<AnuncioInfoSOAP> todosAnuncios = new ArrayList<>();
+
+        for (InfraProxy infra : infras) {
+            try {
+                log.info(" Buscando anúncios na infra: {}", infra.getServiceUrl());
+
+                List<AnuncioInfoSOAP> anuncios = infra.listarAnunciosPorEmail(email);
+
+                if (anuncios != null && !anuncios.isEmpty()) {
+                    todosAnuncios.addAll(anuncios);
+                    log.info("  {} anúncios encontrados na infra", anuncios.size());
+                } else {
+                    log.info("  Nenhum anúncio encontrado na infra");
+                }
+
+            } catch (Exception e) {
+                log.warn("  Falha ao buscar anúncios na infra {}: {}",
+                        infra.getServiceUrl(), e.getMessage());
+            }
+        }
+
+        log.info(" Total de anúncios encontrados: {}", todosAnuncios.size());
+
+        //ordenar por data de post mais recente, sao first 
+        todosAnuncios.sort((a1, a2) -> {
+            if (a1.getDataPublicacao() == null) return 1;
+            if (a2.getDataPublicacao() == null) return -1;
+            return a2.getDataPublicacao().compareTo(a1.getDataPublicacao());
+        });
+
+        return todosAnuncios;
     }
 
     public MensagemResponse marcarComoLido(String idAnuncio, String emailUtilizador) {

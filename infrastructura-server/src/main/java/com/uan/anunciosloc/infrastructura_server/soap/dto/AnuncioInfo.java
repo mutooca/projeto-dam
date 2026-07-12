@@ -7,13 +7,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlType(name = "AnuncioInfo", 
-         namespace = "http://infrastructura.anunciosloc.uan.com",
-         propOrder = {
-             "id", "titulo", "conteudo", "categoria", 
-             "autorEmail", "dataPublicacao", "visivelDe", 
-             "visivelAte", "tipoPolitica", "politicaFiltro"
-         })
+@XmlType(name = "AnuncioInfo", namespace = "http://infrastructura.anunciosloc.uan.com", propOrder = {
+        "id", "titulo", "conteudo", "categoria",
+        "autorEmail", "dataPublicacao", "visivelDe",
+        "visivelAte", "tipoPolitica", "politicaFiltro",
+        "nomeLocal", "estado", "totalEntregas", "totalLeituras"
+})
 @Data
 @Builder
 @NoArgsConstructor
@@ -49,4 +48,16 @@ public class AnuncioInfo {
 
     @XmlElement(name = "politicaFiltro", namespace = "http://infrastructura.anunciosloc.uan.com")
     private String politicaFiltro;
+
+    @XmlElement(name = "nomeLocal", namespace = "http://infrastructura.anunciosloc.uan.com")
+    private String nomeLocal;
+
+    @XmlElement(name = "estado", namespace = "http://infrastructura.anunciosloc.uan.com")
+    private String estado;
+
+    @XmlElement(name = "totalEntregas", namespace = "http://infrastructura.anunciosloc.uan.com")
+    private Integer totalEntregas;
+
+    @XmlElement(name = "totalLeituras", namespace = "http://infrastructura.anunciosloc.uan.com")
+    private Integer totalLeituras;
 }
