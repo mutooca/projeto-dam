@@ -2,12 +2,14 @@ package com.uan.anunciosloc.infrastructura_server.soap;
 
 import com.uan.anunciosloc.infrastructura_server.soap.dto.CriarLocalRequest;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.CriarLocalResponse;
+import com.uan.anunciosloc.infrastructura_server.soap.dto.DiasInatividadeResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.EscreverSaldoResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.LerSaldoResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.ObterInfraResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.ListarLocaisResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.MensagemResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.ObterSaldoResponse;
+import com.uan.anunciosloc.infrastructura_server.soap.dto.PingResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.PostarAnuncioRequest;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.PostarAnuncioResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.ReceberAnunciosRequest;
@@ -57,24 +59,19 @@ public interface InfrastructureServiceSEI {
     @WebMethod(operationName = "lerSaldo")
     @WebResult(name = "LerSaldoResponse")
     LerSaldoResponse lerSaldo(
-        @WebParam(name = "email") String email
-    );
+            @WebParam(name = "email") String email);
 
-   
     @WebMethod(operationName = "escreverSaldo")
     @WebResult(name = "EscreverSaldoResponse")
     EscreverSaldoResponse escreverSaldo(
-        @WebParam(name = "email") String email,
-        @WebParam(name = "novoSaldo") float novoSaldo,
-        @WebParam(name = "versao") int versao
-    );
+            @WebParam(name = "email") String email,
+            @WebParam(name = "novoSaldo") float novoSaldo,
+            @WebParam(name = "versao") int versao);
 
-    
     @WebMethod(operationName = "obterSaldo")
     @WebResult(name = "ObterSaldoResponse")
     ObterSaldoResponse obterSaldo(
-        @WebParam(name = "email") String email
-    );
+            @WebParam(name = "email") String email);
 
     @WebMethod(operationName = "postarAnuncio")
     @WebResult(name = "PostarAnuncioResponse")
@@ -84,15 +81,21 @@ public interface InfrastructureServiceSEI {
     @WebMethod(operationName = "receberAnuncios")
     @WebResult(name = "ReceberAnunciosResponse")
     ReceberAnunciosResponse receberAnuncios(
-        @WebParam(name = "request") ReceberAnunciosRequest request 
-    );
+            @WebParam(name = "request") ReceberAnunciosRequest request);
 
     @WebMethod(operationName = "marcarComoLido")
     MensagemResponse marcarComoLido(
             @WebParam(name = "idAnuncio") String idAnuncio,
             @WebParam(name = "emailUtilizador") String emailUtilizador);
 
-    
+    @WebMethod(operationName = "verificarInatividade")
+    @WebResult(name = "MensagemResponse")
+    MensagemResponse verificarInatividade();
+
+    @WebMethod(operationName = "obterDiasInatividade")
+    @WebResult(name = "DiasInatividadeResponse")
+    DiasInatividadeResponse obterDiasInatividade(
+            @WebParam(name = "email") String email);
 
     /*
      * *
@@ -110,7 +113,8 @@ public interface InfrastructureServiceSEI {
      * );
      */
     @WebMethod(operationName = "ping")
-    String ping();
+    @WebResult(name = "pingResponse", targetNamespace = "http://infrastructura.anunciosloc.uan.com")
+    PingResponse ping();
 
     @WebMethod(operationName = "clear")
     void clear();

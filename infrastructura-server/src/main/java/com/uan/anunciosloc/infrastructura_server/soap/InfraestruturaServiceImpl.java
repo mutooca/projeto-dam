@@ -2,6 +2,7 @@ package com.uan.anunciosloc.infrastructura_server.soap;
 
 import com.uan.anunciosloc.infrastructura_server.model.*;
 import com.uan.anunciosloc.infrastructura_server.repository.*;
+import com.uan.anunciosloc.infrastructura_server.service.InatividadeService;
 import com.uan.anunciosloc.infrastructura_server.service.InfraEstadoService;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.*;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.LocalInfo;
@@ -20,8 +21,9 @@ import java.util.stream.Collectors;
 @WebService(serviceName = "InfrastructureService", portName = "InfrastructurePort", targetNamespace = "http://infrastructura.anunciosloc.uan.com", endpointInterface = "com.uan.anunciosloc.infrastructura_server.soap.InfrastructureServiceSEI")
 public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
 
-        private final InfraEstadoService estadoService;
+        // rivate final InfraEstadoService estadoService;
         private final InfraEstadoService infraEstadoService;
+        private final InatividadeService inatividadeService;
         private final InfraestruturaRepository infraRepository;
         private final LocalRepository localRepository;
         private final AnuncioRepository anuncioRepository;
@@ -40,9 +42,10 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                         PerfilUtilizadorRepository perfilRepository,
                         EntregaAnuncioRepository entregaRepository,
                         CoordenadaGpsRepository gpsRepository,
-                        CoordenadaWifiRepository wifiRepository) {
-                this.estadoService = null;
+                        CoordenadaWifiRepository wifiRepository,
+                        InatividadeService inatividadeService) {
                 this.infraEstadoService = infraEstadoService;
+                this.inatividadeService = inatividadeService;
                 this.infraRepository = null;
                 this.localRepository = localRepository;
                 this.anuncioRepository = anuncioRepository;
@@ -69,7 +72,6 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
         private int custoPost;
 
         @Override
-
         public ObterInfraResponse obterInfoInfraestrutura() {
                 log.info(" [INFRA] Obtendo informações da infraestrutura");
 
@@ -220,52 +222,99 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
         // listarLocais
         @Override
         public ListarLocaisResponse listarLocais(Double latUtilizador, Double lonUtilizador) {
-                log.info(" [INFRA-SERVER] Listando locais da própria infra para lat={}, lon={}",
+                log.info(" [INFRA-SERVER] Listando locais para lat={}, lon={}",
                                 latUtilizador, lonUtilizador);
 
-                List<Local> todosLocais = localRepository.findAll();
+                try {
+                        List<Local> todosLocais = localRepository.findAll();
+                        log.info("   Total de locais na BD: {}", todosLocais.size());
 
-                List<LocalInfo> locaisFiltrados = todosLocais.stream()
+                        if (todosLocais.isEmpty()) {
+                                log.info("   Nenhum local encontrado na BD, retornando resposta vazia");
+                                return ListarLocaisResponse.builder()
+                                                .sucesso(true)
+                                                .locais(List.of())
+                                                .mensagem("Nenhum local cadastrado nesta infraestrutura")
+                                                .build();
+                        }
 
-                                .filter(l -> {
+                        List<LocalInfo> locaisComDistancia = new ArrayList<>();
 
-                                        if (latUtilizador == null || lonUtilizador == null) {
-                                                return true;
-                                        }
+                        for (Local local : todosLocais) {
+                                log.info("   Processando local: ID={}, Nome={}",
+                                                local.getIdLocal(), local.getNome());
 
-                                        if (l.getCoordenadaGps() == null) {
-                                                return false;
-                                        }
+                                if (local.getCoordenadaGps() == null) {
+                                        log.info("   Local '{}' não tem coordenadas GPS, adicionando sem distância",
+                                                        local.getNome());
+                                        locaisComDistancia.add(toLocalInfo(local, null));
+                                        continue;
+                                }
 
-                                        double distancia = HaversineUtil.calcularDistancia(
-                                                        latUtilizador, lonUtilizador,
-                                                        l.getCoordenadaGps().getLatitude(),
-                                                        l.getCoordenadaGps().getLongitude());
-                                        return distancia <= l.getCoordenadaGps().getRaio();
-                                })
-                                .map(l -> LocalInfo.builder()
-                                                .idLocal(l.getIdLocal().toString())
-                                                .nome(l.getNome())
-                                                .latitude(l.getCoordenadaGps() != null
-                                                                ? l.getCoordenadaGps().getLatitude()
-                                                                : null)
-                                                .longitude(l.getCoordenadaGps() != null
-                                                                ? l.getCoordenadaGps().getLongitude()
-                                                                : null)
-                                                .raio(l.getCoordenadaGps() != null ? l.getCoordenadaGps().getRaio()
-                                                                : null)
-                                                .ssid(l.getCoordenadaWifi() != null ? l.getCoordenadaWifi().getSsid()
-                                                                : null)
-                                                .build())
-                                .collect(Collectors.toList());
+                                double latLocal = local.getCoordenadaGps().getLatitude();
+                                double lonLocal = local.getCoordenadaGps().getLongitude();
+                                double raioLocal = local.getCoordenadaGps().getRaio();
 
-                log.info(" [INFRA-SERVER] Encontrados {} locais na própria infra", locaisFiltrados.size());
+                                log.info("   Local '{}' - Coordenadas: lat={}, lon={}, raio={}m",
+                                                local.getNome(), latLocal, lonLocal, raioLocal);
 
-                return ListarLocaisResponse.builder()
-                                .sucesso(true)
-                                .mensagem(locaisFiltrados.size() + " local(is) encontrado(s) nesta infraestrutura")
-                                .locais(locaisFiltrados)
-                                .build();
+                                double distancia = HaversineUtil.calcularDistancia(
+                                                latUtilizador, lonUtilizador,
+                                                latLocal, lonLocal);
+
+                                log.info("   Distância do utilizador até '{}': {}m",
+                                                local.getNome(), Math.round(distancia));
+
+                                if (distancia <= raioLocal) {
+                                        LocalInfo localInfo = toLocalInfo(local, distancia);
+                                        locaisComDistancia.add(localInfo);
+                                        log.info("   ✅ Local '{}' está DENTRO do raio ({}m <= {}m)",
+                                                        local.getNome(), Math.round(distancia), raioLocal);
+                                } else {
+                                        log.info("   ❌ Local '{}' está FORA do raio ({}m > {}m)",
+                                                        local.getNome(), Math.round(distancia), raioLocal);
+                                }
+                        }
+
+                        // Ordenar por distância
+                        locaisComDistancia.sort(Comparator.comparingDouble(
+                                        l -> l.getDistancia() != null ? l.getDistancia() : Double.MAX_VALUE));
+
+                        log.info(" [INFRA-SERVER] Encontrados {} locais próximos", locaisComDistancia.size());
+
+                        // ✅ LOG DA RESPOSTA ANTES DE RETORNAR
+                        ListarLocaisResponse response = ListarLocaisResponse.builder()
+                                        .sucesso(true)
+                                        .locais(locaisComDistancia)
+                                        .mensagem(locaisComDistancia.size() + " local(is) encontrado(s)")
+                                        .build();
+
+                        log.info(" [INFRA-SERVER] Resposta criada: sucesso={}, mensagem={}, locais.size={}",
+                                        response.isSucesso(),
+                                        response.getMensagem(),
+                                        response.getLocais() != null ? response.getLocais().size() : 0);
+
+                        // ✅ LOG DETALHADO DOS LOCAIS NA RESPOSTA
+                        if (response.getLocais() != null) {
+                                for (LocalInfo info : response.getLocais()) {
+                                        log.info("   Local na resposta: id={}, nome={}, distância={}m",
+                                                        info.getIdLocal(),
+                                                        info.getNome(),
+                                                        info.getDistancia() != null ? Math.round(info.getDistancia())
+                                                                        : "?");
+                                }
+                        }
+
+                        return response;
+
+                } catch (Exception e) {
+                        log.error("Erro ao listar locais: {}", e.getMessage(), e);
+                        return ListarLocaisResponse.builder()
+                                        .sucesso(false)
+                                        .locais(List.of())
+                                        .mensagem("Erro: " + e.getMessage())
+                                        .build();
+                }
         }
 
         @SuppressWarnings("null")
@@ -382,7 +431,7 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                         if (anuncios.isEmpty()) {
                                 log.info("   Nenhum anúncio ativo encontrado");
                                 return ReceberAnunciosResponse.builder()
-                                                .sucesso(true) // <-- MUDAR PARA true
+                                                .sucesso(true)
                                                 .anuncios(List.of())
                                                 .mensagem("Nenhum anúncio disponível")
                                                 .build();
@@ -404,30 +453,46 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                         int entregasRegistadas = 0;
 
                         for (Anuncio anuncio : anuncios) {
+
                                 boolean jaEntregue = entregaRepository
-                                                .existsByAnuncioIdAndEmail(anuncio.getIdAnuncio(), email);
+                                                .existsByIdAnuncioAndEmailUtilizador(anuncio.getIdAnuncio(), email);
 
                                 if (!jaEntregue) {
-                                        EntregaAnuncio entrega = new EntregaAnuncio();
-                                        entrega.setIdAnuncio(anuncio.getIdAnuncio());
-                                        entrega.setEmailUtilizador(email);
-                                        entrega.setIdInfraestrutura(infraId);
-                                        entrega.setDataEntrega(LocalDateTime.now());
-                                        entrega.setEstadoEntrega("ENTREGUE");
+                                        EntregaAnuncio entrega = EntregaAnuncio.builder()
+                                                        .idAnuncio(anuncio.getIdAnuncio())
+                                                        .emailUtilizador(email)
+                                                        .idInfraestrutura(infraId)
+                                                        .dataEntrega(LocalDateTime.now())
+                                                        .estadoEntrega("ENTREGUE")
+                                                        .build();
+
                                         entregaRepository.save(entrega);
                                         entregasRegistadas++;
+
+                                        log.info(" Entrega registrada para '{}' - anúncio: {}",
+                                                        email, anuncio.getTitulo());
+                                } else {
+                                        // Verifica se já foi lido
+                                        EntregaAnuncio entregaExistente = entregaRepository
+                                                        .findByIdAnuncioAndEmailUtilizador(anuncio.getIdAnuncio(),
+                                                                        email)
+                                                        .orElse(null);
+
+                                        if (entregaExistente != null
+                                                        && "LIDO".equals(entregaExistente.getEstadoEntrega())) {
+                                                log.info("  Anúncio '{}' já foi lido por '{}'",
+                                                                anuncio.getTitulo(), email);
+                                        }
                                 }
                         }
 
-                        log.info("   Entregas registadas: {}", entregasRegistadas);
-
                         if (entregasRegistadas > 0) {
                                 infraEstadoService.incrementarTotalEntregas();
+                                log.info("   {} novas entregas registadas", entregasRegistadas);
                         }
 
-                       
                         ReceberAnunciosResponse response = ReceberAnunciosResponse.builder()
-                                        .sucesso(true) // 
+                                        .sucesso(true) //
                                         .anuncios(anunciosFiltrados)
                                         .mensagem(anunciosFiltrados.size() + " anúncio(s) encontrado(s)")
                                         .build();
@@ -449,15 +514,127 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                 }
         }
 
+        @SuppressWarnings("null")
         @Override
         @Transactional
-        public MensagemResponse marcarComoLido(String idAnuncio,
-                        String emailUtilizador) {
+        public MensagemResponse marcarComoLido(String idAnuncio, String emailUtilizador) {
+                log.info(" [INFRA] Marcando anúncio como lido");
+                log.info("   ID Anúncio: {}", idAnuncio);
+                log.info("   Utilizador: {}", emailUtilizador);
 
-                return MensagemResponse.builder()
-                                .sucesso(true)
-                                .mensagem("Anúncio marcado como lido")
-                                .build();
+                try {
+                        UUID anuncioUUID = UUID.fromString(idAnuncio);
+
+                        Anuncio anuncio = anuncioRepository.findById(anuncioUUID)
+                                        .orElseThrow(() -> new RuntimeException("Anúncio não encontrado"));
+
+                        log.info("   Anúncio: {}", anuncio.getTitulo());
+                        log.info("   Autor: {}", anuncio.getAutorEmail());
+
+                        EntregaAnuncio entrega = entregaRepository
+                                        .findByIdAnuncioAndEmailUtilizador(anuncioUUID, emailUtilizador)
+                                        .orElseThrow(() -> new RuntimeException(
+                                                        "Entrega não encontrada para este anúncio e utilizador"));
+
+                        if (entrega.isLido()) {
+                                log.warn("   Anúncio já foi marcado como lido anteriormente");
+                                return MensagemResponse.builder()
+                                                .sucesso(true)
+                                                .mensagem("Anúncio já foi lido anteriormente")
+                                                .build();
+                        }
+
+                        entrega.marcarComoLido();
+                        entrega.setLidoEm("APP");
+
+                        log.info("   Leitura registrada em: {}", entrega.getDataLeitura());
+
+                        UUID infraId = infraEstadoService.getInfraId();
+                        int bonusEntrega = infraEstadoService.getBonusEntrega();
+
+                        String emailDono = anuncio.getAutorEmail();
+
+                        SaldoUtilizador saldoDono = saldoRepository
+                                        .findByEmailUtilizadorAndIdInfraestrutura(emailDono, infraId)
+                                        .orElseGet(() -> {
+
+                                                SaldoUtilizador novoSaldo = SaldoUtilizador.builder()
+                                                                .emailUtilizador(emailDono)
+                                                                .idInfraestrutura(infraId)
+                                                                .saldoParcial(0)
+                                                                .pontosGanhos(0)
+                                                                .pontosGastos(0)
+                                                                .versao(0)
+                                                                .ultimaAtualizacao(LocalDateTime.now())
+                                                                .build();
+                                                return saldoRepository.save(novoSaldo);
+                                        });
+
+                        int saldoDonoAntigo = saldoDono.getSaldoParcial();
+                        saldoDono.setSaldoParcial(saldoDono.getSaldoParcial() + bonusEntrega);
+                        saldoDono.setPontosGanhos(saldoDono.getPontosGanhos() + bonusEntrega);
+                        saldoDono.setUltimaAtualizacao(LocalDateTime.now());
+                        saldoDono.setVersao(saldoDono.getVersao() + 1);
+                        saldoRepository.save(saldoDono);
+
+                        entrega.setPontosGanhosDono(bonusEntrega);
+
+                        log.info("  Dono '{}' ganhou {} pontos (saldo: {} → {})",
+                                        emailDono,
+                                        bonusEntrega,
+                                        saldoDonoAntigo,
+                                        saldoDono.getSaldoParcial());
+
+                        int bonusLeitor = 1;
+
+                        SaldoUtilizador saldoLeitor = saldoRepository
+                                        .findByEmailUtilizadorAndIdInfraestrutura(emailUtilizador, infraId)
+                                        .orElseGet(() -> {
+                                                SaldoUtilizador novoSaldo = SaldoUtilizador.builder()
+                                                                .emailUtilizador(emailUtilizador)
+                                                                .idInfraestrutura(infraId)
+                                                                .saldoParcial(0)
+                                                                .pontosGanhos(0)
+                                                                .pontosGastos(0)
+                                                                .versao(0)
+                                                                .ultimaAtualizacao(LocalDateTime.now())
+                                                                .build();
+                                                return saldoRepository.save(novoSaldo);
+                                        });
+
+                        int saldoLeitorAntigo = saldoLeitor.getSaldoParcial();
+                        saldoLeitor.setSaldoParcial(saldoLeitor.getSaldoParcial() + bonusLeitor);
+                        saldoLeitor.setPontosGanhos(saldoLeitor.getPontosGanhos() + bonusLeitor);
+                        saldoLeitor.setUltimaAtualizacao(LocalDateTime.now());
+                        saldoLeitor.setVersao(saldoLeitor.getVersao() + 1);
+                        saldoRepository.save(saldoLeitor);
+
+                        entrega.setPontosGanhosLeitor(bonusLeitor);
+
+                        log.info("   Leitor '{}' ganhou {} pontos (saldo: {} → {})",
+                                        emailUtilizador,
+                                        bonusLeitor,
+                                        saldoLeitorAntigo,
+                                        saldoLeitor.getSaldoParcial());
+
+                        entregaRepository.save(entrega);
+
+                        log.info(" Anúncio marcado como lido com sucesso!");
+
+                        return MensagemResponse.builder()
+                                        .sucesso(true)
+                                        .mensagem(String.format(
+                                                        " Anúncio lido! Dono ganhou %d pontos, Leitor ganhou %d pontos",
+                                                        bonusEntrega, bonusLeitor))
+                                        .build();
+
+                } catch (Exception e) {
+                        log.error(" Erro ao marcar anúncio como lido: {}", e.getMessage(), e);
+                        return MensagemResponse.builder()
+                                        .sucesso(false)
+                                        .mensagem("Erro ao marcar anúncio como lido: " + e.getMessage())
+                                        .build();
+                }
         }
 
         @Override
@@ -595,12 +772,76 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
         }
 
         @Override
-        public String ping() {
-                return String.format(
-                                "PONG | %s | Anúncios: %d | Entregas: %d | OK",
-                                infraNome,
-                                estadoService.getTotalAnuncios(),
-                                estadoService.getTotalEntregas());
+        public MensagemResponse verificarInatividade() {
+                log.info(" [SOAP] Verificação de inatividade solicitada");
+                try {
+                        String resultado = inatividadeService.executarVerificacaoManual();
+                        return MensagemResponse.builder()
+                                        .sucesso(true)
+                                        .mensagem(resultado)
+                                        .build();
+                } catch (Exception e) {
+                        log.error(" Erro ao verificar inatividade: {}", e.getMessage());
+                        return MensagemResponse.builder()
+                                        .sucesso(false)
+                                        .mensagem("Erro: " + e.getMessage())
+                                        .build();
+                }
+        }
+
+        @Override
+        public DiasInatividadeResponse obterDiasInatividade(String email) {
+                log.info(" [SOAP] Obtendo dias de inatividade para: {}", email);
+                try {
+                        long dias = inatividadeService.getDiasInativo(email);
+                        boolean inativo = inatividadeService.isInativo(email);
+                        LocalDateTime ultimoPost = inatividadeService.getUltimoPost(email);
+
+                        return DiasInatividadeResponse.builder()
+                                        .sucesso(true)
+                                        .email(email)
+                                        .diasInativo((int) dias)
+                                        .inativo(inativo)
+                                        .ultimoPost(ultimoPost != null ? ultimoPost.toString() : null)
+                                        .mensagem(String.format(
+                                                        "Utilizador '%s' está inativo há %d dias",
+                                                        email, dias))
+                                        .build();
+                } catch (Exception e) {
+                        log.error(" Erro ao obter dias de inatividade: {}", e.getMessage());
+                        return DiasInatividadeResponse.builder()
+                                        .sucesso(false)
+                                        .email(email)
+                                        .mensagem("Erro: " + e.getMessage())
+                                        .build();
+                }
+        }
+
+        @Override
+        public PingResponse ping() {
+                log.info(" [INFRA] Ping recebido");
+
+                try {
+                        String nome = infraEstadoService.getInfraNome();
+                        int totalAnuncios = infraEstadoService.getTotalAnuncios();
+                        int totalEntregas = infraEstadoService.getTotalEntregas();
+
+                        String mensagem = String.format(
+                                        "PONG | %s | Anúncios: %d | Entregas: %d | OK",
+                                        nome, totalAnuncios, totalEntregas);
+
+                        log.info(" [INFRA] Resposta ping: {}", mensagem);
+
+                        return PingResponse.builder()
+                                        .mensagem(mensagem)
+                                        .build();
+
+                } catch (Exception e) {
+                        log.error(" [INFRA] Erro no ping: {}", e.getMessage());
+                        return PingResponse.builder()
+                                        .mensagem("PONG | ERROR | " + e.getMessage())
+                                        .build();
+                }
         }
 
         @Override
@@ -637,6 +878,33 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                                 .tipoPolitica(anuncio.getTipoPolitica())
                                 .politicaFiltro(anuncio.getPoliticaFiltro())
                                 .build();
+        }
+
+        // Helper para converter Local ---> LocalInfo com distância
+        private LocalInfo toLocalInfo(Local local, Double distancia) {
+                log.info("   Convertendo Local para LocalInfo: id={}, nome={}, distancia={}",
+            local.getIdLocal(), local.getNome(), distancia != null ? Math.round(distancia) : "?");
+
+                LocalInfo info = LocalInfo.builder()
+                                .idLocal(local.getIdLocal() != null ? local.getIdLocal().toString() : null)
+                                .nome(local.getNome() != null ? local.getNome() : null)
+                                .latitude(local.getCoordenadaGps() != null
+                                                ? local.getCoordenadaGps().getLatitude()
+                                                : null)
+                                .longitude(local.getCoordenadaGps() != null
+                                                ? local.getCoordenadaGps().getLongitude()
+                                                : null)
+                                .raio(local.getCoordenadaGps() != null
+                                                ? local.getCoordenadaGps().getRaio()
+                                                : null)
+                                .ssid(local.getCoordenadaWifi() != null
+                                                ? local.getCoordenadaWifi().getSsid()
+                                                : null)
+                                .distancia(distancia)
+                                .build();
+
+                log.info("   LocalInfo criado: id={}, nome={}", info.getIdLocal(), info.getNome());
+                return info;
         }
 
         // Helper politica whitelist/blacklist

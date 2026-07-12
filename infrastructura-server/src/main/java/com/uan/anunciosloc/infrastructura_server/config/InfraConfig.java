@@ -1,6 +1,7 @@
 package com.uan.anunciosloc.infrastructura_server.config;
 
 import com.uan.anunciosloc.infrastructura_server.repository.*;
+import com.uan.anunciosloc.infrastructura_server.service.InatividadeService;
 import com.uan.anunciosloc.infrastructura_server.service.InfraEstadoService;
 import com.uan.anunciosloc.infrastructura_server.soap.InfraestruturaServiceImpl;
 import com.uan.anunciosloc.infrastructura_server.uddi.UddiRegistrarClient;
@@ -23,6 +24,7 @@ public class InfraConfig {
 
     private final UddiRegistrarClient uddiClient;
     private final InfraEstadoService infraEstadoService;
+    private final InatividadeService inatividadeService;
     private final LocalRepository localRepository;
     private final AnuncioRepository anuncioRepository;
     private final SaldoUtilizadorRepository saldoRepository;
@@ -47,14 +49,16 @@ public class InfraConfig {
         return args -> {
 
             InfraestruturaServiceImpl service = new InfraestruturaServiceImpl(
-                    infraEstadoService,
-                    localRepository,
-                    anuncioRepository,
-                    saldoRepository,
-                    perfilRepository,
-                    entregaRepository,
-                    gpsRepository,
-                    wifiRepository);
+                infraEstadoService,      // 1 - InfraEstadoService
+                localRepository,         // 2 - LocalRepository
+                anuncioRepository,       // 3 - AnuncioRepository
+                saldoRepository,         // 4 - SaldoUtilizadorRepository
+                perfilRepository,        // 5 - PerfilUtilizadorRepository
+                entregaRepository,       // 6 - EntregaAnuncioRepository
+                gpsRepository,           // 7 - CoordenadaGpsRepository
+                wifiRepository,          // 8 - CoordenadaWifiRepository
+                inatividadeService       // 9 - InatividadeService
+        );;
 
             String endpointUrl = "http://localhost:" + soapPort + "/ws/InfrastructureService";
 

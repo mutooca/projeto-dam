@@ -1,28 +1,43 @@
 package com.uan.anunciosloc.infrastructura_server.soap.dto;
 
-import jakarta.xml.bind.annotation.XmlAccessType;
-import jakarta.xml.bind.annotation.XmlAccessorType;
-import jakarta.xml.bind.annotation.XmlType;
+import jakarta.xml.bind.annotation.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-@Setter
-@Getter
+@XmlRootElement(name = "LocalInfo", namespace = "http://infrastructura.anunciosloc.uan.com")
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlType(name = "LocalInfo")
-@Data 
-@NoArgsConstructor
-@AllArgsConstructor 
+@XmlType(name = "LocalInfo", 
+         namespace = "http://infrastructura.anunciosloc.uan.com",
+         propOrder = {
+             "idLocal", "nome", "latitude", "longitude", 
+             "raio", "ssid", "distancia"
+         })
+@Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class LocalInfo {
+
+    @XmlElement(name = "idLocal", namespace = "http://infrastructura.anunciosloc.uan.com")
     private String idLocal;
+
+    @XmlElement(name = "nome", namespace = "http://infrastructura.anunciosloc.uan.com")
     private String nome;
+
+    @XmlElement(name = "latitude", namespace = "http://infrastructura.anunciosloc.uan.com")
     private Double latitude;
+
+    @XmlElement(name = "longitude", namespace = "http://infrastructura.anunciosloc.uan.com")
     private Double longitude;
+
+    @XmlElement(name = "raio", namespace = "http://infrastructura.anunciosloc.uan.com")
     private Double raio;
+
+    @XmlElement(name = "ssid", namespace = "http://infrastructura.anunciosloc.uan.com")
     private String ssid;
+
+    @XmlElement(name = "distancia", namespace = "http://infrastructura.anunciosloc.uan.com")
+    private Double distancia;
 }

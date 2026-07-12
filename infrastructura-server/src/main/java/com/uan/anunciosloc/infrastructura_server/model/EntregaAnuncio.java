@@ -28,15 +28,48 @@ public class EntregaAnuncio {
     private UUID idInfraestrutura;
 
     @Column(name = "estado_entrega")
-    private String estadoEntrega; 
+    private String estadoEntrega;  
 
     @Column(name = "data_entrega")
     private LocalDateTime dataEntrega;
 
     @Column(name = "modo")
-    private String modo; 
-
+    private String modo;  
     @Column(name = "num_entrega")
-    private Integer numEntrega;
+    private Integer numEntrega;  
 
+    
+    @Column(name = "data_leitura")
+    private LocalDateTime dataLeitura;  
+
+    @Column(name = "pontos_ganhos_dono")
+    private Integer pontosGanhosDono; 
+
+    @Column(name = "pontos_ganhos_leitor")
+    private Integer pontosGanhosLeitor;  
+
+    @Column(name = "lido_em")
+    private String lidoEm;  // "APP", "WEB", "NOTIFICATION"
+
+   
+    public boolean isLido() {
+        return "LIDO".equalsIgnoreCase(estadoEntrega);
+    }
+
+    public void marcarComoLido() {
+        this.estadoEntrega = "LIDO";
+        this.dataLeitura = LocalDateTime.now();
+    }
+
+    
+    public boolean isEntregaRecente(int minutos) {
+        if (dataEntrega == null) return false;
+        return dataEntrega.isAfter(LocalDateTime.now().minusMinutes(minutos));
+    }
+
+    
+    public long getTempoDesdeEntregaEmMinutos() {
+        if (dataEntrega == null) return 0;
+        return java.time.Duration.between(dataEntrega, LocalDateTime.now()).toMinutes();
+    }
 }

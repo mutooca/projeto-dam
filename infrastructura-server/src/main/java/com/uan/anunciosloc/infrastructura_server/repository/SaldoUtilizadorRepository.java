@@ -19,5 +19,8 @@ public interface SaldoUtilizadorRepository extends JpaRepository<SaldoUtilizador
             @Param("email") String email,
             @Param("infraId") UUID infraId);
 
-    List<SaldoUtilizador> findByIdInfraestrutura(UUID idInfraestrutura);
+    @Query("SELECT s FROM SaldoUtilizador s " +
+           "WHERE s.idInfraestrutura = :idInfra " +
+           "AND s.saldoParcial > 0")
+    List<SaldoUtilizador> findComSaldoPorInfra(@Param("idInfra") UUID idInfra);
 }
