@@ -90,7 +90,7 @@ public class InfrastruturaSoapClient {
 
         Service service = Service.create(wsdlUrl, SERVICE_QNAME);
 
-        // ✅ HANDLER PARA LOG DO SOAP (CORRIGIDO)
+       
         service.setHandlerResolver(new HandlerResolver() {
             @Override
             @SuppressWarnings("rawtypes")
@@ -240,8 +240,8 @@ public class InfrastruturaSoapClient {
 
                         if (response.getAnuncios() != null && !response.getAnuncios().isEmpty()) {
                             for (AnuncioInfoSOAP a : response.getAnuncios()) {
-                                log.info("   - ID: {}, Título: {}, Autor: {}",
-                                        a.getId(), a.getTitulo(), a.getAutorEmail());
+                                log.info("   - ID: {}, Título: {}, Autor: {}, Local: {}",
+                                        a.getId(), a.getTitulo(), a.getAutorEmail(), a.getNomeLocal());
                             }
                         }
                     } else {

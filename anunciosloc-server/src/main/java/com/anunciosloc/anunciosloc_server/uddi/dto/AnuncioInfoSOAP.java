@@ -12,7 +12,8 @@ import lombok.NoArgsConstructor;
          propOrder = {
              "id", "titulo", "conteudo", "categoria", 
              "autorEmail", "dataPublicacao", "visivelDe", 
-             "visivelAte", "tipoPolitica", "politicaFiltro"
+             "visivelAte", "tipoPolitica", "politicaFiltro",
+             "nomeLocal"  
          })
 @Data
 @Builder
@@ -49,4 +50,7 @@ public class AnuncioInfoSOAP {
 
     @XmlElement(name = "politicaFiltro", namespace = "http://infrastructura.anunciosloc.uan.com")
     private String politicaFiltro;
+
+    @XmlElement(name = "nomeLocal", namespace = "http://infrastructura.anunciosloc.uan.com")
+    private String nomeLocal;
 }
