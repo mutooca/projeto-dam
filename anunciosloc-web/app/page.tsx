@@ -1,188 +1,76 @@
-// app/page.tsx
 'use client'
-
-import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
+import {useForm} from 'react-hook-form';
+import {z} from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { BsBroadcast } from "react-icons/bs";
 import toast from 'react-hot-toast';
-import { LuMail, LuLock } from "react-icons/lu";
-import { getCookie } from 'cookies-next';
+import Link from 'next/link';
+import { LuMail, LuLock} from "react-icons/lu";
 
-// ============ VALIDAÇÃO ============
-const sanitizeEmail = (value: string) => {
-    if (!value) return " ";
-    return value.trim().toLowerCase().replace(/\s+/g, '').replace(/[<>'"]/g, '').slice(0, 70);
+const sanitizeEmail = (value:string)=>{
+        if(!value) return " ";
+       return value.trim().toLowerCase().replace(/\s+/g, '').replace(/[<>'"]/g, '').slice(0, 70);
 }
 
-const loginSchema = z.object({
-    email: z.string().min(1, 'O e-mail é obrigatório')
-        .transform(sanitizeEmail)
-        .refine(val => val.length > 0, 'O e-mail não pode estar vazio')
-        .pipe(z.string().max(80, 'O e-mail é demasiado longo')
-            .regex(/^[a-z0-9._+-]+@[a-z0-9.-]+\.[a-z]{2,}$/, 'Formato de e-mail inválido')
-            .refine(val => !val.includes('..'), 'E-mail não pode conter pontos consecutivos')
-            .refine(val => val.split('@')[0].length <= 64, 'A parte local do e-mail é demasiado longa')
-        ),
-    password: z.string().min(1, 'A palavra-passe é obrigatória')
-        .min(6, 'A palavra-passe deve ter no mínimo 8 caracteres')
-        .max(64, 'A palavra-passe é demasiado longa')
-        .refine(val => !val.match(/(.)\1{2,}/), 'A palavra-passe não pode ter caracteres repetidos consecutivamente')
-        .refine(val => !['12345678', 'password', 'senha123', 'admin123', 'qwerty123'].some(weak => val.toLowerCase().includes(weak)), 'A palavra-passe é muito fraca. Evite sequências comuns')
+const loginShema = z.object({
+    
+     email: z.string().min(1, 'O e-mail é obrigatório').transform(sanitizeEmail).refine(val => val.length > 0, 'O e-mail não pode estar vazio')
+    .pipe(z.string().max(80, 'O e-mail é demasiado longo').regex(/^[a-z0-9._+-]+@[a-z0-9.-]+\.[a-z]{2,}$/, 'Formato de e-mail inválido')
+    .refine(val => !val.includes('..'), 'E-mail não pode conter pontos consecutivos').refine(val => val.split('@')[0].length <= 64, 'A parte local do e-mail é demasiado longa')),
+    
+     password:z.string().min(1, 'A palavra-passe é obrigatória').min(6, 'A palavra-passe deve ter no mínimo 8 caracteres').max(64, 'A palavra-passe é demasiado longa')
+    .refine(val => !val.match(/(.)\1{2,}/), 'A palavra-passe não pode ter caracteres repetidos consecutivamente')
+    .refine(val => !['12345678', 'password', 'senha123', 'admin123', 'qwerty123'].some(weak => val.toLowerCase().includes(weak)), 'A palavra-passe é muito fraca. Evite sequências comuns')
 });
 
-type loginData = z.infer<typeof loginSchema>;
 
-// ============ COMPONENTE ============
-export default function Login() {
-    const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<loginData>({
-        resolver: zodResolver(loginSchema)
+type loginData = z.infer<typeof loginShema>;
+
+
+export default function Login(){
+
+    const {register, handleSubmit, formState: {errors, isSubmitting}} = useForm<loginData>({
+        resolver:zodResolver(loginShema)
     });
 
     const router = useRouter();
+    async function handleLogin(data:loginData){
+        try{
+            console.log(data);
 
-    // 🔍 LOG 1: Verifica cookies quando a página carrega
-    useEffect(() => {
-        console.log('========================================');
-        console.log('🔍 [PÁGINA DE LOGIN] Verificando cookies...');
-        
-        const ticket = getCookie('ticket');
-        const sessionId = getCookie('sessionId');
-        const sessionKey = getCookie('sessionKey');
-        const userEmail = getCookie('userEmail');
-        const userRole = getCookie('userRole');
-        
-        console.log('📊 Cookies encontrados:');
-        console.log('  🎫 ticket:', ticket ? `✅ ${ticket.substring(0, 20)}...` : '❌ Não existe');
-        console.log('  🆔 sessionId:', sessionId ? `✅ ${sessionId.substring(0, 20)}...` : '❌ Não existe');
-        console.log('  🔑 sessionKey:', sessionKey ? `✅ ${sessionKey.substring(0, 20)}...` : '❌ Não existe');
-        console.log('  📧 userEmail:', userEmail || '❌ Não existe');
-        console.log('  👤 userRole:', userRole || '❌ Não existe');
-        
-        // 🔥 Mostra todos os cookies disponíveis
-        console.log('🍪 Todos os cookies (document.cookie):', document.cookie);
-        console.log('========================================');
-        
-        // Se já tiver ticket, redireciona para dashboard
-        if (ticket) {
-            console.log('🔄 [PÁGINA DE LOGIN] Ticket encontrado! Redirecionando para dashboard...');
-            router.push('/dashboard');
-        } else {
-            console.log('🔑 [PÁGINA DE LOGIN] Sem ticket - página de login normal.');
-        }
-    }, [router]);
-
-    async function handleLogin(data: loginData) {
-        console.log('========================================');
-        console.log('🔑 [LOGIN] Tentando login com:', data.email);
-        console.log('🔑 [LOGIN] Palavra-passe:', '********');
-        
-        try {
-            // Chama o route handler (que guarda cookies HTTP-only)
-            console.log('📤 [LOGIN] Enviando requisição para /api/auth/login...');
-            
-            const response = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    email: data.email,
-                    palavraChave: data.password,
-                }),
-            });
-
-            console.log(`📥 [LOGIN] Resposta recebida - Status: ${response.status} ${response.statusText}`);
-
-            const result = await response.json();
-            console.log('📦 [LOGIN] Dados da resposta:', result);
-
-            if (!response.ok) {
-                console.error('❌ [LOGIN] Erro na resposta:', result);
-                throw new Error(result.message || 'Erro no login');
-            }
-
-            console.log('✅ [LOGIN] Login bem-sucedido!');
-
-            // 🔍 LOG 2: Verifica cookies IMEDIATAMENTE após o login
-            console.log('🔍 [LOGIN] Verificando cookies imediatamente após login...');
-            
-            // Pequeno delay para os cookies serem guardados
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            const ticket = getCookie('ticket');
-            const sessionId = getCookie('sessionId');
-            const userEmail = getCookie('userEmail');
-            const userRole = getCookie('userRole');
-            
-            console.log('📊 Cookies após login (imediato):');
-            console.log('  🎫 ticket:', ticket ? `✅ ${ticket.substring(0, 20)}...` : '❌ Não existe');
-            console.log('  🆔 sessionId:', sessionId ? `✅ ${sessionId.substring(0, 20)}...` : '❌ Não existe');
-            console.log('  📧 userEmail:', userEmail || '❌ Não existe');
-            console.log('  👤 userRole:', userRole || '❌ Não existe');
-            console.log('🍪 Todos os cookies (document.cookie):', document.cookie);
-
-            // 🔍 LOG 3: Verifica cookies 1 segundo depois
-            setTimeout(() => {
-                console.log('🔍 [LOGIN] Verificando cookies 1s após login...');
-                const ticket2 = getCookie('ticket');
-                const sessionId2 = getCookie('sessionId');
-                const userEmail2 = getCookie('userEmail');
-                
-                console.log('📊 Cookies após 1s:');
-                console.log('  🎫 ticket:', ticket2 ? `✅ ${ticket2.substring(0, 20)}...` : '❌ Não existe');
-                console.log('  🆔 sessionId:', sessionId2 ? `✅ ${sessionId2.substring(0, 20)}...` : '❌ Não existe');
-                console.log('  📧 userEmail:', userEmail2 || '❌ Não existe');
-                console.log('🍪 document.cookie:', document.cookie);
-            }, 1000);
-
-            toast.success(result.message || "Login bem-sucedido!", {
+            // Simula envio para API
+             await new Promise((res) => setTimeout(res, 1000)); 
+             toast.success("Conta criada com sucesso!",{
                 duration: 3000
-            });
-
-            // Redireciona para dashboard
-            console.log('🔄 [LOGIN] Redirecionando para /dashboard em 1s...');
-            setTimeout(() => {
+             })
+             setTimeout(()=>{
                 router.push("/dashboard");
-            }, 1000);
-
-        } catch (error: any) {
-            console.error('❌ [LOGIN] Erro no login:', error);
-            
-            let errorMessage = "Erro ao fazer login. Tenta novamente";
-            
-            if (error.message?.includes('ADMIN')) {
-                errorMessage = "Acesso restrito a administradores";
-            } else if (error.message?.includes('email') || error.message?.includes('palavraChave')) {
-                errorMessage = "E-mail ou palavra-passe incorretos";
-            } else if (error.message?.includes('connection') || error.message?.includes('fetch')) {
-                errorMessage = "Erro de conexão com o servidor. Verifica se o backend está ativo.";
-            }
-            
-            toast.error(errorMessage, {
-                duration: 4000
-            });
+             }, 1000);
+        }catch(error){
+            toast.error("Erro ao criar conta.Tenta novamente",{
+                duration:3000
+            })
         }
-        
-        console.log('========================================');
     }
 
-    return (
-        <div className="flex h-screen gap-4">
-            {/* Lado esquerdo - Info */}
+
+    return(
+        <div className=" flex h-screen gap-4">
+
             <section className="hidden md:flex relative w-1/2 h-full overflow-hidden bg-[#F8960D] p-2 text-white">
                 <div className="flex flex-col absolute p-4 justify-around h-full ml-4">
                     <div className="flex gap-2 items-center">
-                        <div className="flex p-2 rounded-2xl bg-white/20 text-white items-center">
+                        <div className="flex p-2 rounded-2xl bg-white/20 text-white  items-center">
                             <BsBroadcast size={30} />
                         </div>
-                        <h2 className="font-bold text-2xl">AnunciosLoc</h2>
+                        <h2 className="font-bold text-2xl ">AnunciosLoc</h2>
                     </div>
 
-                    <div className="flex flex-col space-y-4">
-                        <h1 className="font-bold text-5xl">Painel do <br /> Gestor de Rede</h1>
+                    <div className="flex flex-col space-y-4  ">
+                        <h1 className="font-bold text-5xl">Painel do <br />
+                            Gestor de Rede
+                        </h1>
                         <p className="">Gestão de infraestruturas, utilizadores, anúncios e bónus do <br /> sistema de publicidade baseado em localização.</p>
                     </div>
 
@@ -190,60 +78,39 @@ export default function Login() {
                 </div>
             </section>
 
-            {/* Lado direito - Formulário */}
-            <section className="flex flex-col md:w-1/2 w-full h-full items-center justify-center">
-                <div className="flex flex-col max-w-md w-full mx-auto gap-4 p-4">
-                    <div className="flex flex-col space-y-2 items-center">
-                        <div className="flex p-2 bg-[#F8960D]/20 rounded-2xl items-center text-[#F8960D]">
-                            <BsBroadcast size={30} />
-                        </div>
+            <section className="flex flex-col md:w-1/2 w-full h-full items-center justify-center ">
+                 <div className="flex flex-col max-w-md w-full mx-auto gap-4 p-4 ">  
+                    <div className="flex flex-col space-y-2 items-center ">
+                        <div className="flex p-2 bg-[#F8960D]/20 rounded-2xl items-center text-[#F8960D]"> <BsBroadcast size={30} /></div>
                         <h2 className="text-2xl text-black font-semibold">Iniciar sessão</h2>
-                        <p className="text-gray-600">Acesso restrito ao Gestor de Rede.</p>
+                        <p className="text-gray-600 ">Acesso restrito ao Gestor de Rede.</p>
                     </div>
 
                     <form onSubmit={handleSubmit(handleLogin)} className='space-y-2'>
                         <div className="flex flex-col space-y-1">
-                            <label htmlFor="email" className='text-black font-semibold'>E-mail</label>
+                            <label htmlFor="" className='text-black font-semibold'>E-mail</label>
                             <div className="relative">
-                                <LuMail className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' size={14} />
-                                <input
-                                    {...register("email")}
-                                    id="email"
-                                    type="email"
-                                    disabled={isSubmitting}
-                                    placeholder='admin@email.com'
-                                    className="w-full h-10 pl-8 text-gray-900 rounded-lg shadow border border-gray-200 outline-amber-600"
-                                />
+                                <LuMail className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' size={14}/>
+                                <input {...register("email")} type="e-mail" disabled={isSubmitting} placeholder='admin@email.com' className="w-full h-10 pl-8 text-gray-900 rounded-lg shadow border border-gray-200 outline-amber-600" />
                             </div>
-                            {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
+                            {errors.email &&  <p className="text-xs text-red-500">{errors.email.message}</p>}
                         </div>
 
                         <div className="flex flex-col space-y-1">
-                            <label htmlFor="password" className='text-black font-semibold'>Palavra-passe</label>
+                            <label htmlFor="" className='text-black font-semibold'>Palavra-passe</label>
                             <div className="relative">
-                                <LuLock className='absolute top-1/2 left-3 text-gray-400 -translate-y-1/2' size={14} />
-                                <input
-                                    {...register("password")}
-                                    id="password"
-                                    disabled={isSubmitting}
-                                    type="password"
-                                    placeholder='••••••••'
-                                    className="w-full h-10 pl-8 text-gray-900 rounded-lg shadow border border-gray-200 outline-amber-600"
-                                />
+                              <LuLock className='absolute top-1/2 left-3 text-gray-400 -translate-y-1/2' size={14}/>
+                              <input {...register("password")} disabled={isSubmitting} type="password" placeholder='••••••••' className="w-full h-10 pl-8 text-gray-900 rounded-lg shadow border border-gray-200 outline-amber-600"  />
                             </div>
-                            {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
                         </div>
-
-                        <button
-                            type='submit'
-                            disabled={isSubmitting}
-                            className="h-10 p-2 w-full text-center mt-2 text-white font-semibold bg-[#F8960D] rounded-lg shadow-lg cursor-pointer disabled:opacity-80 disabled:cursor-not-allowed"
-                        >
-                            {isSubmitting ? "Entrar..." : "Entrar"}
-                        </button>
+                        <Link href={'/recuperar_senha'} className='flex justify-end text-sm text-amber-500 hover:underline transition text-right'>Esqueceu a senha?</Link>
+                        <button type='submit' disabled={isSubmitting} className="h-10 p-2 w-full text-center mt-2 text-white font-semibold bg-[#F8960D]  rounded-lg shadow-lg cursor-pointer disabled:opacity-80 disabled:cursor-not-allowed">{isSubmitting ? "Entrar...":"Entrar"}</button>
                     </form>
-                </div>
+
+                </div> 
             </section>
+
+
         </div>
-    );
+    )
 }

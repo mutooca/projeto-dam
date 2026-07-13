@@ -4,13 +4,13 @@ export default function dashboard(){
         {title: "Infraestruturas", icon: <LuMapPin size={22}/>,value: 2},
         {title:"Utilizadores", icon: <LuUsersRound size={22}/>,value: 4},
         {title: "Conexões Ativas", icon: <LuMapPin size={22}/>,value:7},
-        {title:"Entregas totais", icon: <LuMegaphone size={22}/>}
+        {title:"Entregas totais", icon: <LuMegaphone size={22}/>,value: 8}
     ];
 
     const dashboardInfra =[
-        {icon:<LuMapPin size={22}/>, nome: "FC-UAN Campos", conexao: 25, capacidade: 56, pontos: "6 pts"},
-        {icon:<LuMapPin size={22}/>, nome: "Shopping Belas", conexao: 25, capacidade: 56, pontos: "4 pts"},
-        {icon:<LuMapPin size={22}/>, nome: "Talatona", conexao: 25, capacidade: 56, pontos: "9 pts"}
+        {icon:<LuMapPin size={22}/>, nome: "FC-UAN Campos", conexao: 25, capacidade: 56, pontos:6},
+        {icon:<LuMapPin size={22}/>, nome: "Shopping Belas", conexao: 25, capacidade: 56, pontos: 4 },
+        {icon:<LuMapPin size={22}/>, nome: "Talatona", conexao: 25, capacidade: 56, pontos: 9 }
     ]
     return(
         <div className="flex flex-col w-full  mt-28 gap-6">
@@ -50,7 +50,7 @@ export default function dashboard(){
                                     </div>
                                 </div>
 
-                                <button className="rounded-xl shadow px-2 py-1 text-[#F8960D] border border-gray-100 font-semibold text-xs">{item.pontos}</button>
+                                <button className="rounded-xl shadow px-2 py-1 text-[#F8960D] border border-gray-100 font-semibold text-xs">{item.pontos} <span className="">pts</span></button>
                             </div>
                         ))
                     }

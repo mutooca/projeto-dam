@@ -10,10 +10,13 @@ export default function SidebarAdmin(){
         {icon: <LuLayoutDashboard size={20}/>, label:'Dashboard', href:"/dashboard"},
         {icon:<LuMapPin size={20}/>, label:'Infraestruturas', href:"/infraestruturas"},
         {icon:<LuUsersRound size={20}/>, label:'Utilizadores', href:"/utilizadores"},
+        {icon:<LuMegaphone size={20}/>, label:'Anúncios', href:'/anuncios'},
+        {icon:<LuAward size={20}/>, label:'Bónus & inatividade', href:"/bonusInatividades"},
         {icon:<LuChartColumn size={20}/>, label:'Estatísticas', href:"/estatisticas"}
     ]
 
     const userName = "João Silva";
+    const iniciais = userName.split(' ').map(n=>n[0]).join('').toUpperCase();
     const [menuOpen, setMenuOpen] =useState(false);
 
     return(
@@ -27,6 +30,10 @@ export default function SidebarAdmin(){
 
                 <div className="flex gap-4 items-center">
 
+                    <div className="flex items-center justify-center w-10 h-10 bg-amber-500 font-semibold shadow-2xl rounded-full border border-amber-500 ">
+                        <span className="text-sm text-white">{iniciais}</span>
+                    </div>
+
                     <button className="p-2 rounded-lg border border-zinc-100 flex items-center justify-center gap-2 text-zinc-600 cursor-pointer hover:bg-amber-500 hover:text-zinc-900">
                         <LuLogOut size={20}/>
                         <span className="font-medium text-sm">Sair</span>
@@ -37,7 +44,7 @@ export default function SidebarAdmin(){
             {menuOpen && ( <div onClick={() => setMenuOpen(false)}  className="fixed inset-0 bg-black/50 z-40 md:hidden "/>)}
 
             
-           <aside className={`fixed flex flex-col top-0 left-0 h-screen w-64 bg-white border-r border-zinc-200 z-50 transition-transform duration-300
+           <aside className={`fixed top-0 left-0 h-screen w-64 bg-white border-r border-zinc-200 z-50 transition-transform duration-300
            ${menuOpen? 'translate-x-0': '-translate-x-full' } md:translate-x-0`}>
 
             <div className="flex justify-end md:hidden p-2"><button onClick={()=>setMenuOpen(false)} className="p-2"><LuX size={24}/></button>
@@ -70,6 +77,7 @@ export default function SidebarAdmin(){
 
                 <div className="flex justify-center border-t border-zinc-100 p-4 ">
                     <div className="flex flex-col bg-amber-200 p-2 rounded-xl space-y-1 w-full">
+                        <span className="font-semibold text-amber-950 text-sm">Versão 1.0</span>
                         <span className="text-zinc-600 text-sm">Sistema baseado em localização</span>
                     </div>
                 </div>
