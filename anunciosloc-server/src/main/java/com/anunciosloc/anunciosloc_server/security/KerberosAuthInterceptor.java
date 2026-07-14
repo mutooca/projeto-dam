@@ -69,7 +69,11 @@ public class KerberosAuthInterceptor implements HandlerInterceptor {
     private boolean isPublicRoute(String path) {
         return path.startsWith("/api/auth/") ||
                path.startsWith("/api/infraestruturas/listar-todas") || 
+               path.startsWith( "/api/admin/infraestruturas/nao-registadas") || 
                path.startsWith("/api/infraestruturas/estatisticas") ||
+               path.startsWith("/api/admin/dashboard") ||
+               path.startsWith("/api/admin/infraestruturas") ||
+               path.startsWith("/api/admin/utilizadores") ||
                path.startsWith("/h2-console") ||
                path.startsWith("/swagger") ||
                path.startsWith("/v3/api-docs") ||

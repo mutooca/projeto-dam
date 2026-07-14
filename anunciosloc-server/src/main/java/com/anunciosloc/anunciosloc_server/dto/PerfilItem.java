@@ -1,14 +1,16 @@
 package com.anunciosloc.anunciosloc_server.dto;
 
-import jakarta.validation.constraints.*;
-import lombok.*;
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class PerfilParDto {
-
+public class PerfilItem {
     @NotBlank(message = "Chave é obrigatória")
     private String chave;
 

@@ -1,12 +1,14 @@
 package com.anunciosloc.anunciosloc_server.service;
 
-import com.anunciosloc.anunciosloc_server.dto.*;
-import com.anunciosloc.anunciosloc_server.model.*;
-import com.anunciosloc.anunciosloc_server.repository.*;
+import com.anunciosloc.anunciosloc_server.dto.PerfilItem;
+import com.anunciosloc.anunciosloc_server.dto.PerfilRequest;
+import com.anunciosloc.anunciosloc_server.dto.PerfilResponse;
+import com.anunciosloc.anunciosloc_server.uddi.InfraProxy;
+import com.anunciosloc.anunciosloc_server.uddi.InfrastruturaSoapClient;
+import com.anunciosloc.anunciosloc_server.uddi.dto.MensagemResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -15,72 +17,88 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PerfilService {
 
-    private final PerfilUtilizadorRepository perfilRepository;
-    private final UtilizadorRepository utilizadorRepository;
+    private final InfrastruturaSoapClient soapClient;
 
-    // Obter perfil do utilizador
-    public PerfilResponse obterPerfil(String email) {
-        Utilizador user = utilizadorRepository.findByEmail(email)
-            .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
+    public String adicionarPerfil(PerfilRequest request) {
+        log.info(" [PERFIL] Adicionando perfil para: {}", request.getEmail());
 
-        List<PerfilParDto> pares = perfilRepository.findByUtilizador(user)
-            .stream()
-            .map(p -> PerfilParDto.builder()
-                    .chave(p.getChave())
-                    .valor(p.getValor())
-                    .build())
-            .toList();
+        List<InfraProxy> infras = soapClient.obterClientes();
+        if (infras.isEmpty()) {
+            throw new RuntimeException("Nenhuma infraestrutura disponível");
+        }
 
-        
-        List<String> chavesPublicas = perfilRepository.findTodasAsChaves();
+        for (InfraProxy infra : infras) {
+            try {
+                MensagemResponse response = infra.adicionarPerfil(
+                        request.getEmail(),
+                        request.getPerfil()
+                );
+                if (response != null && response.isSucesso()) {
+                    log.info(" Perfil adicionado na infra: {}", infra.getServiceUrl());
+                    return response.getMensagem();
+                }
+            } catch (Exception e) {
+                log.warn(" Falha ao adicionar perfil na infra {}: {}", 
+                        infra.getServiceUrl(), e.getMessage());
+            }
+        }
+
+        throw new RuntimeException("Não foi possível adicionar o perfil");
+    }
+
+    public PerfilResponse consultarPerfil(String email) {
+        log.info(" [PERFIL] Consultando perfil para: {}", email);
+
+        List<InfraProxy> infras = soapClient.obterClientes();
+        if (infras.isEmpty()) {
+            throw new RuntimeException("Nenhuma infraestrutura disponível");
+        }
+
+        for (InfraProxy infra : infras) {
+            try {
+                List<PerfilItem> perfil = infra.consultarPerfil(email);
+                if (perfil != null) {
+                    log.info("  Perfil obtido da infra: {}", infra.getServiceUrl());
+                    return PerfilResponse.builder()
+                            .email(email)
+                            .perfil(perfil)
+                            .mensagem("Perfil obtido com sucesso")
+                            .build();
+                }
+            } catch (Exception e) {
+                log.warn(" Falha ao consultar perfil na infra {}: {}", 
+                        infra.getServiceUrl(), e.getMessage());
+            }
+        }
 
         return PerfilResponse.builder()
-                .email(user.getEmail())
-                .nome(user.getNome())
-                .pares(pares)
-                .chavesPublicas(chavesPublicas)
+                .email(email)
+                .perfil(List.of())
+                .mensagem("Nenhum perfil encontrado")
                 .build();
     }
 
-   
-    @SuppressWarnings("null")
-    @Transactional
-    public PerfilParDto adicionarPar(String email, PerfilParDto request) {
-        Utilizador user = utilizadorRepository.findByEmail(email)
-            .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
+    public String removerChavePerfil(String email, String chave) {
+        log.info(" [PERFIL] Removendo chave '{}' para: {}", chave, email);
 
-        // Se já existe a chave, actualiza o valor
-        perfilRepository.deleteByUtilizadorAndChave(user, request.getChave());
+        List<InfraProxy> infras = soapClient.obterClientes();
+        if (infras.isEmpty()) {
+            throw new RuntimeException("Nenhuma infraestrutura disponível");
+        }
 
-        PerfilUtilizador par = PerfilUtilizador.builder()
-                .utilizador(user)
-                .chave(request.getChave().toLowerCase().trim())
-                .valor(request.getValor().trim())
-                .build();
+        for (InfraProxy infra : infras) {
+            try {
+                MensagemResponse response = infra.removerChavePerfil(email, chave);
+                if (response != null && response.isSucesso()) {
+                    log.info("  Chave removida na infra: {}", infra.getServiceUrl());
+                    return response.getMensagem();
+                }
+            } catch (Exception e) {
+                log.warn(" Falha ao remover chave na infra {}: {}", 
+                        infra.getServiceUrl(), e.getMessage());
+            }
+        }
 
-        perfilRepository.save(par);
-
-        log.info("Par adicionado ao perfil de {}: {}={}",
-                 email, request.getChave(), request.getValor());
-
-        return PerfilParDto.builder()
-                .chave(par.getChave())
-                .valor(par.getValor())
-                .build();
-    }
-
-    // Remover par por chave
-    @Transactional
-    public void removerPar(String email, String chave) {
-        Utilizador user = utilizadorRepository.findByEmail(email)
-            .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
-
-        perfilRepository.deleteByUtilizadorAndChave(user, chave);
-        log.info("Par '{}' removido do perfil de {}", chave, email);
-    }
-
-    // Listar todas as chaves públicas do sistema
-    public List<String> listarChavesPublicas() {
-        return perfilRepository.findTodasAsChaves();
+        throw new RuntimeException("Não foi possível remover a chave");
     }
 }

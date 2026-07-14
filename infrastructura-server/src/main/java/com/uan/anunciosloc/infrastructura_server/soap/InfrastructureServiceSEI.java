@@ -12,6 +12,7 @@ import com.uan.anunciosloc.infrastructura_server.soap.dto.ObterInfraResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.ListarLocaisResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.MensagemResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.ObterSaldoResponse;
+import com.uan.anunciosloc.infrastructura_server.soap.dto.PerfilItem;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.PingResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.PostarAnuncioRequest;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.PostarAnuncioResponse;
@@ -109,6 +110,23 @@ public interface InfrastructureServiceSEI {
                         @WebParam(name = "idAnuncio") String idAnuncio,
                         @WebParam(name = "emailUtilizador") String emailUtilizador);
 
+        @WebMethod(operationName = "adicionarPerfil")
+        @WebResult(name = "MensagemResponse")
+        MensagemResponse adicionarPerfil(
+                        @WebParam(name = "email") String email,
+                        @WebParam(name = "perfil") List<PerfilItem> perfil);
+
+        @WebMethod(operationName = "consultarPerfil")
+        @WebResult(name = "PerfilResponse")
+        List<PerfilItem> consultarPerfil(
+                        @WebParam(name = "email") String email);
+
+        @WebMethod(operationName = "removerChavePerfil")
+        @WebResult(name = "MensagemResponse")
+        MensagemResponse removerChavePerfil(
+                        @WebParam(name = "email") String email,
+                        @WebParam(name = "chave") String chave);
+
         @WebMethod(operationName = "verificarInatividade")
         @WebResult(name = "MensagemResponse")
         MensagemResponse verificarInatividade();
@@ -116,6 +134,11 @@ public interface InfrastructureServiceSEI {
         @WebMethod(operationName = "obterDiasInatividade")
         @WebResult(name = "DiasInatividadeResponse")
         DiasInatividadeResponse obterDiasInatividade(
+                        @WebParam(name = "email") String email);
+
+        @WebMethod(operationName = "obterUltimoPost")
+        @WebResult(name = "UltimoPostResponse")
+        String obterUltimoPost(
                         @WebParam(name = "email") String email);
 
         /*

@@ -11,7 +11,7 @@ public class InfrastructuraServerApplication {
 
     public static void main(String[] args) {
 
-        // Lê o URL da BD dos argumentos antes do Spring arrancar
+        
         String url = "jdbc:postgresql://localhost:5432/bd_infra1"; // default
         String user = "postgres";
         String pass = "kama2";

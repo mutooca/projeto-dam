@@ -1,5 +1,6 @@
 package com.anunciosloc.anunciosloc_server.uddi;
 
+import com.anunciosloc.anunciosloc_server.dto.PerfilItem;
 import com.anunciosloc.anunciosloc_server.uddi.dto.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -346,6 +348,87 @@ public class InfrastruturaSoapClient {
                             .sucesso(false)
                             .mensagem("Erro: " + e.getMessage())
                             .build();
+                }
+            }
+
+            @Override
+            public MensagemResponse adicionarPerfil(String email, List<PerfilItem> perfil) {
+                log.info(" SOAP: adicionarPerfil - email={}, itens={}", email, perfil.size());
+                try {
+                    // Converter para o DTO do SOAP
+                    List<PerfilItemSOAP> perfilSOAP = perfil.stream()
+                            .map(item -> PerfilItemSOAP.builder()
+                                    .chave(item.getChave())
+                                    .valor(item.getValor())
+                                    .build())
+                            .collect(Collectors.toList());
+
+                    MensagemResponse response = port.adicionarPerfil(email, perfilSOAP);
+                    if (response != null) {
+                        log.info(" Resposta: sucesso={}, mensagem={}",
+                                response.isSucesso(), response.getMensagem());
+                    }
+                    return response;
+                } catch (Exception e) {
+                    log.error(" Erro ao adicionar perfil: {}", e.getMessage());
+                    return MensagemResponse.builder()
+                            .sucesso(false)
+                            .mensagem("Erro: " + e.getMessage())
+                            .build();
+                }
+            }
+
+            @Override
+            public List<PerfilItem> consultarPerfil(String email) {
+                log.info(" SOAP: consultarPerfil - email={}", email);
+                try {
+                    List<PerfilItemSOAP> response = port.consultarPerfil(email);
+
+                    if (response != null) {
+                        log.info(" Resposta: {} itens encontrados", response.size());
+                        return response.stream()
+                                .map(item -> PerfilItem.builder()
+                                        .chave(item.getChave())
+                                        .valor(item.getValor())
+                                        .build())
+                                .collect(Collectors.toList());
+                    }
+                    return List.of();
+                } catch (Exception e) {
+                    log.error(" Erro ao consultar perfil: {}", e.getMessage());
+                    return List.of();
+                }
+            }
+
+            @Override
+            public MensagemResponse removerChavePerfil(String email, String chave) {
+                log.info(" SOAP: removerChavePerfil - email={}, chave={}", email, chave);
+                try {
+                    MensagemResponse response = port.removerChavePerfil(email, chave);
+                    if (response != null) {
+                        log.info(" Resposta: sucesso={}, mensagem={}",
+                                response.isSucesso(), response.getMensagem());
+                    }
+                    return response;
+                } catch (Exception e) {
+                    log.error(" Erro ao remover chave: {}", e.getMessage());
+                    return MensagemResponse.builder()
+                            .sucesso(false)
+                            .mensagem("Erro: " + e.getMessage())
+                            .build();
+                }
+            }
+
+            @Override
+            public String obterUltimoPost(String email) {
+                log.info(" SOAP: obterUltimoPost - email={}", email);
+                try {
+                    String response = port.obterUltimoPost(email);
+                    log.info(" Resposta: {}", response);
+                    return response;
+                } catch (Exception e) {
+                    log.error(" Erro ao obter último post: {}", e.getMessage());
+                    return null;
                 }
             }
 

@@ -77,4 +77,26 @@ public interface InfrastructureServiceSEI {
                         @WebParam(name = "emailUtilizador") String emailUtilizador,
                         @WebParam(name = "role") String role);
 
+        @WebMethod(operationName = "adicionarPerfil")
+        @WebResult(name = "MensagemResponse")
+        MensagemResponse adicionarPerfil(
+                        @WebParam(name = "email") String email,
+                        @WebParam(name = "perfil") List<PerfilItemSOAP> perfil);
+
+        @WebMethod(operationName = "consultarPerfil")
+        @WebResult(name = "PerfilResponse")
+        List<PerfilItemSOAP> consultarPerfil(
+                        @WebParam(name = "email") String email);
+
+        @WebMethod(operationName = "removerChavePerfil")
+        @WebResult(name = "MensagemResponse")
+        MensagemResponse removerChavePerfil(
+                        @WebParam(name = "email") String email,
+                        @WebParam(name = "chave") String chave);
+
+        @WebMethod(operationName = "obterUltimoPost")
+        @WebResult(name = "UltimoPostResponse")
+        String obterUltimoPost(
+                        @WebParam(name = "email") String email);
+
 }

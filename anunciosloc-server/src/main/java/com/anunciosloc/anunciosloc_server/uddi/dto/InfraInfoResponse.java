@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class InfraInfoResponse {
-       private String id;
+    private String id;
     private String nome;
     private String url;
     private Integer capacidade;

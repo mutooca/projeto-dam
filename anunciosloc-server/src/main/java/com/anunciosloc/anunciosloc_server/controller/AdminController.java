@@ -1,74 +1,99 @@
 package com.anunciosloc.anunciosloc_server.controller;
 
-//import com.anunciosloc.anunciosloc_server.dto.DashboardResponse;
-//import com.anunciosloc.anunciosloc_server.model.Infraestrutura;
-//import com.anunciosloc.anunciosloc_server.repository.InfraestruturaRepository;
-//import com.anunciosloc.anunciosloc_server.repository.UtilizadorRepository;
-//import com.anunciosloc.anunciosloc_server.service.AdminService;
-
+import com.anunciosloc.anunciosloc_server.dto.admin.DashboardEstatisticasDTO;
+import com.anunciosloc.anunciosloc_server.dto.admin.InfraestruturaAdminDTO;
+import com.anunciosloc.anunciosloc_server.dto.admin.UtilizadorAdminDTO;
+import com.anunciosloc.anunciosloc_server.service.AdminService;
 import lombok.RequiredArgsConstructor;
-//import org.springframework.http.ResponseEntity;
-//import org.springframework.lang.NonNull;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-//import java.util.HashMap;
-//import java.util.Map;
-//import java.util.UUID;
 
+import java.util.List;
+import java.util.Map;
+
+@Slf4j
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
-//@CrossOrigin(origins = "*")
 public class AdminController {
-    
-   /*  private final InfraestruturaRepository infraRepository;
-    private final UtilizadorRepository utilizadorRepository;
+
     private final AdminService adminService;
-    
-    @PostMapping("/infraestruturas")
-    public ResponseEntity<?> registarInfraestrutura(@RequestBody @NonNull Infraestrutura infra) {
-        try {
-            Infraestrutura saved = infraRepository.save(infra);
-            return ResponseEntity.ok("Infraestrutura registada com ID: " + saved.getIdInfraestrutura());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
-    
-    @DeleteMapping("/infraestruturas/{id}")
-    public ResponseEntity<?> eliminarInfraestrutura(@PathVariable @NonNull UUID id) {
-        try {
-            infraRepository.deleteById(id);
-            return ResponseEntity.ok("Infraestrutura eliminada");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
-    
-    @GetMapping("/estatisticas")
-    public ResponseEntity<?> getEstatisticas() {
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("totalUtilizadores", utilizadorRepository.count());
-        stats.put("totalInfraestruturas", infraRepository.count());
-        stats.put("totalAnuncios", infraRepository.findAll().stream()
-            .mapToInt(Infraestrutura::getTotalAnuncios).sum());
-        stats.put("totalEntregas", infraRepository.findAll().stream()
-            .mapToInt(Infraestrutura::getTotalEntregas).sum());
-        return ResponseEntity.ok(stats);
-    }
-    
-    @GetMapping("/utilizadores")
-    public ResponseEntity<?> listarUtilizadores() {
-        return ResponseEntity.ok(utilizadorRepository.findAll());
-    }
 
     @GetMapping("/dashboard")
-    public ResponseEntity<?> obterDashboard(
-            @RequestParam String email) {
+    public ResponseEntity<?> obterDashboard() {
+        log.info(" [ADMIN] Dashboard solicitado");
         try {
-            DashboardResponse dashboard = adminService.obterDashboard(email);
-            return ResponseEntity.ok(dashboard);
+            DashboardEstatisticasDTO stats = adminService.obterDashboardEstatisticas();
+            return ResponseEntity.ok(stats);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            log.error(" Erro no dashboard: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("erro", e.getMessage()));
         }
-    }*/
+    }
+
+    @GetMapping("/infraestruturas")
+    public ResponseEntity<?> listarInfraestruturas() {
+        try {
+            List<InfraestruturaAdminDTO> infras = adminService.listarTodasInfraestruturas();
+            return ResponseEntity.ok(infras);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("erro", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/infraestruturas/nao-registadas")
+    public ResponseEntity<?> listarInfraestruturasNaoRegistadas() {
+        try {
+            List<InfraestruturaAdminDTO> infras = adminService.listarInfraestruturasNaoRegistadas();
+            return ResponseEntity.ok(infras);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("erro", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/utilizadores")
+    public ResponseEntity<?> listarUtilizadores() {
+        try {
+            List<UtilizadorAdminDTO> users = adminService.listarTodosUtilizadores();
+            return ResponseEntity.ok(users);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("erro", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/utilizadores/inativos")
+    public ResponseEntity<?> listarUtilizadoresInativos() {
+        try {
+            List<UtilizadorAdminDTO> users = adminService.listarUtilizadoresInativos();
+            return ResponseEntity.ok(users);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("erro", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/utilizadores/ativos")
+    public ResponseEntity<?> listarUtilizadoresAtivos() {
+        try {
+            List<UtilizadorAdminDTO> users = adminService.listarUtilizadoresAtivos();
+            return ResponseEntity.ok(users);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("erro", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/utilizadores/contagem")
+    public ResponseEntity<?> contagemUtilizadores() {
+        try {
+            long total = adminService.contarUtilizadores();
+            long ativos = adminService.contarUtilizadoresAtivos();
+            long inativos = adminService.contarUtilizadoresInativos();
+            return ResponseEntity.ok(Map.of(
+                    "total", total,
+                    "ativos", ativos,
+                    "inativos", inativos));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("erro", e.getMessage()));
+        }
+    }
 }

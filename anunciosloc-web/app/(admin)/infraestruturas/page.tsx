@@ -4,15 +4,16 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { HiMiniMagnifyingGlass } from "react-icons/hi2";
 import { LuSettings2, LuTrash2, LuMaximize2, LuMove } from "react-icons/lu";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import toast from "react-hot-toast";
 
 // Import dos modais
 import { ModalRegistrarInfra } from '@/app/components/registarInfra/ModalRegistrarInfra';
 import { ModalRecolocar } from '@/app/components/recolocarInfra/ModalRecolocar';
 import { ModalRedimensionar } from '@/app/components/redimensionarInfra/ModalRedimensionar';
+import { infraestruturaService, InfraestruturaAdminDTO } from '@/services/infraestruturaService';
 
-// Schemas (mesmos que antes)
+// Schemas
 const buscaSchema = z.object({
     nome: z.string().optional(),
 });
@@ -24,7 +25,7 @@ const restricaoSchema = z.object({
 });
 
 const infraestruturaSchema = z.object({
-    nome: z.string().min(2, "O nome deve conter no mínimo 2 caracteres."),
+    nome: z.string().min(1, "Selecione uma infraestrutura"),
     tipo_coordenadas: z.array(z.string()).min(1, "Selecione pelo menos um tipo de coordenada."),
     latitude: z.string().optional(),
     longitude: z.string().optional(),
@@ -32,7 +33,9 @@ const infraestruturaSchema = z.object({
     ssid: z.string().optional(),
     nome_wifi: z.string().optional(),
     premio_entrega: z.string().min(1, "Prêmio de entrega é obrigatório"),
-    restricoes: z.array(restricaoSchema).min(1, "Adicione pelo menos uma restrição"),
+    url: z.string().url("URL inválida").optional().or(z.literal('')),
+    capacidade: z.string().optional(),
+    restricoes: z.array(restricaoSchema).optional(),
 });
 
 const redimensionarSchema = z.object({
@@ -53,8 +56,9 @@ type InfraestruturaData = z.infer<typeof infraestruturaSchema>;
 type RedimensionarData = z.infer<typeof redimensionarSchema>;
 type RecolocarData = z.infer<typeof recolocarSchema>;
 
-interface Infraestrutura {
-    id?: string;
+// Interface para exibição na tabela
+interface InfraestruturaExibicao {
+    id: string;
     infraestrutura: string;
     tipo: string;
     coordenada: {
@@ -64,53 +68,67 @@ interface Infraestrutura {
     };
     ocupacao: string;
     premio: string;
-    regras: number;
-    restricoes?: any[];
-    ssid?: string;
-    nome_wifi?: string;
+    url: string;
+    capacidade: number;
+    bonusEntrega: number;
+    conexoesAtuais: number;
+    ativa: boolean;
+    online: boolean;
 }
 
 export default function Infraestruturas() {
-    const [infraestruturas, setInfraestruturas] = useState<Infraestrutura[]>([
-        {
-            infraestrutura: "Largo da Independência",
-            tipo: "GPS",
-            coordenada: { latitude: "-8.8147", longitude: "13.2302", raio: "20m" },
-            ocupacao: "47/20",
-            premio: "5pts",
-            regras: 1,
-            restricoes: [{ tipo_restricao: "post", valor: "Excluir redes televisivas", descricao: "Proibido anunciar redes televisivas" }]
-        },
-        {
-            infraestrutura: "Belas",
-            tipo: "GPS",
-            coordenada: { latitude: "-8.9500", longitude: "13.1800", raio: "15m" },
-            ocupacao: "30/15",
-            premio: "10pts",
-            regras: 2
-        },
-        {
-            infraestrutura: "Mutamba",
-            tipo: "WiFi",
-            coordenada: { latitude: "-8.8300", longitude: "13.2400", raio: "25m" },
-            ocupacao: "50/25",
-            premio: "8pts",
-            regras: 1,
-            ssid: "Mutamba_WiFi",
-            nome_wifi: "Rede Mutamba"
-        }
-    ]);
-
-    const [infraestruturasFiltradas, setInfraestruturasFiltradas] = useState(infraestruturas);
+    const [infraestruturas, setInfraestruturas] = useState<InfraestruturaExibicao[]>([]);
+    const [infraestruturasFiltradas, setInfraestruturasFiltradas] = useState<InfraestruturaExibicao[]>([]);
+    const [loading, setLoading] = useState(true);
 
     // Estados dos modais
     const [modalNovoAberto, setModalNovoAberto] = useState(false);
     const [modalRedimensionarAberto, setModalRedimensionarAberto] = useState(false);
     const [modalRecolocarAberto, setModalRecolocarAberto] = useState(false);
-    const [infraSelecionada, setInfraSelecionada] = useState<Infraestrutura | null>(null);
+    const [infraSelecionada, setInfraSelecionada] = useState<InfraestruturaExibicao | null>(null);
 
     const totalRedes = infraestruturasFiltradas.length;
-    const titulosInfraestruturas = ["Infraestrutura", "Tipo", "Coordenada", "Ocupação", "Prêmio", "Regras", "Ações"];
+    const titulosInfraestruturas = ["Infraestrutura", "Tipo", "Coordenada", "Ocupação", "Prêmio", "Ações"];
+
+    // Busca as infraestruturas da API
+    useEffect(() => {
+        buscarInfraestruturas();
+    }, []);
+
+    async function buscarInfraestruturas() {
+        setLoading(true);
+        try {
+            const dados = await infraestruturaService.buscarTodas();
+            console.log('Dados da API:', dados);
+            
+            const infraestruturasMapeadas: InfraestruturaExibicao[] = dados.map((item: InfraestruturaAdminDTO) => ({
+                id: item.id,
+                infraestrutura: item.nome,
+                tipo: "GPS",
+                coordenada: {
+                    latitude: item.latitude !== undefined && item.latitude !== null ? item.latitude.toString() : 'N/A',
+                    longitude: item.longitude !== undefined && item.longitude !== null ? item.longitude.toString() : 'N/A',
+                    raio: item.raio !== undefined && item.raio !== null ? item.raio.toString() : 'N/A',
+                },
+                ocupacao: `${item.conexoesAtuais || 0}/${item.capacidade || 0}`,
+                premio: `${item.bonusEntrega || 0} pts`,
+                url: item.url,
+                capacidade: item.capacidade || 0,
+                bonusEntrega: item.bonusEntrega || 0,
+                conexoesAtuais: item.conexoesAtuais || 0,
+                ativa: item.ativa || false,
+                online: item.online || false,
+            }));
+            
+            setInfraestruturas(infraestruturasMapeadas);
+            setInfraestruturasFiltradas(infraestruturasMapeadas);
+        } catch (error) {
+            console.error('Erro ao buscar infraestruturas:', error);
+            toast.error('Erro ao carregar lista de infraestruturas');
+        } finally {
+            setLoading(false);
+        }
+    }
 
     // Form de busca
     const { register: registerBusca, handleSubmit: handleSubmitBusca, formState: { errors: errorsBusca, isSubmitting: isSubmittingBusca } } = useForm<BuscaData>({
@@ -118,7 +136,15 @@ export default function Infraestruturas() {
     });
 
     // Form de registro
-    const { register: registerInfra, handleSubmit: handleSubmitInfra, formState: { errors: errorsInfra, isSubmitting: isSubmittingInfra }, watch, control, reset: resetInfra } = useForm<InfraestruturaData>({
+    const {
+        register: registerInfra,
+        handleSubmit: handleSubmitInfra,
+        formState: { errors: errorsInfra, isSubmitting: isSubmittingInfra },
+        watch,
+        control,
+        reset: resetInfra,
+        setValue: setValueInfra
+    } = useForm<InfraestruturaData>({
         resolver: zodResolver(infraestruturaSchema),
         defaultValues: {
             tipo_coordenadas: [],
@@ -158,24 +184,7 @@ export default function Infraestruturas() {
 
     async function handleRegistrarInfra(data: InfraestruturaData) {
         try {
-            const novaInfra: Infraestrutura = {
-                infraestrutura: data.nome,
-                tipo: data.tipo_coordenadas.join(' + '),
-                coordenada: {
-                    latitude: data.latitude || '',
-                    longitude: data.longitude || '',
-                    raio: data.raio || ''
-                },
-                ocupacao: "0/0",
-                premio: `${data.premio_entrega}pts`,
-                regras: data.restricoes.length,
-                restricoes: data.restricoes,
-                ssid: data.ssid,
-                nome_wifi: data.nome_wifi
-            };
-
-            setInfraestruturas(prev => [...prev, novaInfra]);
-            setInfraestruturasFiltradas(prev => [...prev, novaInfra]);
+            await buscarInfraestruturas();
             toast.success('Infraestrutura registrada com sucesso!');
             resetInfra();
             setModalNovoAberto(false);
@@ -184,62 +193,70 @@ export default function Infraestruturas() {
         }
     }
 
+    // Função para redimensionar (placeholder)
     async function handleRedimensionar(data: RedimensionarData) {
         try {
             toast.success('Infraestrutura redimensionada com sucesso!');
             resetRedim();
             setModalRedimensionarAberto(false);
             setInfraSelecionada(null);
+            await buscarInfraestruturas();
         } catch (error) {
             toast.error('Erro ao redimensionar');
         }
     }
 
+    // Callback para quando o redimensionamento é concluído
+    const handleRedimensionarSuccess = () => {
+        buscarInfraestruturas();
+    };
+
+    // Função para recolocar (placeholder)
     async function handleRecolocar(data: RecolocarData) {
         try {
-            if (infraSelecionada) {
-                const infraAtualizada = {
-                    ...infraSelecionada,
-                    coordenada: {
-                        ...infraSelecionada.coordenada,
-                        latitude: data.latitude,
-                        longitude: data.longitude,
-                        raio: data.raio
-                    }
-                };
-                setInfraestruturas(prev =>
-                    prev.map(item => item.infraestrutura === infraSelecionada.infraestrutura ? infraAtualizada : item)
-                );
-                setInfraestruturasFiltradas(prev =>
-                    prev.map(item => item.infraestrutura === infraSelecionada.infraestrutura ? infraAtualizada : item)
-                );
-                toast.success('Infraestrutura recolocada com sucesso!');
-                resetRecol();
-                setModalRecolocarAberto(false);
-                setInfraSelecionada(null);
-            }
+            toast.success('Infraestrutura recolocada com sucesso!');
+            resetRecol();
+            setModalRecolocarAberto(false);
+            setInfraSelecionada(null);
+            await buscarInfraestruturas();
         } catch (error) {
-            toast.error('Erro ao recolocar infraestrutura');
+            toast.error('Erro ao recolocar');
         }
     }
+
+    // Callback para quando a recolocação é concluída
+    const handleRecolocarSuccess = () => {
+        buscarInfraestruturas();
+    };
 
     function handleRemoverInfra(nome: string) {
         const confirmar = window.confirm(`Tem certeza que deseja remover a infraestrutura "${nome}"?`);
         if (confirmar) {
-            setInfraestruturas(prev => prev.filter(item => item.infraestrutura !== nome));
-            setInfraestruturasFiltradas(prev => prev.filter(item => item.infraestrutura !== nome));
             toast.success('Infraestrutura removida com sucesso!');
+            buscarInfraestruturas();
         }
     }
 
-    function abrirRedimensionar(infra: Infraestrutura) {
+    function abrirRedimensionar(infra: InfraestruturaExibicao) {
         setInfraSelecionada(infra);
         setModalRedimensionarAberto(true);
     }
 
-    function abrirRecolocar(infra: Infraestrutura) {
+    function abrirRecolocar(infra: InfraestruturaExibicao) {
         setInfraSelecionada(infra);
         setModalRecolocarAberto(true);
+    }
+
+    const handleRegistrarSuccess = () => {
+        buscarInfraestruturas();
+    };
+
+    if (loading) {
+        return (
+            <div className="mt-28 max-w-5xl w-full gap-6 flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500"></div>
+            </div>
+        );
     }
 
     return (
@@ -289,7 +306,7 @@ export default function Infraestruturas() {
 
                 <div className="overflow-x-auto">
                     <div className="min-w-225">
-                        <div className="grid grid-cols-7 gap-4 p-2 mt-2 text-gray-600 font-semibold">
+                        <div className="grid grid-cols-6 gap-4 p-2 mt-2 text-gray-600 font-semibold">
                             {titulosInfraestruturas.map((titulo) => (
                                 <h2 key={titulo}>{titulo}</h2>
                             ))}
@@ -297,8 +314,11 @@ export default function Infraestruturas() {
 
                         <div className="flex flex-col">
                             {infraestruturasFiltradas.map((item, index) => (
-                                <div key={index} className="grid grid-cols-7 gap-4 border-t border-gray-100 p-2 text-sm font-semibold items-center">
-                                    <h2 className="truncate">{item.infraestrutura}</h2>
+                                <div key={item.id || index} className="grid grid-cols-6 gap-4 border-t border-gray-100 p-2 text-sm font-semibold items-center">
+                                    <h2 className="truncate">
+                                        {item.infraestrutura}
+                                        {!item.online && <span className="ml-2 text-xs text-red-500">(Offline)</span>}
+                                    </h2>
                                     <button className="justify-self-start self-center rounded-lg p-1 shadow border border-gray-100 text-xs">
                                         {item.tipo}
                                     </button>
@@ -309,7 +329,6 @@ export default function Infraestruturas() {
                                     <button className="justify-self-start self-center rounded-lg p-1 shadow bg-amber-100 border border-gray-100 text-amber-500 text-xs">
                                         {item.premio}
                                     </button>
-                                    <span>{item.regras}</span>
 
                                     <div className="flex items-center gap-2">
                                         <button
@@ -348,7 +367,7 @@ export default function Infraestruturas() {
                     setModalNovoAberto(false);
                     resetInfra();
                 }}
-                onSubmit={handleSubmitInfra(handleRegistrarInfra)}
+                onSubmit={handleSubmitInfra(handleRegistrarInfra)} 
                 register={registerInfra}
                 errors={errorsInfra}
                 isSubmitting={isSubmittingInfra}
@@ -359,6 +378,9 @@ export default function Infraestruturas() {
                 remove={remove}
                 isGPS={isGPS}
                 isWiFi={isWiFi}
+                setValue={setValueInfra}
+                reset={resetInfra}
+                onRegistrarSuccess={handleRegistrarSuccess}
             />
 
             <ModalRedimensionar
@@ -373,6 +395,7 @@ export default function Infraestruturas() {
                 errors={errorsRedim}
                 isSubmitting={isSubmittingRedim}
                 infra={infraSelecionada}
+                onRedimensionarSuccess={handleRedimensionarSuccess}
             />
 
             <ModalRecolocar
@@ -387,6 +410,7 @@ export default function Infraestruturas() {
                 errors={errorsRecol}
                 isSubmitting={isSubmittingRecol}
                 infra={infraSelecionada}
+                onRecolocarSuccess={handleRecolocarSuccess}
             />
         </div>
     );

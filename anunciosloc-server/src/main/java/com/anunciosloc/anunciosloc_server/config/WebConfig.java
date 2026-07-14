@@ -26,6 +26,13 @@ public class WebConfig implements WebMvcConfigurer {
                 "/api/auth/login/admin",
                 "/api/infraestruturas/locais/todos",
                 "/api/infraestruturas/estatisticas",
+                "/api/admin/dashboard",
+                "/api/admin/infraestruturas",
+                "/api/admin/infraestruturas/nao-registadas",
+                "/api/admin/utilizadores",
+                "/api/admin/utilizadores/inativos",
+                "/api/admin/utilizadores/ativos",
+                "/api/admin/utilizadores/contagem",
                 "/h2-console/**",
                 "/swagger-ui/**",
                 "/v3/api-docs/**"

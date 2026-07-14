@@ -587,14 +587,12 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                 try {
                         UUID anuncioUUID = UUID.fromString(idAnuncio);
 
-                        
                         Anuncio anuncio = anuncioRepository.findById(anuncioUUID)
                                         .orElseThrow(() -> new RuntimeException("Anúncio não encontrado"));
 
                         log.info("   Anúncio encontrado: {}", anuncio.getTitulo());
                         log.info("   Autor: {}", anuncio.getAutorEmail());
 
-                        
                         boolean isDono = anuncio.getAutorEmail().equalsIgnoreCase(emailUtilizador);
                         boolean isAdmin = "ADMIN".equalsIgnoreCase(role);
 
@@ -610,7 +608,6 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                                         isDono ? "(DONO)" : "",
                                         isAdmin ? "(ADMIN)" : "");
 
-                        
                         List<EntregaAnuncio> entregas = entregaRepository.findByIdAnuncio(anuncioUUID);
                         int totalEntregasEliminadas = 0;
 
@@ -620,10 +617,8 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                                 log.info("   {} entregas eliminadas", totalEntregasEliminadas);
                         }
 
-                        
                         anuncioRepository.delete(anuncio);
 
-                        
                         infraEstadoService.decrementarTotalAnuncios(1);
 
                         log.info("  Anúncio eliminado com sucesso");
@@ -677,6 +672,18 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                 } catch (Exception e) {
                         log.error(" Erro ao listar anúncios do autor {}: {}", email, e.getMessage(), e);
                         return List.of();
+                }
+        }
+
+        @Override
+        public String obterUltimoPost(String email) {
+                log.info(" [INFRA] Buscando último post de: {}", email);
+                try {
+                        LocalDateTime ultimoPost = anuncioRepository.findUltimoPostByEmail(email);
+                        return ultimoPost != null ? ultimoPost.toString() : null;
+                } catch (Exception e) {
+                        log.error(" Erro: {}", e.getMessage());
+                        return null;
                 }
         }
 
@@ -804,6 +811,105 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                                         .mensagem("Erro ao marcar anúncio como lido: " + e.getMessage())
                                         .build();
                 }
+        }
+
+        @SuppressWarnings("null")
+        @Override
+        @Transactional
+        public MensagemResponse adicionarPerfil(String email, List<PerfilItem> perfil) {
+                log.info(" [INFRA] Adicionando perfil para: {}", email);
+                log.info("   Itens: {}", perfil.size());
+
+                try {
+
+                        UUID idUtilizador = obterIdUtilizador(email);
+
+                        perfilRepository.deleteByEmail(email);
+
+                        for (PerfilItem item : perfil) {
+                                PerfilUtilizador perfilEntity = PerfilUtilizador.builder()
+                                                .idUtilizador(idUtilizador)
+                                                .email(email)
+                                                .chave(item.getChave())
+                                                .valor(item.getValor())
+                                                .build();
+                                perfilRepository.save(perfilEntity);
+                                log.info("  {} = {}", item.getChave(), item.getValor());
+                        }
+
+                        log.info(" Perfil atualizado com sucesso para: {}", email);
+                        return MensagemResponse.builder()
+                                        .sucesso(true)
+                                        .mensagem("Perfil atualizado com sucesso!")
+                                        .build();
+
+                } catch (Exception e) {
+                        log.error("  Erro ao adicionar perfil: {}", e.getMessage(), e);
+                        return MensagemResponse.builder()
+                                        .sucesso(false)
+                                        .mensagem("Erro: " + e.getMessage())
+                                        .build();
+                }
+        }
+
+        @Override
+        public List<PerfilItem> consultarPerfil(String email) {
+                log.info(" [INFRA] Consultando perfil para: {}", email);
+
+                try {
+                        List<PerfilUtilizador> perfis = perfilRepository.findByEmail(email);
+
+                        List<PerfilItem> result = perfis.stream()
+                                        .map(p -> PerfilItem.builder()
+                                                        .chave(p.getChave())
+                                                        .valor(p.getValor())
+                                                        .build())
+                                        .collect(Collectors.toList());
+
+                        log.info("   Encontrados {} itens", result.size());
+                        return result;
+
+                } catch (Exception e) {
+                        log.error("  Erro ao consultar perfil: {}", e.getMessage(), e);
+                        return List.of();
+                }
+        }
+
+        @Override
+        @Transactional
+        public MensagemResponse removerChavePerfil(String email, String chave) {
+                log.info(" [INFRA] Removendo chave '{}' do perfil de: {}", chave, email);
+
+                try {
+                        int removidos = perfilRepository.deleteByEmailAndChave(email, chave);
+
+                        if (removidos > 0) {
+                                log.info("   Chave '{}' removida com sucesso", chave);
+                                return MensagemResponse.builder()
+                                                .sucesso(true)
+                                                .mensagem("Chave '" + chave + "' removida com sucesso!")
+                                                .build();
+                        } else {
+                                log.warn("   Chave '{}' não encontrada para: {}", chave, email);
+                                return MensagemResponse.builder()
+                                                .sucesso(false)
+                                                .mensagem("Chave '" + chave + "' não encontrada")
+                                                .build();
+                        }
+                } catch (Exception e) {
+                        log.error("  Erro ao remover chave: {}", e.getMessage(), e);
+                        return MensagemResponse.builder()
+                                        .sucesso(false)
+                                        .mensagem("Erro: " + e.getMessage())
+                                        .build();
+                }
+        }
+
+        // Helper para obter ID do utilizador
+        private UUID obterIdUtilizador(String email) {
+                // Buscar na tabela de utilizadores ou criar um mapping
+                // Por simplicidade, usar um UUID baseado no email (ou criar um novo)
+                return UUID.nameUUIDFromBytes(email.getBytes());
         }
 
         @Override
