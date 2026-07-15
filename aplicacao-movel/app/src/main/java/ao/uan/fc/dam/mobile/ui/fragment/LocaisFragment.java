@@ -1,165 +1,238 @@
 package ao.uan.fc.dam.mobile.ui.fragment;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
-import android.location.Location;
 import android.os.Bundle;
-import android.text.InputType;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.EditText;
-import android.widget.LinearLayout;
+import android.widget.SearchView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.Priority;
-import com.google.android.gms.tasks.Task;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 
-import java.util.ArrayList;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import ao.uan.fc.dam.mobile.R;
-import ao.uan.fc.dam.mobile.adapter.LocalAdapter;
-import ao.uan.fc.dam.mobile.model.Local;
-import ao.uan.fc.dam.mobile.ui.viewmodel.LocaisViewModel;
+import ao.uan.fc.dam.mobile.contentProvider.LocalizacaoProvider;
+import ao.uan.fc.dam.mobile.data.entity.CoordenadaGps;
+import ao.uan.fc.dam.mobile.data.entity.Local;
+import ao.uan.fc.dam.mobile.data.enums.TipoCoordenada;
+import ao.uan.fc.dam.mobile.data.repository.CoordenadaGpsRepository;
+import ao.uan.fc.dam.mobile.data.repository.LocalRepository;
+import ao.uan.fc.dam.mobile.ui.adapter.LocalAdapter;
 
-/**
- * Arquiteto: Gestão de Locais (F3)
- */
+
 public class LocaisFragment extends Fragment {
-    private static final String TAG = "LocaisFragment";
+    private SearchView pesquisar;
+    private RecyclerView recyclerView;
+    private static final int REQUEST_LOCATION = 100;
     private LocalAdapter adapter;
-    private LocaisViewModel viewModel;
-    private FusedLocationProviderClient fusedLocationClient;
+    private LocalRepository repository;
+    private LocalizacaoProvider localizacaoProvider;
+    private CoordenadaGpsRepository coordenadaGpsRepository;
+    private ExtendedFloatingActionButton btnNovoLocal;
 
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity());
+
+    public LocaisFragment(){
+        super(R.layout.fragment_locais);
     }
 
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_locais, container, false);
-        viewModel = new ViewModelProvider(this).get(LocaisViewModel.class);
+    public void onViewCreated(@NotNull View view, @Nullable Bundle savedInstanceState){
+        super.onViewCreated(view, savedInstanceState);
+        pesquisar = view.findViewById(R.id.searchView2);
+        recyclerView = view.findViewById(R.id.recyclerViewLocais);
+        adapter = new LocalAdapter();
+        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        recyclerView.setAdapter(adapter);
+        repository = new LocalRepository(requireContext());
+        localizacaoProvider = new LocalizacaoProvider(requireContext());
+        coordenadaGpsRepository = new CoordenadaGpsRepository(requireContext());
+        btnNovoLocal = view.findViewById(R.id.fabAddLocal);
 
-        setupRecyclerView(view);
-        setupObservers();
+        verificarPermissaoLocalizacao();
 
-        view.findViewById(R.id.fabAddLocal).setOnClickListener(v -> mostrarDialogCriarLocal());
+        carregarLocais();
 
-        return view;
-    }
-
-    private void setupRecyclerView(View view) {
-        RecyclerView recyclerView = view.findViewById(R.id.recyclerViewLocais);
-        recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
-        adapter = new LocalAdapter(new ArrayList<>(), new LocalAdapter.OnLocalClickListener() {
+        adapter.setOnLocalClickListener(new LocalAdapter.OnLocalClickListener() {
             @Override
-            public void onLocalClick(Local local) {}
+            public void onClick(Local local) {
+                editarLocal(local);
+            }
 
             @Override
-            public void onLocalDelete(Local local) {
-                confirmarExclusao(local);
+            public void onLongClick(Local local) {
+                confirmarRemocao(local);
             }
         });
-        recyclerView.setAdapter(adapter);
+
+        pesquisar.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String s) {
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String s) {
+                repository.pesquisarComCoordenadas(s, lista -> {
+                    requireActivity().runOnUiThread(() -> {
+                        adapter.setLocais(lista);
+                    });
+                });
+                return true;
+            }
+        });
+
+        btnNovoLocal.setOnClickListener(v->{
+            abrirDialogNovoLocal();
+        });
     }
 
-    private void setupObservers() {
-        viewModel.getLocales().observe(getViewLifecycleOwner(), locales -> {
-            if (locales != null) adapter.atualizar(locales);
-        });
-        
-        viewModel.getErrorMessage().observe(getViewLifecycleOwner(), msg -> {
-            if (msg != null) Toast.makeText(getContext(), msg, Toast.LENGTH_LONG).show();
+    private void carregarLocais(){
+        repository.listarTodosComCoordenadas(lista -> {
+            requireActivity().runOnUiThread(() -> {
+                adapter.setLocais(lista);
+            });
         });
     }
 
-    private void mostrarDialogCriarLocal() {
-        LinearLayout layout = new LinearLayout(requireContext());
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(60, 40, 60, 20);
+    private void editarLocal(Local local){
+        View view = LayoutInflater.from(getContext()).inflate(R.layout.dialog_novo_local,null);
+        EditText nome = view.findViewById(R.id.editNomeLocal);
+        nome.setText(local.getNome());
 
-        final EditText edtNome = new EditText(requireContext());
-        edtNome.setHint("Nome do Local (ex: Largo da Independência)");
-        edtNome.setInputType(InputType.TYPE_CLASS_TEXT);
-        layout.addView(edtNome);
-
-        new AlertDialog.Builder(requireContext())
-                .setTitle("Registar Local Atual")
-                .setMessage("A sua posição GPS será capturada automaticamente.")
-                .setView(layout)
-                .setPositiveButton("Registar", (dialog, which) -> {
-                    String nome = edtNome.getText().toString().trim();
-                    if (!nome.isEmpty()) {
-                        verificarPermissaoEObterPosicao(nome);
-                    } else {
-                        Toast.makeText(requireContext(), "Nome é obrigatório", Toast.LENGTH_SHORT).show();
-                    }
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Editar Local")
+                .setView(view)
+                .setPositiveButton("Guardar",(d,w)->{
+                    local.setNome(nome.getText().toString());
+                    repository.atualizar(local, resultado -> {
+                        requireActivity().runOnUiThread(() -> {
+                            carregarLocais();
+                        });
+                    });
                 })
-                .setNegativeButton("Cancelar", null)
+                .setNegativeButton("Cancelar",null)
                 .show();
     }
 
-    private void verificarPermissaoEObterPosicao(String nome) {
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) 
-                != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(requireContext(), "Permissão de GPS necessária", Toast.LENGTH_SHORT).show();
+    private void confirmarRemocao(Local local){
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Remover Local")
+                .setMessage("Deseja remover este local?")
+
+                .setPositiveButton("Sim",(d,w)->{
+                    repository.remover(local, resultado -> {
+                        requireActivity().runOnUiThread(() -> {
+                            carregarLocais();
+                        });
+                    });
+                })
+                .setNegativeButton("Cancelar",null)
+                .show();
+    }
+
+    private void abrirDialogNovoLocal(){
+        View view = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_novo_local,null);
+        EditText nome = view.findViewById(R.id.editNomeLocal);
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Novo Local")
+                .setView(view)
+                .setPositiveButton("Guardar",(dialog,which)->{
+
+                    criarLocal(nome.getText().toString());
+                }).setNegativeButton("Cancelar",null).show();
+    }
+
+    private void criarLocal(String nome){
+        Log.d("LOCAL", "Criar local iniciado");
+        if(nome.trim().isEmpty()){
             return;
         }
-        obterPosicaoECriarLocal(nome);
+
+        if(!localizacaoProvider.possuiPermissao(requireContext())){
+            Toast.makeText(requireContext(), "Permissão de localização necessária", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        localizacaoProvider.obterLocalizacao(
+                (latitude, longitude) -> {
+
+
+                    Local local = new Local();
+                    local.setNome(nome);
+                    local.setTipoCoordenada(
+                            TipoCoordenada.GPS
+                    );
+                    Log.d("LOCAL", "GPS recebido: "+latitude+" "+longitude);
+                    repository.inserir(local,idLocal -> {
+                        Log.d("LOCAL", "ID Local criado: "+idLocal);
+                        CoordenadaGps gps =
+                                new CoordenadaGps();
+                        gps.setLatitude(latitude);
+                        gps.setLongitude(longitude);
+                        gps.setRaio(100);
+                        gps.setIdLocal(
+                                idLocal.intValue()
+                        );
+                        coordenadaGpsRepository.inserir(
+                                gps,
+                                idGps -> {
+                                    requireActivity()
+                                            .runOnUiThread(
+                                                    this::carregarLocais
+                                            );
+                                }
+                        );
+                    });
+                }
+        );
     }
 
-    @SuppressLint("MissingPermission")
-    private void obterPosicaoECriarLocal(String nome) {
-        Toast.makeText(requireContext(), "A obter localização...", Toast.LENGTH_SHORT).show();
-        Log.d(TAG, "Solicitando localização atual para local: " + nome);
-        
-        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
-                .addOnSuccessListener(location -> {
-                    if (location != null) {
-                        enviarCriacaoLocal(nome, location);
-                    } else {
-                        Log.w(TAG, "Localização atual é nula, tentando última conhecida...");
-                        fusedLocationClient.getLastLocation().addOnSuccessListener(lastLocation -> {
-                            if (lastLocation != null) {
-                                enviarCriacaoLocal(nome, lastLocation);
-                            } else {
-                                Log.w(TAG, "Ambas as localizações são nulas.");
-                                Toast.makeText(requireContext(), "Não foi possível obter GPS. Ative a localização no dispositivo/emulador.", Toast.LENGTH_LONG).show();
-                            }
-                        });
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Falha ao obter localização", e);
-                    Toast.makeText(requireContext(), "Erro ao aceder ao GPS: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+    private void verificarPermissaoLocalizacao(){
+
+        if(ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED){
+
+            requestPermissions(
+                    new String[]{
+                            Manifest.permission.ACCESS_FINE_LOCATION
+                    },
+                    REQUEST_LOCATION);
+        }
     }
 
-    private void enviarCriacaoLocal(String nome, Location location) {
-        Log.d(TAG, "Localização utilizada: " + location.getLatitude() + ", " + location.getLongitude());
-        viewModel.createLocal(nome, location.getLatitude(), location.getLongitude(), 20);
-        Toast.makeText(requireContext(), "Enviando local '" + nome + "'...", Toast.LENGTH_SHORT).show();
-    }
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode,
+            @NonNull String[] permissions,
+            @NonNull int[] grantResults) {
 
-    private void confirmarExclusao(Local local) {
-        new AlertDialog.Builder(requireContext())
-                .setTitle("Remover")
-                .setMessage("Deseja remover '" + local.getNome() + "'?")
-                .setPositiveButton("Remover", (d, w) -> viewModel.removeLocal(local))
-                .setNegativeButton("Cancelar", null).show();
+        super.onRequestPermissionsResult(
+                requestCode,
+                permissions,
+                grantResults);
+
+        if(requestCode == REQUEST_LOCATION){
+            if(grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                // Permissão concedida
+            }else{
+                Toast.makeText(requireContext(), "A localização é necessária para criar Locais.", Toast.LENGTH_LONG).show();
+            }
+        }
     }
 }

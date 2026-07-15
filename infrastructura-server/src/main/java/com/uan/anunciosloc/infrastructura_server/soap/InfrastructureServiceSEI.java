@@ -105,6 +105,16 @@ public interface InfrastructureServiceSEI {
         List<AnuncioInfo> listarAnunciosPorEmail(
                         @WebParam(name = "email") String email);
 
+        @WebMethod(operationName = "contarAnunciosPorEmail")
+        @WebResult(name = "count")
+        long contarAnunciosPorEmail(
+                        @WebParam(name = "email") String email);
+
+        @WebMethod(operationName = "contarEntregasPorEmail")
+        @WebResult(name = "count")
+        long contarEntregasPorEmail(
+                        @WebParam(name = "email") String email);
+
         @WebMethod(operationName = "marcarComoLido")
         MensagemResponse marcarComoLido(
                         @WebParam(name = "idAnuncio") String idAnuncio,

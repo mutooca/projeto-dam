@@ -1,101 +1,158 @@
 package ao.uan.fc.dam.mobile.ui.fragment;
 
+
 import android.os.Bundle;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.ViewModelProvider;
+import androidx.lifecycle.MediatorLiveData;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import ao.uan.fc.dam.mobile.R;
-import ao.uan.fc.dam.mobile.adapter.AnuncioAdapter;
-import ao.uan.fc.dam.mobile.model.Anuncio;
-import ao.uan.fc.dam.mobile.security.SessionManager;
-import ao.uan.fc.dam.mobile.ui.viewmodel.AnunciosViewModel;
-import ao.uan.fc.dam.mobile.ui.viewmodel.LocaisViewModel;
-import ao.uan.fc.dam.mobile.ui.viewmodel.PerfilViewModel;
+import ao.uan.fc.dam.mobile.data.entity.AnuncioRecebido;
+import ao.uan.fc.dam.mobile.data.relation.AnuncioCompleto;
+import ao.uan.fc.dam.mobile.data.repository.AnuncioRecebidoRepository;
+import ao.uan.fc.dam.mobile.data.repository.AnuncioRepository;
+import ao.uan.fc.dam.mobile.data.repository.LocalRepository;
+import ao.uan.fc.dam.mobile.ui.adapter.AnuncioAdapter;
+import ao.uan.fc.dam.mobile.ui.model.AnuncioModel;
+
 
 public class InicioFragment extends Fragment {
+    private TextView bemVindoUser;
+    private TextView numeroNotificacao;
+    private EditText pesquisar;
+    private TextView numeroAnuncio;
+    private TextView numeroLocais;
     private AnuncioAdapter adapter;
-    private AnunciosViewModel viewModel;
-    private LocaisViewModel locaisViewModel;
-    private PerfilViewModel perfilViewModel;
+    private AnuncioRepository anuncioRepository;
+    private LocalRepository localRepository;
+    private RecyclerView recyclerViewInicio;
+    private AnuncioRecebidoRepository anuncioRecebidoRepository;
 
-    private TextView txtSaudacao, txtTotalAds, txtTotalLocais;
+    private final MediatorLiveData<List<AnuncioModel>> anunciosCombined = new MediatorLiveData<>();
+
+
+    public InicioFragment(){
+        super(R.layout.fragment_inicio);
+    }
 
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_inicio, container, false);
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState){
+        super.onViewCreated(view, savedInstanceState);
+        bemVindoUser = view.findViewById(R.id.textView7);
+        numeroNotificacao = view.findViewById(R.id.txtBadgeNotif);
+        pesquisar = view.findViewById(R.id.searchView);
+        numeroAnuncio = view.findViewById(R.id.textView29);
+        numeroLocais = view.findViewById(R.id.textView31);
+        recyclerViewInicio = view.findViewById(R.id.recyclerViewInicio);
 
-        viewModel = new ViewModelProvider(this).get(AnunciosViewModel.class);
-        locaisViewModel = new ViewModelProvider(this).get(LocaisViewModel.class);
-        perfilViewModel = new ViewModelProvider(this).get(PerfilViewModel.class);
+        adapter = new AnuncioAdapter();
 
-        txtSaudacao = view.findViewById(R.id.textView7);
-        txtTotalAds = view.findViewById(R.id.textView29);
-        txtTotalLocais = view.findViewById(R.id.textView31);
-
-        RecyclerView recyclerView = view.findViewById(R.id.recyclerViewInicio);
-        recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
-
-        adapter = new AnuncioAdapter(new ArrayList<>(), this::abrirDetalhesAnuncio);
-        recyclerView.setAdapter(adapter);
-
+        recyclerViewInicio.setLayoutManager(new LinearLayoutManager(requireContext()));
+        recyclerViewInicio.setAdapter(adapter);
+        anuncioRepository = new AnuncioRepository(requireContext());
+        localRepository = new LocalRepository(requireContext());
+        anuncioRecebidoRepository = new AnuncioRecebidoRepository(requireContext());
+        
         setupObservers();
+        carregarNumeroLocais();
 
-        // ⭐ CARREGAR DADOS INICIAIS ⭐
-        String email = SessionManager.getEmail(requireContext());
-        if (email != null) {
-            viewModel.carregarMeusAnuncios(requireContext(), email);
-        }
+        adapter.setOnAnuncioClickListener(new AnuncioAdapter.OnAnuncioClickListener() {
+            @Override
+            public void onClick(AnuncioModel anuncio) {
+                Fragment fragment;
+                Bundle bundle = new Bundle();
 
-        return view;
+                if ("DESCENTRALIZADO".equals(anuncio.getModoEntrega())) {
+                    bundle.putString("msg_id", anuncio.getMsgId());
+                    fragment = new DetailAnuncioFragment();
+                } else {
+                    bundle.putInt("id_anuncio", anuncio.getId());
+                    fragment = new VerAnuncioFragment();
+                }
+
+                fragment.setArguments(bundle);
+                requireActivity()
+                        .getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.frameContainer, fragment)
+                        .addToBackStack(null)
+                        .commit();
+            }
+
+            @Override
+            public void onLongClick(AnuncioModel anuncio) {
+            }
+        });
     }
 
     private void setupObservers() {
-        // Observa Perfil para saudação personalizada
-        perfilViewModel.getProfile().observe(getViewLifecycleOwner(), user -> {
-            if (user != null && user.getNome() != null) {
-                txtSaudacao.setText("Olá, " + user.getNome() + "!");
-            }
-        });
+        var liveDataAnuncios = anuncioRepository.listarTodosLiveData();
+        var liveDataRecebidos = anuncioRecebidoRepository.listarTodosLiveData();
 
-        // ⭐ OBSERVA ANÚNCIOS ⭐
-        viewModel.getMeusAnuncios().observe(getViewLifecycleOwner(), anuncios -> {
-            if (anuncios != null) {
-                adapter.atualizar(anuncios);
-                txtTotalAds.setText(String.valueOf(anuncios.size()));
-            }
-        });
+        anunciosCombined.addSource(liveDataAnuncios, lista -> updateCombinedList(lista, liveDataRecebidos.getValue()));
+        anunciosCombined.addSource(liveDataRecebidos, recebidos -> updateCombinedList(liveDataAnuncios.getValue(), recebidos));
 
-        // Observa Locais para o contador
-        locaisViewModel.getLocales().observe(getViewLifecycleOwner(), locais -> {
-            if (locais != null) {
-                txtTotalLocais.setText(String.valueOf(locais.size()));
-            }
-        });
-
-        // Observa erros
-        viewModel.getErrorMessage().observe(getViewLifecycleOwner(), error -> {
-            if (error != null && !error.isEmpty()) {
-                Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show();
-            }
+        anunciosCombined.observe(getViewLifecycleOwner(), modelos -> {
+            adapter.setAnuncios(modelos);
+            numeroAnuncio.setText(String.valueOf(modelos.size()));
         });
     }
 
-    private void abrirDetalhesAnuncio(Anuncio anuncio) {
-        CaixaFragment fragment = CaixaFragment.novaInstancia(anuncio);
-        getParentFragmentManager().beginTransaction()
-                .replace(R.id.frameContainer, fragment)
-                .addToBackStack(null)
-                .commit();
+    private void updateCombinedList(List<AnuncioCompleto> lista, List<AnuncioRecebido> recebidos) {
+        List<AnuncioModel> modelos = new ArrayList<>();
+
+        if (lista != null) {
+            for (var item : lista) {
+                modelos.add(new AnuncioModel(
+                        item.anuncio.getIdAnuncio(),
+                        item.anuncio.getTitulo(),
+                        item.autor != null ? item.autor.getNome() : "",
+                        item.local != null ? item.local.getNome() : "",
+                        item.anuncio.getConteudo(),
+                        item.anuncio.getModoEntrega().name()
+                ));
+            }
+        }
+
+        if (recebidos != null) {
+            for (AnuncioRecebido item : recebidos) {
+                modelos.add(new AnuncioModel(
+                        0,
+                        item.getMsgId(),
+                        item.getTitulo(),
+                        item.getAutor(),
+                        item.getLocal(),
+                        item.getConteudo(),
+                        "DESCENTRALIZADO"
+                ));
+            }
+        }
+
+        anunciosCombined.setValue(modelos);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+    }
+
+    private void carregarNumeroLocais(){
+        localRepository.listarTodosComCoordenadas(lista ->{
+            requireActivity().runOnUiThread(() ->{
+                numeroLocais.setText(
+                        String.valueOf(lista.size())
+                );
+            });
+        });
     }
 }

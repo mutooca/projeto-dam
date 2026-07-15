@@ -12,7 +12,7 @@ public class InfrastructuraServerApplication {
     public static void main(String[] args) {
 
         
-        String url = "jdbc:postgresql://localhost:5432/bd_infra1"; // default
+        String url = "jdbc:postgresql://localhost:5432/bd_infra1"; 
         String user = "postgres";
         String pass = "kama2";
 

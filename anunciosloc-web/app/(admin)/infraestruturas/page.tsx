@@ -71,6 +71,10 @@ interface InfraestruturaExibicao {
     url: string;
     capacidade: number;
     bonusEntrega: number;
+    custoPost: number;
+    raio: number;
+    latitude: number;
+    longitude: number;
     conexoesAtuais: number;
     ativa: boolean;
     online: boolean;
@@ -115,6 +119,10 @@ export default function Infraestruturas() {
                 url: item.url,
                 capacidade: item.capacidade || 0,
                 bonusEntrega: item.bonusEntrega || 0,
+                custoPost: item.custoPost || 0,
+                raio: item.raio || 0,
+                latitude: item.latitude || 0,
+                longitude: item.longitude || 0,
                 conexoesAtuais: item.conexoesAtuais || 0,
                 ativa: item.ativa || false,
                 online: item.online || false,
@@ -161,12 +169,12 @@ export default function Infraestruturas() {
     const isWiFi = tipoCoordenadasWatch.includes('WiFi');
 
     // Form de redimensionar
-    const { register: registerRedim, handleSubmit: handleSubmitRedim, formState: { errors: errorsRedim, isSubmitting: isSubmittingRedim }, reset: resetRedim } = useForm<RedimensionarData>({
+    const { register: registerRedim, formState: { errors: errorsRedim, isSubmitting: isSubmittingRedim }, reset: resetRedim, setValue: setValueRedim } = useForm<RedimensionarData>({
         resolver: zodResolver(redimensionarSchema)
     });
 
     // Form de recolocar
-    const { register: registerRecol, handleSubmit: handleSubmitRecol, formState: { errors: errorsRecol, isSubmitting: isSubmittingRecol }, reset: resetRecol } = useForm<RecolocarData>({
+    const { register: registerRecol, formState: { errors: errorsRecol, isSubmitting: isSubmittingRecol }, reset: resetRecol, setValue: setValueRecol } = useForm<RecolocarData>({
         resolver: zodResolver(recolocarSchema)
     });
 
@@ -193,36 +201,10 @@ export default function Infraestruturas() {
         }
     }
 
-    // Função para redimensionar (placeholder)
-    async function handleRedimensionar(data: RedimensionarData) {
-        try {
-            toast.success('Infraestrutura redimensionada com sucesso!');
-            resetRedim();
-            setModalRedimensionarAberto(false);
-            setInfraSelecionada(null);
-            await buscarInfraestruturas();
-        } catch (error) {
-            toast.error('Erro ao redimensionar');
-        }
-    }
-
     // Callback para quando o redimensionamento é concluído
     const handleRedimensionarSuccess = () => {
         buscarInfraestruturas();
     };
-
-    // Função para recolocar (placeholder)
-    async function handleRecolocar(data: RecolocarData) {
-        try {
-            toast.success('Infraestrutura recolocada com sucesso!');
-            resetRecol();
-            setModalRecolocarAberto(false);
-            setInfraSelecionada(null);
-            await buscarInfraestruturas();
-        } catch (error) {
-            toast.error('Erro ao recolocar');
-        }
-    }
 
     // Callback para quando a recolocação é concluída
     const handleRecolocarSuccess = () => {
@@ -390,12 +372,12 @@ export default function Infraestruturas() {
                     setInfraSelecionada(null);
                     resetRedim();
                 }}
-                onSubmit={handleSubmitRedim(handleRedimensionar)}
                 register={registerRedim}
                 errors={errorsRedim}
                 isSubmitting={isSubmittingRedim}
                 infra={infraSelecionada}
                 onRedimensionarSuccess={handleRedimensionarSuccess}
+                setValue={setValueRedim}
             />
 
             <ModalRecolocar
@@ -405,12 +387,12 @@ export default function Infraestruturas() {
                     setInfraSelecionada(null);
                     resetRecol();
                 }}
-                onSubmit={handleSubmitRecol(handleRecolocar)}
                 register={registerRecol}
                 errors={errorsRecol}
                 isSubmitting={isSubmittingRecol}
                 infra={infraSelecionada}
                 onRecolocarSuccess={handleRecolocarSuccess}
+                setValue={setValueRecol}
             />
         </div>
     );

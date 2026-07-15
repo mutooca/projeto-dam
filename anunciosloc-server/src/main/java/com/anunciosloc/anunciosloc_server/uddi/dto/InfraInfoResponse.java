@@ -19,4 +19,5 @@ public class InfraInfoResponse {
     private Double longitude;
     private Double raio;
     private String mensagem;
+    private boolean sucesso;
 }

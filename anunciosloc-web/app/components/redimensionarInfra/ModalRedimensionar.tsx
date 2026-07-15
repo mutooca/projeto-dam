@@ -1,30 +1,40 @@
 // app/components/redimensionarInfra/ModalRedimensionar.tsx
 import { infraestruturaService } from '@/services/infraestruturaService';
 import toast from 'react-hot-toast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-// Modal de Redimensionar
 export function ModalRedimensionar({
     isOpen,
     onClose,
-    onSubmit,
     register,
     errors,
     isSubmitting,
     infra,
-    onRedimensionarSuccess // Callback para atualizar a lista
+    onRedimensionarSuccess,
+    setValue // ← ADICIONE setValue para preencher o formulário
 }: any) {
     const [redimensionando, setRedimensionando] = useState(false);
 
+    // Quando o modal abrir e tiver infra, preenche os campos
+    useEffect(() => {
+        if (isOpen && infra) {
+            console.log('Preenchendo formulário com dados de:', infra);
+            
+            // Preenche os campos com os valores atuais
+            setValue('capacidade', infra.capacidade?.toString() || '');
+            setValue('bonus_entrega', infra.bonusEntrega?.toString() || '');
+            setValue('custo_post', infra.custoPost?.toString() || '');
+            setValue('raio', infra.raio?.toString() || '');
+        }
+    }, [isOpen, infra, setValue]);
+
     if (!isOpen) return null;
 
-    // Handler personalizado para o submit
     const handleSubmitForm = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         
         console.log('=== INICIANDO REDIMENSIONAMENTO ===');
         
-        // Pega os dados do formulário
         const formData = new FormData(e.currentTarget);
         const data = {
             capacidade: parseInt(formData.get('capacidade') as string) || 0,
@@ -33,24 +43,21 @@ export function ModalRedimensionar({
             raio: parseFloat(formData.get('raio') as string) || 0,
         };
 
-        console.log('Dados do formulário:', data);
+        console.log('Novos dados do formulário:', data);
 
-        // Validação básica
+        // Validações
         if (data.capacidade < 1) {
             toast.error('Capacidade deve ser pelo menos 1');
             return;
         }
-
         if (data.bonusEntrega < 0) {
             toast.error('Bónus de entrega não pode ser negativo');
             return;
         }
-
         if (data.custoPost < 0) {
             toast.error('Custo de post não pode ser negativo');
             return;
         }
-
         if (data.raio < 1) {
             toast.error('Raio deve ser pelo menos 1 metro');
             return;
@@ -59,15 +66,11 @@ export function ModalRedimensionar({
         try {
             setRedimensionando(true);
 
-            // Verifica se tem o ID da infraestrutura
             if (!infra || !infra.id) {
                 toast.error('ID da infraestrutura não encontrado');
                 return;
             }
 
-            console.log('ID da infraestrutura:', infra.id);
-
-            // Chama a API para redimensionar
             const response = await infraestruturaService.redimensionarInfraestrutura(
                 infra.id,
                 {
@@ -80,32 +83,25 @@ export function ModalRedimensionar({
 
             console.log('Resposta da API:', response);
 
-            if (response.success || response.mensagem || response.message) {
+            if (response?.id || response?.mensagem || response?.message) {
                 toast.success(response.mensagem || response.message || 'Infraestrutura redimensionada com sucesso!');
-                
-                // Fecha o modal
                 onClose();
-                
-                // Callback para atualizar a lista no componente pai
                 if (onRedimensionarSuccess) {
                     onRedimensionarSuccess();
                 }
             } else {
-                toast.error(response.mensagem || response.message || 'Erro ao redimensionar infraestrutura');
+                toast.error(response?.mensagem || response?.message || 'Erro ao redimensionar');
             }
         } catch (error: any) {
-            console.error('Erro detalhado ao redimensionar:', error);
-            
-            let errorMessage = 'Erro ao redimensionar infraestrutura. Tenta novamente.';
-            
-            if (error.message) {
-                errorMessage = error.message;
+            console.error('Erro detalhado:', error);
+            let errorMessage = 'Erro ao redimensionar infraestrutura.';
+            if (error.response?.status === 401) {
+                errorMessage = 'Sessão expirada. Faça login novamente.';
             } else if (error.response?.data?.mensagem) {
                 errorMessage = error.response.data.mensagem;
             } else if (error.response?.data?.message) {
                 errorMessage = error.response.data.message;
             }
-            
             toast.error(errorMessage);
         } finally {
             setRedimensionando(false);
@@ -117,21 +113,20 @@ export function ModalRedimensionar({
             <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-2xl font-bold">Redimensionar</h2>
-                    <button 
-                        onClick={onClose} 
-                        className="p-1 hover:bg-gray-100 rounded transition"
-                    >
+                    <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded transition">
                         <span className="text-2xl">&times;</span>
                     </button>
                 </div>
 
                 {infra && (
-                    <p className="text-sm text-gray-500 mb-4">
-                        Redimensionando: <span className="font-semibold text-gray-700">{infra.infraestrutura}</span>
-                    </p>
+                    <div className="text-sm text-gray-500 mb-4">
+                        <p>Redimensionando: <span className="font-semibold text-gray-700">{infra.infraestrutura}</span></p>
+                        <p className="text-xs text-gray-400 mt-1">ID: {infra.id}</p>
+                        <p className="text-xs text-gray-400">Valores atuais: Capacidade {infra.capacidade}, Bónus {infra.bonusEntrega}pts, Raio {infra.raio}m</p>
+                    </div>
                 )}
 
-                <form onSubmit={onSubmit || handleSubmitForm} className="space-y-4">
+                <form onSubmit={handleSubmitForm} className="space-y-4">
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1">Capacidade</label>
                         <input
@@ -140,7 +135,7 @@ export function ModalRedimensionar({
                             type="number"
                             className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-amber-500"
                             placeholder="100"
-                            disabled={redimensionando}
+                            disabled={redimensionando || isSubmitting}
                         />
                         {errors.capacidade && <p className="text-xs text-red-500 mt-1">{errors.capacidade.message}</p>}
                     </div>
@@ -153,7 +148,7 @@ export function ModalRedimensionar({
                             type="number"
                             className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-amber-500"
                             placeholder="10"
-                            disabled={redimensionando}
+                            disabled={redimensionando || isSubmitting}
                         />
                         {errors.bonus_entrega && <p className="text-xs text-red-500 mt-1">{errors.bonus_entrega.message}</p>}
                     </div>
@@ -166,7 +161,7 @@ export function ModalRedimensionar({
                             type="number"
                             className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-amber-500"
                             placeholder="5"
-                            disabled={redimensionando}
+                            disabled={redimensionando || isSubmitting}
                         />
                         {errors.custo_post && <p className="text-xs text-red-500 mt-1">{errors.custo_post.message}</p>}
                     </div>
@@ -180,7 +175,7 @@ export function ModalRedimensionar({
                             step="0.01"
                             className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-amber-500"
                             placeholder="20.5"
-                            disabled={redimensionando}
+                            disabled={redimensionando || isSubmitting}
                         />
                         {errors.raio && <p className="text-xs text-red-500 mt-1">{errors.raio.message}</p>}
                     </div>
@@ -196,7 +191,7 @@ export function ModalRedimensionar({
                         </button>
                         <button
                             type="submit"
-                            disabled={isSubmitting || redimensionando}
+                            disabled={redimensionando || isSubmitting}
                             className="flex-1 px-4 py-2 rounded-lg bg-blue-500 text-white font-semibold hover:bg-blue-600 transition disabled:opacity-50"
                         >
                             {redimensionando ? 'Redimensionando...' : 'Redimensionar'}

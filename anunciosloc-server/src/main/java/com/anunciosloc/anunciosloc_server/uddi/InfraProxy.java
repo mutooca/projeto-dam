@@ -54,7 +54,10 @@ public interface InfraProxy {
 
     MensagemResponse removerChavePerfil(String email, String chave);
 
-    
     String obterUltimoPost(String email);
+
+    long contarAnunciosPorEmail(String email);
+
+    long contarEntregasPorEmail(String email);
 
 }

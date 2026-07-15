@@ -8,7 +8,7 @@ import { BsBroadcast } from "react-icons/bs";
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { LuMail, LuLock } from "react-icons/lu";
-import { authService } from '@/services/authServices'; // ← CORRIGIDO: ../../services/authService
+import { authService } from '@/services/authServices'; 
 
 const sanitizeEmail = (value: string) => {
   if (!value) return " ";

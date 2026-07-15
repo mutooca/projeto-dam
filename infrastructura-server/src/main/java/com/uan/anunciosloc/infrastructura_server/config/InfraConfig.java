@@ -58,7 +58,7 @@ public class InfraConfig {
                 gpsRepository,           // 7 - CoordenadaGpsRepository
                 wifiRepository,          // 8 - CoordenadaWifiRepository
                 inatividadeService       // 9 - InatividadeService
-        );;
+        );
 
             String endpointUrl = "http://localhost:" + soapPort + "/ws/InfrastructureService";
 

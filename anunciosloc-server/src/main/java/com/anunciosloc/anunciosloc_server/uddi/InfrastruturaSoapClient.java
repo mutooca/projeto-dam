@@ -143,8 +143,29 @@ public class InfrastruturaSoapClient {
                 return serviceUrl;
             }
 
+            @Override
             public InfraInfoResponse obterInfoInfraestrutura() {
-                return port.obterInfoInfraestrutura();
+                log.info(" SOAP: obterInfoInfraestrutura");
+                try {
+
+                    InfraInfoResponse response = port.obterInfoInfraestrutura();
+
+                    log.info(" SOAP: Response recebido: {}", response);
+                    log.info(" SOAP: nome={}, sucesso={}, totalLocais={}, totalAnuncios={}",
+                            response != null ? response.getNome() : "null",
+                            response != null ? response.isSucesso() : "null",
+                            response != null ? response.getTotalLocais() : "null",
+                            response != null ? response.getTotalAnuncios() : "null");
+
+                    return response;
+                } catch (Exception e) {
+                    log.error(" SOAP: Erro ao obter info: {}", e.getMessage(), e);
+
+                    InfraInfoResponse fallback = new InfraInfoResponse();
+                    fallback.setSucesso(false);
+                    fallback.setMensagem("Erro: " + e.getMessage());
+                    return fallback;
+                }
             }
 
             public String ping() {
@@ -416,6 +437,28 @@ public class InfrastruturaSoapClient {
                             .sucesso(false)
                             .mensagem("Erro: " + e.getMessage())
                             .build();
+                }
+            }
+
+            @Override
+            public long contarAnunciosPorEmail(String email) {
+                log.info(" SOAP: contarAnunciosPorEmail - email={}", email);
+                try {
+                    return port.contarAnunciosPorEmail(email);
+                } catch (Exception e) {
+                    log.error(" Erro: {}", e.getMessage());
+                    return 0;
+                }
+            }
+
+            @Override
+            public long contarEntregasPorEmail(String email) {
+                log.info(" SOAP: contarEntregasPorEmail - email={}", email);
+                try {
+                    return port.contarEntregasPorEmail(email);
+                } catch (Exception e) {
+                    log.error(" Erro: {}", e.getMessage());
+                    return 0;
                 }
             }
 

@@ -4,248 +4,248 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
-import androidx.core.content.ContextCompat;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import ao.uan.fc.dam.mobile.R;
-import ao.uan.fc.dam.mobile.adapter.PerfilAdapter;
-import ao.uan.fc.dam.mobile.api.RetrofitClient;
-import ao.uan.fc.dam.mobile.model.Utilizador;
-import ao.uan.fc.dam.mobile.security.SessionManager;
+import ao.uan.fc.dam.mobile.data.entity.AtributoPerfil;
+import ao.uan.fc.dam.mobile.data.repository.AnuncioRepository;
+import ao.uan.fc.dam.mobile.data.repository.AtributoPerfilRepository;
+import ao.uan.fc.dam.mobile.data.repository.HistoricoRepository;
+import ao.uan.fc.dam.mobile.data.repository.UtilizadorRepository;
 import ao.uan.fc.dam.mobile.ui.activity.LoginActivity;
-import ao.uan.fc.dam.mobile.ui.viewmodel.AnunciosViewModel;
-import ao.uan.fc.dam.mobile.ui.viewmodel.PerfilViewModel;
-import okhttp3.ResponseBody;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
+import ao.uan.fc.dam.mobile.ui.adapter.HistoricoAdapter;
+import ao.uan.fc.dam.mobile.util.SessionManager;
 
 public class PerfilFragment extends Fragment {
-    private TextView txtNome, txtEmail, txtSaldo, txtAnunciosCount, txtEntregasCount;
-    private PerfilAdapter adapter;
+    private TextView nomeUtilizador;
+    private TextView emailUtilizador;
+    private TextView saldo;
+    private TextView anuncioPublicado;
+    private TextView anuncioEntregue;
+    private UtilizadorRepository utilizadorRepository;
+    private FrameLayout btnLogout;
+    private ImageView btnEditName;
+    private MaterialButton btnAddProperty;
+    private SessionManager sessionManager;
+    private RecyclerView recyclerHistorico;
+    private HistoricoAdapter adapter;
+    private HistoricoRepository historicoRepository;
+    private AnuncioRepository anuncioRepository;
     private LinearLayout layoutProperties;
-    private PerfilViewModel viewModel;
-    private AnunciosViewModel anunciosViewModel;
+    private AtributoPerfilRepository atributoPerfilRepository;
+
+    public PerfilFragment() {
+        super(R.layout.fragment_perfil);
+    }
 
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_perfil, container, false);
-        viewModel = new ViewModelProvider(this).get(PerfilViewModel.class);
-        anunciosViewModel = new ViewModelProvider(this).get(AnunciosViewModel.class);
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
 
-        txtNome = view.findViewById(R.id.textView23);
-        txtEmail = view.findViewById(R.id.textView24);
-        txtSaldo = view.findViewById(R.id.textView25);
-        txtAnunciosCount = view.findViewById(R.id.textView26);
-        txtEntregasCount = view.findViewById(R.id.textView28);
-        layoutProperties = view.findViewById(R.id.layoutProperties);
+        super.onViewCreated(view, savedInstanceState);
 
-        RecyclerView recycler = view.findViewById(R.id.recyclerViewPerfil);
-        recycler.setLayoutManager(new LinearLayoutManager(getActivity()));
-        adapter = new PerfilAdapter(new ArrayList<>());
-        recycler.setAdapter(adapter);
+        nomeUtilizador = view.findViewById(R.id.textView23);
+        emailUtilizador = view.findViewById(R.id.textView24);
+        saldo = view.findViewById(R.id.textView25);
+        anuncioPublicado = view.findViewById(R.id.textView26);
+        anuncioEntregue = view.findViewById(R.id.textView28);
+        btnLogout = view.findViewById(R.id.btnLogout);
+        btnEditName = view.findViewById(R.id.btnEditName);
+        btnAddProperty = view.findViewById(R.id.btnAddProperty);
+        layoutProperties = view.findViewById(R.id.layoutProperties);   // só o findViewById aqui
 
-        view.findViewById(R.id.btnEditName).setOnClickListener(v -> mostrarDialogEditarNome());
-        view.findViewById(R.id.btnAddProperty).setOnClickListener(v -> mostrarDialogAddAtributo("", ""));
-        view.findViewById(R.id.btnLogout).setOnClickListener(v -> confirmarLogout());
-        
-        setupObservers();
-        return view;
-    }
+        sessionManager = new SessionManager(requireContext());          // <- sessionManager nasce aqui
+        anuncioRepository = new AnuncioRepository(requireContext());
+        utilizadorRepository = new UtilizadorRepository(requireContext());
+        atributoPerfilRepository = new AtributoPerfilRepository(requireContext());
 
-    private void setupObservers() {
-        viewModel.getProfile().observe(getViewLifecycleOwner(), user -> {
-            if (user != null) {
-                txtNome.setText(user.getNome());
-                txtEmail.setText(user.getEmail());
-                txtSaldo.setText("Saldo: " + (user.getSaldo() != null ? user.getSaldo() : 0));
-                txtAnunciosCount.setText((user.getTotalAnuncios() != null ? user.getTotalAnuncios() : 0) + " Anúncios");
-                txtEntregasCount.setText((user.getTotalEntregas() != null ? user.getTotalEntregas() : 0) + " Entregas");
-                
-                renderProperties(user.getPreferenciaAnuncio());
-            }
+        carregarPerfil();
+        carregarAtributos();   // <- agora sim, sessionManager já existe
+
+        recyclerHistorico = view.findViewById(R.id.recyclerViewPerfil);
+
+        adapter = new HistoricoAdapter();
+        recyclerHistorico.setLayoutManager(new LinearLayoutManager(requireContext()));
+        recyclerHistorico.setAdapter(adapter);
+        historicoRepository = new HistoricoRepository(requireContext());
+
+        historicoRepository.listarPorUtilizador(sessionManager.getIdUtilizador(),
+                lista -> requireActivity().runOnUiThread(() -> {
+                    adapter.setHistorico(lista);
+                })
+        );
+
+        btnLogout.setOnClickListener(v -> {
+            sessionManager.terminarSessao();
+            Intent intent = new Intent(requireContext(), LoginActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            requireActivity().finish();
         });
 
-        anunciosViewModel.getMeusAnuncios().observe(getViewLifecycleOwner(), anuncios -> {
-            if (anuncios != null) {
-                adapter.atualizar(anuncios);
-            }
-        });
+        btnEditName.setOnClickListener(v -> abrirDialogEditarPerfil());
+        btnAddProperty.setOnClickListener(v -> abrirDialogNovoAtributo());   // <- listener fica aqui, separado do findViewById
+    }
+    private void carregarPerfil(){
+        nomeUtilizador.setText(sessionManager.getNome());
+        emailUtilizador.setText(sessionManager.getEmail());
+        utilizadorRepository.buscarPorId(
+                sessionManager.getIdUtilizador(),
+                utilizador -> requireActivity().runOnUiThread(() -> {
+
+                    if (utilizador == null) return;
+
+                    nomeUtilizador.setText(utilizador.getNome());
+                    emailUtilizador.setText(utilizador.getEmail());
+                    saldo.setText(String.valueOf(utilizador.getSaldo()));
+                })
+        );
     }
 
-    private void renderProperties(String prefs) {
-        layoutProperties.removeAllViews();
-        if (prefs == null || prefs.isEmpty()) {
-            TextView empty = new TextView(requireContext());
-            empty.setText("Nenhum atributo definido.");
-            empty.setPadding(32, 16, 32, 16);
-            empty.setTextColor(ContextCompat.getColor(requireContext(), R.color.cor_app));
-            layoutProperties.addView(empty);
-            return;
-        }
+    private void abrirDialogEditarPerfil() {
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_editar_perfil, null);
 
-        String[] pairs = prefs.split(",");
-        for (String pair : pairs) {
-            if (!pair.contains("=")) continue;
-            
-            View propView = getLayoutInflater().inflate(R.layout.item_locais_fragment, layoutProperties, false);
-            TextView text = propView.findViewById(R.id.txtLocalNome);
-            text.setText(pair.replace("=", " : "));
-            text.setTextSize(16);
-            
-            propView.findViewById(R.id.iconContainer).setBackgroundTintList(null);
-            ((android.widget.ImageView)propView.findViewById(R.id.imgLocalIcon)).setImageResource(R.drawable.settings_icon);
-            
-            propView.setOnClickListener(v -> mostrarMenuAtributo(pair));
-            layoutProperties.addView(propView);
-        }
+        EditText nome = dialogView.findViewById(R.id.editNome);
+        EditText email = dialogView.findViewById(R.id.editEmail);
+        EditText senha = dialogView.findViewById(R.id.editSenha);
+
+        nome.setText(sessionManager.getNome());
+        email.setText(sessionManager.getEmail());
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Editar Perfil")
+                .setView(dialogView)
+                .setPositiveButton("Guardar", (dialog, which) -> {
+                    guardarPerfil(nome.getText().toString().trim(), email.getText().toString().trim(), senha.getText().toString());
+                }).setNegativeButton("Cancelar", null).show();
     }
 
-    private void mostrarMenuAtributo(String pair) {
-        String[] parts = pair.split("=");
-        String key = parts[0];
-        String value = parts.length > 1 ? parts[1] : "";
+    private void guardarPerfil(String nome, String email, String senha){
 
-        new AlertDialog.Builder(requireContext())
-                .setTitle("Atributo: " + key)
-                .setItems(new String[]{"Editar", "Remover"}, (dialog, which) -> {
-                    if (which == 0) mostrarDialogAddAtributo(key, value);
-                    else removerAtributo(pair);
-                }).show();
-    }
+        utilizadorRepository.buscarPorId(
+                sessionManager.getIdUtilizador(),
+                utilizador -> {
 
-    private void removerAtributo(String targetPair) {
-        Utilizador user = viewModel.getProfile().getValue();
-        if (user == null) return;
-        
-        String current = user.getPreferenciaAnuncio();
-        List<String> list = new ArrayList<>();
-        for (String p : current.split(",")) {
-            if (!p.equals(targetPair)) list.add(p);
-        }
-        String novo = String.join(",", list);
-        
-        viewModel.updatePrefsLocal(novo);
-        salvarPreferenciasRemoto(novo);
-        removerParPerfilRemoto(targetPair.split("=", 2)[0]);
-        Toast.makeText(requireContext(), "Removido", Toast.LENGTH_SHORT).show();
-    }
+                    if(utilizador == null)
+                        return;
 
-    private void mostrarDialogAddAtributo(String oldKey, String oldVal) {
-        View view = getLayoutInflater().inflate(R.layout.dialog_add_property, null);
-        TextInputEditText editKey = view.findViewById(R.id.editKey);
-        TextInputEditText editValue = view.findViewById(R.id.editValue);
-        
-        editKey.setText(oldKey);
-        editValue.setText(oldVal);
 
-        new AlertDialog.Builder(requireContext())
-                .setView(view)
-                .setPositiveButton("Confirmar", (d, w) -> {
-                    String k = editKey.getText().toString().trim();
-                    String v = editValue.getText().toString().trim();
-                    if (!k.isEmpty() && !v.isEmpty()) {
-                        Utilizador user = viewModel.getProfile().getValue();
-                        String current = (user != null && user.getPreferenciaAnuncio() != null) ? user.getPreferenciaAnuncio() : "";
-                        
-                        List<String> list = new ArrayList<>();
-                        if (!current.isEmpty()) {
-                            for (String p : current.split(",")) {
-                                if (!oldKey.isEmpty() && p.startsWith(oldKey + "=")) continue;
-                                list.add(p);
-                            }
-                        }
-                        list.add(k + "=" + v);
-                        String finalStr = String.join(",", list);
-                        
-                        viewModel.updatePrefsLocal(finalStr);
-                        salvarPreferenciasRemoto(finalStr);
-                        salvarParPerfilRemoto(k, v);
+                    utilizador.setNome(nome);
+                    utilizador.setEmail(email);
+
+
+                    if(!senha.isBlank()){
+                        utilizador.setPalavraChave(senha);
                     }
+
+
+                    utilizadorRepository.atualizarRemoto(
+                            utilizador,
+                            resultado -> requireActivity().runOnUiThread(() -> {
+
+                                if(resultado != null){
+
+                                    sessionManager.iniciarSessao(
+                                            resultado.getIdUtilizador(),
+                                            resultado.getNome(),
+                                            resultado.getEmail()
+                                    );
+
+
+                                    carregarPerfil();
+
+
+                                    Toast.makeText(
+                                            requireContext(),
+                                            "Perfil atualizado.",
+                                            Toast.LENGTH_SHORT
+                                    ).show();
+
+                                } else {
+
+                                    Toast.makeText(
+                                            requireContext(),
+                                            "Falha ao atualizar perfil no servidor.",
+                                            Toast.LENGTH_SHORT
+                                    ).show();
+
+                                }
+
+                            })
+                    );
+
+                }
+        );
+    }
+
+    private void carregarAtributos() {
+        atributoPerfilRepository.listarPorUtilizador(
+                sessionManager.getIdUtilizador(),
+                lista -> requireActivity().runOnUiThread(() -> {
+                    layoutProperties.removeAllViews();
+
+                    for (AtributoPerfil atributo : lista) {
+                        View itemView = LayoutInflater.from(requireContext())
+                                .inflate(R.layout.item_atributo_perfil, layoutProperties, false);
+
+                        TextView txtChave = itemView.findViewById(R.id.txtChave);
+                        TextView txtValor = itemView.findViewById(R.id.txtValor);
+                        ImageView btnRemover = itemView.findViewById(R.id.btnRemoverAtributo);
+
+                        txtChave.setText(atributo.getChave());
+                        txtValor.setText(atributo.getValor());
+
+                        btnRemover.setOnClickListener(v ->
+                                atributoPerfilRepository.remover(atributo, resultado ->
+                                        requireActivity().runOnUiThread(this::carregarAtributos))
+                        );
+
+                        layoutProperties.addView(itemView);
+                    }
+                })
+        );
+    }
+
+    private void abrirDialogNovoAtributo() {
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_add_property, null);
+
+        TextInputEditText editKey = dialogView.findViewById(R.id.editKey);
+        TextInputEditText editValue = dialogView.findViewById(R.id.editValue);
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Novo Atributo")
+                .setView(dialogView)
+                .setPositiveButton("Guardar", (dialog, which) -> {
+                    String chave = editKey.getText().toString().trim();
+                    String valor = editValue.getText().toString().trim();
+
+                    if (chave.isEmpty() || valor.isEmpty()) {
+                        Toast.makeText(requireContext(), "Preencha ambos os campos", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    AtributoPerfil atributo = new AtributoPerfil(chave, valor, sessionManager.getIdUtilizador());
+
+                    atributoPerfilRepository.inserir(atributo, id ->
+                            requireActivity().runOnUiThread(this::carregarAtributos)
+                    );
                 })
                 .setNegativeButton("Cancelar", null)
                 .show();
-    }
-
-    private void mostrarDialogEditarNome() {
-        EditText input = new EditText(requireContext());
-        input.setText(txtNome.getText().toString());
-        new AlertDialog.Builder(requireContext()).setTitle("Editar Nome").setView(input)
-                .setPositiveButton("Salvar", (d, w) -> {
-                    String novo = input.getText().toString().trim();
-                    if (!novo.isEmpty()) {
-                        viewModel.updateNameLocal(novo);
-                        atualizarNomeRemoto(novo);
-                    }
-                }).setNegativeButton("Cancelar", null).show();
-    }
-
-    private void atualizarNomeRemoto(String novoNome) {
-        Map<String, Object> req = new HashMap<>();
-        req.put("email", SessionManager.getEmail(requireContext()));
-        req.put("nome", novoNome);
-        RetrofitClient.getInstance().getApi().editarPerfil(req).enqueue(new Callback<Utilizador>() {
-            @Override
-            public void onResponse(Call<Utilizador> call, Response<Utilizador> response) {}
-            @Override public void onFailure(Call<Utilizador> call, Throwable t) {}
-        });
-    }
-
-    private void salvarPreferenciasRemoto(String prefs) {
-        String email = SessionManager.getEmail(requireContext());
-        RetrofitClient.getInstance().getApi().atualizarPreferencias(email, prefs).enqueue(new Callback<ResponseBody>() {
-            @Override
-            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {}
-            @Override public void onFailure(Call<ResponseBody> call, Throwable t) {}
-        });
-    }
-
-    private void salvarParPerfilRemoto(String chave, String valor) {
-        String email = SessionManager.getEmail(requireContext());
-        Map<String, String> req = new HashMap<>();
-        req.put("chave", chave);
-        req.put("valor", valor);
-        RetrofitClient.getInstance().getApi().adicionarParPerfil(email, req).enqueue(new Callback<Map<String, String>>() {
-            @Override
-            public void onResponse(Call<Map<String, String>> call, Response<Map<String, String>> response) {}
-            @Override public void onFailure(Call<Map<String, String>> call, Throwable t) {}
-        });
-    }
-
-    private void removerParPerfilRemoto(String chave) {
-        String email = SessionManager.getEmail(requireContext());
-        RetrofitClient.getInstance().getApi().removerParPerfil(email, chave).enqueue(new Callback<ResponseBody>() {
-            @Override
-            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {}
-            @Override public void onFailure(Call<ResponseBody> call, Throwable t) {}
-        });
-    }
-
-    private void confirmarLogout() {
-        new AlertDialog.Builder(requireContext()).setTitle("Sair")
-                .setMessage("Deseja realmente encerrar a sessão?")
-                .setPositiveButton("Sim, Sair", (d, w) -> {
-                    SessionManager.clear(requireContext());
-                    startActivity(new Intent(requireContext(), LoginActivity.class));
-                    requireActivity().finish();
-                }).setNegativeButton("Cancelar", null).show();
     }
 }

@@ -46,4 +46,11 @@ public class Utilizador {
 
     @Column(name = "kerberos_key")
     private String kerberosKey;
+
+    
+    @Column(name = "ultima_localizacao")
+    private String ultimaLocalizacao;  
+
+    @Column(name = "ultima_atualizacao_localizacao")
+    private LocalDateTime ultimaAtualizacaoLocalizacao;
 }

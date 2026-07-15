@@ -32,16 +32,31 @@
                 app:tint="#E67E22" />
         </FrameLayout>
 
-        <TextView
-            android:id="@+id/txtLocalNome"
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_weight="1"
-            android:text="Largo da Independência"
-            android:textColor="#1A1A1A"
-            android:textSize="18sp"
-            android:textStyle="normal" />
+            android:orientation="vertical">
 
+            <TextView
+                android:id="@+id/txtLocalNome"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Largo da Independência"
+                android:textColor="#1A1A1A"
+                android:textSize="18sp"
+                android:textStyle="normal"/>
+
+
+            <TextView
+                android:id="@+id/txtCoordenadas"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Lat: 0 | Lon: 0"
+                android:textColor="#777777"
+                android:textSize="14sp"/>
+
+        </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

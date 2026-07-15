@@ -12,7 +12,7 @@ import jakarta.jws.WebService;
 public interface InfrastructureServiceSEI {
 
         @WebMethod(operationName = "obterInfoInfraestrutura")
-        @WebResult(name = "InfraInfoResponse")
+        @WebResult(name = "ObterInfraResponse")
         InfraInfoResponse obterInfoInfraestrutura();
 
         @WebMethod(operationName = "ping")
@@ -93,6 +93,16 @@ public interface InfrastructureServiceSEI {
         MensagemResponse removerChavePerfil(
                         @WebParam(name = "email") String email,
                         @WebParam(name = "chave") String chave);
+
+        @WebMethod(operationName = "contarAnunciosPorEmail")
+        @WebResult(name = "count")
+        long contarAnunciosPorEmail(
+                        @WebParam(name = "email") String email);
+
+        @WebMethod(operationName = "contarEntregasPorEmail")
+        @WebResult(name = "count")
+        long contarEntregasPorEmail(
+                        @WebParam(name = "email") String email);
 
         @WebMethod(operationName = "obterUltimoPost")
         @WebResult(name = "UltimoPostResponse")

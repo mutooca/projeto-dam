@@ -14,5 +14,7 @@ public class UtilizadorAdminDTO {
     private LocalDateTime ultimoPost;
     private Long diasInativo;
     private String status; 
-    private String ultimaLocalizacao; 
+    private String ultimaLocalizacao;
+    private Integer totalAnuncios; 
+    private Integer totalEntregas; 
 }

@@ -33,18 +33,25 @@ public class AdminService {
     public DashboardEstatisticasDTO obterDashboardEstatisticas() {
         log.info(" [ADMIN] Obtendo estatísticas do dashboard");
 
-        long totalUtilizadores = utilizadorRepository.count();
-        long utilizadoresAtivos = contarUtilizadoresAtivos();
+        long totalUtilizadores = utilizadorRepository.countByRole("USER");
+        LocalDateTime dataLimite = LocalDateTime.now().minusDays(7);
+        long utilizadoresAtivos = utilizadorRepository.countActiveUsers(dataLimite);
         long utilizadoresInativos = totalUtilizadores - utilizadoresAtivos;
 
         List<Infraestrutura> infrasBD = infraRepository.findAll();
         long totalInfraestruturas = infrasBD.size();
+        log.info(" Infraestruturas na BD: {}", totalInfraestruturas);
+
+        for (Infraestrutura infra : infrasBD) {
+            log.info("   - {} : {} (ativa: {})", infra.getNome(), infra.getUrl(), infra.isAtiva());
+        }
 
         List<InfraestruturaAdminDTO> infrasStatus = verificarStatusInfraestruturas(infrasBD);
         long infraestruturasOnline = infrasStatus.stream()
                 .filter(InfraestruturaAdminDTO::getOnline)
                 .count();
         long infraestruturasOffline = totalInfraestruturas - infraestruturasOnline;
+        log.info(" Infras online: {}, offline: {}", infraestruturasOnline, infraestruturasOffline);
 
         long totalLocais = 0;
         long totalAnuncios = 0;
@@ -52,19 +59,37 @@ public class AdminService {
         long totalConexoes = 0;
 
         List<InfraProxy> infras = soapClient.obterClientes();
+        log.info(" Clientes SOAP obtidos: {}", infras.size());
+
         for (InfraProxy proxy : infras) {
             try {
+                log.info("   Chamando obterInfoInfraestrutura para: {}", proxy.getServiceUrl());
                 InfraInfoResponse info = proxy.obterInfoInfraestrutura();
-                if (info != null && info.getNome() != null) {
+
+                if (info != null && info.getNome() != null && !info.getNome().isEmpty()) {
+                    log.info("  Info obtida: nome={}, locais={}, anuncios={}, entregas={}, conexoes={}",
+                            info.getNome(),
+                            info.getTotalLocais(),
+                            info.getTotalAnuncios(),
+                            info.getTotalEntregas(),
+                            info.getTotalConexoes());
+
                     totalLocais += info.getTotalLocais() != null ? info.getTotalLocais() : 0;
                     totalAnuncios += info.getTotalAnuncios() != null ? info.getTotalAnuncios() : 0;
                     totalEntregas += info.getTotalEntregas() != null ? info.getTotalEntregas() : 0;
                     totalConexoes += info.getTotalConexoes() != null ? info.getTotalConexoes() : 0;
+                } else {
+
+                    String erro = info != null ? info.getMensagem() : "resposta nula";
+                    log.warn(" Info inválida para {}: {}", proxy.getServiceUrl(), erro);
                 }
             } catch (Exception e) {
-                log.warn(" Erro ao obter info da infra: {}", e.getMessage());
+                log.error("  Erro ao obter info da infra: {}", e.getMessage());
             }
         }
+
+        log.info(" [ADMIN] Totais finais: locais={}, anuncios={}, entregas={}, conexoes={}",
+                totalLocais, totalAnuncios, totalEntregas, totalConexoes);
 
         return DashboardEstatisticasDTO.builder()
                 .totalUtilizadores(totalUtilizadores)
@@ -158,18 +183,28 @@ public class AdminService {
     }
 
     public List<UtilizadorAdminDTO> listarTodosUtilizadores() {
-        log.info(" [ADMIN] Listando todos os utilizadores");
+        log.info(" [ADMIN] Listando todos os utilizadores (apenas USER)");
 
-        List<Utilizador> utilizadores = utilizadorRepository.findAll();
+        List<Utilizador> utilizadores = utilizadorRepository.findByRole("USER");
+
+        if (utilizadores.isEmpty()) {
+            log.info(" Nenhum utilizador USER encontrado");
+            return List.of();
+        }
+
         List<UtilizadorAdminDTO> result = new ArrayList<>();
-
         List<InfraProxy> infras = soapClient.obterClientes();
 
         for (Utilizador user : utilizadores) {
             String email = user.getEmail();
             Integer saldo = user.getSaldo();
-            String ultimaLocalizacao = "desconhecida";
+            String ultimaLocalizacao = user.getUltimaLocalizacao() != null
+                    ? user.getUltimaLocalizacao()
+                    : "desconhecida";
+
             LocalDateTime ultimoPost = null;
+            Integer totalAnuncios = 0;
+            Integer totalEntregas = 0;
 
             for (InfraProxy proxy : infras) {
                 try {
@@ -177,19 +212,27 @@ public class AdminService {
                     ObterSaldoResponse saldoResponse = proxy.obterSaldo(email);
                     if (saldoResponse != null && saldoResponse.isSucesso()) {
                         saldo = (int) saldoResponse.getSaldo();
-                        log.debug("   Saldo de {}: {}", email, saldo);
-                    } else {
-                        log.debug("   Saldo não encontrado para {}", email);
                     }
 
                     try {
                         String ultimoPostStr = proxy.obterUltimoPost(email);
                         if (ultimoPostStr != null && !ultimoPostStr.isEmpty()) {
                             ultimoPost = LocalDateTime.parse(ultimoPostStr);
-                            log.debug("   Último post de {}: {}", email, ultimoPost);
                         }
                     } catch (Exception e) {
                         log.debug(" obterUltimoPost não disponível: {}", e.getMessage());
+                    }
+
+                    try {
+                        totalAnuncios = (int) proxy.contarAnunciosPorEmail(email);
+                    } catch (Exception e) {
+                        log.debug(" contarAnunciosPorEmail não disponível: {}", e.getMessage());
+                    }
+
+                    try {
+                        totalEntregas = (int) proxy.contarEntregasPorEmail(email);
+                    } catch (Exception e) {
+                        log.debug(" contarEntregasPorEmail não disponível: {}", e.getMessage());
                     }
 
                 } catch (Exception e) {
@@ -211,9 +254,12 @@ public class AdminService {
                     .diasInativo(diasInativo)
                     .status(status)
                     .ultimaLocalizacao(ultimaLocalizacao)
+                    .totalAnuncios(totalAnuncios)
+                    .totalEntregas(totalEntregas)
                     .build());
         }
 
+        log.info(" {} utilizadores USER encontrados", result.size());
         return result;
     }
 
@@ -234,17 +280,23 @@ public class AdminService {
     }
 
     public long contarUtilizadoresAtivos() {
-
-        return utilizadorRepository.count() / 2;
+        LocalDateTime dataLimite = LocalDateTime.now().minusDays(7);
+        return utilizadorRepository.countActiveUsers(dataLimite);
     }
 
     public long contarUtilizadoresInativos() {
-        return contarUtilizadores() - contarUtilizadoresAtivos();
+        LocalDateTime dataLimite = LocalDateTime.now().minusDays(7);
+        return utilizadorRepository.countInactiveUsers(dataLimite);
     }
 
     private List<InfraestruturaAdminDTO> verificarStatusInfraestruturas(List<Infraestrutura> infras) {
+        log.info(" [ADMIN] Verificando status das infraestruturas...");
+
         List<InfraestruturaAdminDTO> result = new ArrayList<>();
+
         List<UddiRecord> infrasUDDI = uddiClient.descobrirInfraestruturas();
+        log.info("   Infras no UDDI: {}", infrasUDDI.size());
+
         Set<String> urlsUDDI = infrasUDDI.stream()
                 .map(UddiRecord::getServiceUrl)
                 .collect(Collectors.toSet());
@@ -253,6 +305,9 @@ public class AdminService {
             String urlCompleta = infra.getUrl() + "/ws/InfrastructureService";
             boolean estaNoUDDI = urlsUDDI.contains(urlCompleta);
             boolean estaOnline = estaNoUDDI && verificarPing(infra.getUrl());
+
+            log.info("   Infra '{}' - UDDI: {}, Ping: {}",
+                    infra.getNome(), estaNoUDDI, estaOnline);
 
             result.add(InfraestruturaAdminDTO.builder()
                     .id(infra.getId())
@@ -282,6 +337,17 @@ public class AdminService {
         return java.time.temporal.ChronoUnit.DAYS.between(ultimoPost, LocalDateTime.now());
     }
 
-   
+    public AdminInfoDTO obterAdminInfo(String email) {
+        log.info(" [ADMIN] Obtendo informações do admin: {}", email);
+
+        Utilizador admin = utilizadorRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Administrador não encontrado"));
+
+        return AdminInfoDTO.builder()
+                .nome(admin.getNome())
+                .email(admin.getEmail())
+                .role(admin.getRole())
+                .build();
+    }
 
 }

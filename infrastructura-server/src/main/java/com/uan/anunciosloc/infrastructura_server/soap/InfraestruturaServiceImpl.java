@@ -687,6 +687,29 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                 }
         }
 
+        @Override
+        public long contarAnunciosPorEmail(String email) {
+                log.info(" [INFRA] Contando anúncios de: {}", email);
+                try {
+                        return anuncioRepository.countAnunciosByAutorEmail(email);
+                } catch (Exception e) {
+                        log.error(" Erro: {}", e.getMessage());
+                        return 0;
+                }
+        }
+
+        @Override
+        public long contarEntregasPorEmail(String email) {
+                log.info(" [INFRA] Contando entregas (leituras) dos anúncios de: {}", email);
+                try {
+                        
+                        return entregaRepository.countEntregasDosAnunciosDoAutor(email);
+                } catch (Exception e) {
+                        log.error(" Erro: {}", e.getMessage());
+                        return 0;
+                }
+        }
+
         @SuppressWarnings("null")
         @Override
         @Transactional

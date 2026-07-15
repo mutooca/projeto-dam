@@ -1,5 +1,6 @@
 package com.anunciosloc.anunciosloc_server.controller;
 
+import com.anunciosloc.anunciosloc_server.dto.admin.AdminInfoDTO;
 import com.anunciosloc.anunciosloc_server.dto.admin.DashboardEstatisticasDTO;
 import com.anunciosloc.anunciosloc_server.dto.admin.InfraestruturaAdminDTO;
 import com.anunciosloc.anunciosloc_server.dto.admin.UtilizadorAdminDTO;
@@ -19,6 +20,22 @@ import java.util.Map;
 public class AdminController {
 
     private final AdminService adminService;
+
+    @GetMapping("/me")
+    public ResponseEntity<?> obterAdminInfo(
+            @RequestParam String email) {
+        log.info(" [ADMIN] Obtendo informações do admin: {}", email);
+
+        try {
+            AdminInfoDTO adminInfo = adminService.obterAdminInfo(email);
+            return ResponseEntity.ok(adminInfo);
+        } catch (Exception e) {
+            log.error(" Erro ao obter informações do admin: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "sucesso", false,
+                    "mensagem", e.getMessage()));
+        }
+    }
 
     @GetMapping("/dashboard")
     public ResponseEntity<?> obterDashboard() {
