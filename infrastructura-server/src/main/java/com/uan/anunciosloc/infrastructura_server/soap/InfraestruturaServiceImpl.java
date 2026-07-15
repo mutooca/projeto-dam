@@ -140,6 +140,8 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                 log.info(" [INFRA] Criando local: {}", request.getNome());
                 log.info("   Utilizador: {}", request.getEmailUtilizador());
                 log.info("   Coordenadas: lat={}, lon={}", request.getLatitude(), request.getLongitude());
+                log.info("   Localização do utilizador: lat={}, lon={}",
+                                request.getLatUtilizador(), request.getLonUtilizador());
                 log.info("   WiFi: {}", request.getSsidWifi());
                 log.info("═══════════════════════════════════════════════════════════════");
 
@@ -203,6 +205,8 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
 
                         infraEstadoService.incrementarTotalLocais();
                         log.info("   Total locais: {}", infraEstadoService.getTotalLocais());
+                        log.info(" [INFRA] Resposta criarLocal: sucesso=true, idLocal={}, mensagem=Local criado com sucesso",
+                                        savedLocal.getIdLocal());
 
                         return CriarLocalResponse.builder()
                                         .sucesso(true)

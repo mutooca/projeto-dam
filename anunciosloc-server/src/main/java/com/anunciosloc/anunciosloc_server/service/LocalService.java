@@ -18,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +36,13 @@ public class LocalService {
 
     @SuppressWarnings("null")
     public CriarLocalResponse criarLocal(CriarLocalRequest request, double latUser, double lonUser) {
+        log.info("═══════════════════════════════════════════════════════════════");
         log.info("[ANUNCIOSLOC] Criando local: {}", request.getNome());
+        log.info("   Utilizador: {}", request.getEmailUtilizador());
+        log.info("   GPS local: lat={}, lon={}, raio={}m",
+                request.getLatitude(), request.getLongitude(), request.getRaio());
+        log.info("   GPS utilizador: lat={}, lon={}", latUser, lonUser);
+        log.info("═══════════════════════════════════════════════════════════════");
 
         CriarLocalRequestSOAP soapRequest = CriarLocalRequestSOAP.builder()
                 .nome(request.getNome())
@@ -47,74 +55,54 @@ public class LocalService {
                 .ssidWifi(request.getSsidWifi())
                 .build();
 
-        List<InfraProxy> infrasUDDI = soapClient.obterClientes();
-        if (infrasUDDI.isEmpty()) {
+        List<InfraestruturaAtivaDTO> infraestruturasDisponiveis = resolverInfraestruturasDisponiveis();
+        if (infraestruturasDisponiveis.isEmpty()) {
             throw new RuntimeException("Nenhuma infraestrutura disponível no UDDI");
         }
-
-        log.info("Infraestruturas ativas no UDDI: {}", infrasUDDI.size());
-
-        List<Infraestrutura> infrasBD = infraestruturaRepository.findAll();
-        log.info("[MAPAINFRADB] Número de infraestruturas na BD: {}", infrasBD.size());
-        infrasBD.forEach(infra -> log.info("   - {} : {}", infra.getNome(), infra.getUrl()));
-
-        Map<String, Infraestrutura> mapaInfrasBD = infrasBD.stream()
-                .collect(Collectors.toMap(Infraestrutura::getNome, i -> i));
-        log.info("[MAPAINFRADB] dados:",
-                mapaInfrasBD);
-
-        List<InfraProxy> infrasRegistadas = infrasUDDI.stream()
-                .filter(proxy -> {
-
-                    String nomeInfra = obterNomeInfra(proxy);
-                    boolean registada = mapaInfrasBD.containsKey(nomeInfra);
-                    if (!registada) {
-                        log.warn("Infra '{}' no UDDI mas não registada na BD do AnunciosLoc", nomeInfra);
-                    }
-                    return registada;
-                })
-                .collect(Collectors.toList());
-
-        if (infrasRegistadas.isEmpty()) {
-            throw new RuntimeException("Nenhuma infraestrutura registada na BD do AnunciosLoc");
-        }
-
-        log.info("Infraestruturas registadas na BD: {}", infrasRegistadas.size());
 
         InfraProxy infraSelecionada = null;
         String nomeSelecionada = null;
         double menorDistancia = Double.MAX_VALUE;
 
-        for (InfraProxy proxy : infrasRegistadas) {
-            String nomeInfra = obterNomeInfra(proxy);
-            Infraestrutura infraBD = mapaInfrasBD.get(nomeInfra);
-
+        for (InfraestruturaAtivaDTO infra : infraestruturasDisponiveis) {
             double distancia = HaversineUtil.calcularDistancia(
                     latUser, lonUser,
-                    infraBD.getLatitude(),
-                    infraBD.getLongitude());
+                    infra.getLatitude(),
+                    infra.getLongitude());
 
-            double raioKm = infraBD.getRaio() / 1000.0;
+            double raioMetros = infra.getRaio();
 
-            log.debug("   Infra {}: distância = {:.2f} km, raio = {:.2f} km",
-                    nomeInfra, distancia, raioKm);
+            log.info("   Infra {}: distância={}m, raio={}m, url={}",
+                    infra.getNome(),
+                    Math.round(distancia),
+                    Math.round(raioMetros),
+                    infra.getUrl());
 
-            if (distancia <= raioKm && distancia < menorDistancia) {
+            if (distancia <= raioMetros && distancia < menorDistancia) {
                 menorDistancia = distancia;
-                infraSelecionada = proxy;
-                nomeSelecionada = nomeInfra;
+                infraSelecionada = infra.getProxy();
+                nomeSelecionada = infra.getNome();
             }
         }
 
         if (infraSelecionada == null) {
+            infraestruturasDisponiveis.sort(Comparator.comparingDouble(infra ->
+                    HaversineUtil.calcularDistancia(
+                            latUser, lonUser, infra.getLatitude(), infra.getLongitude())));
+            InfraestruturaAtivaDTO maisProxima = infraestruturasDisponiveis.get(0);
+            double distancia = HaversineUtil.calcularDistancia(
+                    latUser, lonUser, maisProxima.getLatitude(), maisProxima.getLongitude());
 
-            log.warn("Nenhuma infra dentro do raio. Usando a mais próxima.");
-            infraSelecionada = infrasRegistadas.get(0);
-            nomeSelecionada = obterNomeInfra(infraSelecionada);
+            log.warn("Nenhuma infra dentro do raio. A usar a mais próxima: {} ({}m)",
+                    maisProxima.getNome(),
+                    Math.round(distancia));
+            infraSelecionada = maisProxima.getProxy();
+            nomeSelecionada = maisProxima.getNome();
+            menorDistancia = distancia;
         }
 
-        log.info("Infra selecionada: {} (distância: {:.2f} km)",
-                nomeSelecionada, menorDistancia);
+        log.info("Infra selecionada: {} (distância: {}m)",
+                nomeSelecionada, Math.round(menorDistancia));
 
         CriarLocalResponseSOAP resultado = infraSelecionada.criarLocal(soapRequest);
         if (resultado == null) {
@@ -128,7 +116,8 @@ public class LocalService {
                             : "Falha ao criar local");
         }
 
-        log.info("Local criado na infra: {}", nomeSelecionada);
+        log.info("Local criado na infra: {} -> idLocal={}, mensagem={}",
+                nomeSelecionada, resultado.getIdLocal(), resultado.getMensagem());
 
         return CriarLocalResponse.builder()
                 .idLocal(resultado.getIdLocal())
@@ -254,99 +243,162 @@ public class LocalService {
         log.info(" [LOCAL-SERVICE] Encontrando infraestrutura mais próxima para lat={}, lon={}",
                 latUser, lonUser);
 
-        List<InfraProxy> infrasUDDI = soapClient.obterClientes();
-
-        if (infrasUDDI.isEmpty()) {
+        List<InfraestruturaAtivaDTO> infrasAtivas = resolverInfraestruturasDisponiveis();
+        if (infrasAtivas.isEmpty()) {
             log.warn(" Nenhuma infraestrutura encontrada no UDDI");
             return null;
         }
 
-        log.info(" {} infraestruturas encontradas no UDDI", infrasUDDI.size());
+        List<InfraestruturaAtivaDTO> infrasDentroDoRaio = new ArrayList<>();
+        for (InfraestruturaAtivaDTO infra : infrasAtivas) {
+            double distancia = HaversineUtil.calcularDistancia(
+                    latUser, lonUser,
+                    infra.getLatitude(),
+                    infra.getLongitude());
 
-        List<Infraestrutura> infrasBD = infraestruturaRepository.findAll();
-        Map<String, Infraestrutura> mapaInfrasBD = infrasBD.stream()
-                .collect(Collectors.toMap(Infraestrutura::getNome, i -> i));
+            infra.setDistancia(distancia);
 
-        List<InfraestruturaAtivaDTO> infrasAtivas = new java.util.ArrayList<>();
-
-        for (InfraProxy proxy : infrasUDDI) {
-            try {
-                String ping = null;
-                try {
-                    ping = proxy.ping();
-                    log.info("   Ping resposta: '{}'", ping);
-                } catch (Exception e) {
-                    log.warn("   Ping falhou: {}", e.getMessage());
-                    continue;
-                }
-
-                if (ping == null || !ping.startsWith("PONG")) {
-                    log.warn("    Infra NÃO responde ao ping: {}", proxy.getServiceUrl());
-                    continue;
-                }
-
-                log.info("    Ping OK para: {}", proxy.getServiceUrl());
-
-                String nomeInfra = obterNomeInfra(proxy);
-                log.info("   Nome da infra: {}", nomeInfra);
-
-                if (nomeInfra == null) {
-                    log.warn("   Não foi possível obter nome da infra: {}", proxy.getServiceUrl());
-                    continue;
-                }
-
-                Infraestrutura infraBD = mapaInfrasBD.get(nomeInfra);
-                if (infraBD == null) {
-                    log.warn("    Infra '{}' está no UDDI mas NÃO registada na BD", nomeInfra);
-                    continue;
-                }
-
-                if (!infraBD.isAtiva()) {
-                    log.warn("    Infra '{}' está INATIVA na BD", nomeInfra);
-                    continue;
-                }
-
-                double distancia = HaversineUtil.calcularDistancia(
-                        latUser, lonUser,
-                        infraBD.getLatitude(),
-                        infraBD.getLongitude());
-
-                if (distancia > infraBD.getRaio()) {
-                    log.warn("    User está fora do raio da infra '{}' ({}m > {}m)",
-                            nomeInfra, Math.round(distancia), infraBD.getRaio());
-                    continue;
-                }
-
-                InfraestruturaAtivaDTO infraAtiva = InfraestruturaAtivaDTO.builder()
-                        .nome(nomeInfra)
-                        .url(infraBD.getUrl())
-                        .latitude(infraBD.getLatitude())
-                        .longitude(infraBD.getLongitude())
-                        .raio(infraBD.getRaio())
-                        .distancia(distancia)
-                        .proxy(proxy)
-                        .ativa(true)
-                        .build();
-
-                infrasAtivas.add(infraAtiva);
-
-            } catch (Exception e) {
-                log.error("Erro ao processar infra: {}", e.getMessage(), e);
+            if (distancia > infra.getRaio()) {
+                log.warn("    User está fora do raio da infra '{}' ({}m > {}m)",
+                        infra.getNome(), Math.round(distancia), Math.round(infra.getRaio()));
+                continue;
             }
+
+            infrasDentroDoRaio.add(infra);
         }
 
-        if (infrasAtivas.isEmpty()) {
+        if (infrasDentroDoRaio.isEmpty()) {
             log.warn(" Nenhuma infraestrutura ativa e próxima encontrada");
             return null;
         }
 
-        infrasAtivas.sort(Comparator.comparingDouble(InfraestruturaAtivaDTO::getDistancia));
+        infrasDentroDoRaio.sort(Comparator.comparingDouble(InfraestruturaAtivaDTO::getDistancia));
 
-        InfraestruturaAtivaDTO maisProxima = infrasAtivas.get(0);
+        InfraestruturaAtivaDTO maisProxima = infrasDentroDoRaio.get(0);
         log.info("  Infra MAIS PRÓXIMA: {} (distância: {}m)",
                 maisProxima.getNome(), Math.round(maisProxima.getDistancia()));
 
         return maisProxima;
+    }
+
+    private List<InfraestruturaAtivaDTO> resolverInfraestruturasDisponiveis() {
+        List<InfraProxy> infrasUDDI = soapClient.obterClientes();
+        if (infrasUDDI.isEmpty()) {
+            log.warn(" Nenhuma infraestrutura encontrada no UDDI");
+            return List.of();
+        }
+
+        log.info(" {} infraestruturas encontradas no UDDI", infrasUDDI.size());
+
+        List<InfraestruturaAtivaDTO> resultado = new ArrayList<>();
+        for (InfraProxy proxy : infrasUDDI) {
+            try {
+                String ping = proxy.ping();
+                log.info("   Ping infra {} -> {}", proxy.getServiceUrl(), ping);
+                if (ping == null || !ping.startsWith("PONG")) {
+                    log.warn("   Infra não respondeu corretamente ao ping: {}", proxy.getServiceUrl());
+                    continue;
+                }
+
+                InfraInfoResponse info = proxy.obterInfoInfraestrutura();
+                if (info == null) {
+                    log.warn("   Infra '{}' devolveu info nula", proxy.getServiceUrl());
+                    continue;
+                }
+
+                if (!info.isSucesso()) {
+                    log.warn("   Infra '{}' devolveu sucesso=false: {}",
+                            proxy.getServiceUrl(), info.getMensagem());
+                    continue;
+                }
+
+                Infraestrutura infra = sincronizarInfraestrutura(info, proxy);
+                if (infra == null) {
+                    continue;
+                }
+
+                if (!infra.isAtiva()) {
+                    log.warn("   Infra '{}' está marcada como inativa", infra.getNome());
+                    continue;
+                }
+
+                resultado.add(InfraestruturaAtivaDTO.builder()
+                        .nome(infra.getNome())
+                        .url(infra.getUrl())
+                        .latitude(infra.getLatitude())
+                        .longitude(infra.getLongitude())
+                        .raio(infra.getRaio())
+                        .proxy(proxy)
+                        .ativa(true)
+                        .build());
+            } catch (Exception e) {
+                log.error("Erro ao resolver infra '{}': {}", proxy.getServiceUrl(), e.getMessage(), e);
+            }
+        }
+
+        return resultado;
+    }
+
+    private Infraestrutura sincronizarInfraestrutura(InfraInfoResponse info, InfraProxy proxy) {
+        if (info.getNome() == null || info.getNome().isBlank()) {
+            log.warn("   Infra sem nome válido para proxy {}", proxy.getServiceUrl());
+            return null;
+        }
+
+        String baseUrl = normalizarBaseUrl(info.getUrl() != null && !info.getUrl().isBlank()
+                ? info.getUrl()
+                : proxy.getServiceUrl());
+
+        Infraestrutura infra = infraestruturaRepository.findByNome(info.getNome())
+                .orElseGet(() -> infraestruturaRepository.findByUrl(baseUrl).orElse(null));
+
+        boolean novaInfra = infra == null;
+        if (infra == null) {
+            infra = new Infraestrutura();
+            infra.setDataRegisto(LocalDateTime.now());
+            infra.setAtiva(true);
+        }
+
+        Double latitude = info.getLatitude() != null ? info.getLatitude() : infra.getLatitude();
+        Double longitude = info.getLongitude() != null ? info.getLongitude() : infra.getLongitude();
+        Double raio = info.getRaio() != null ? info.getRaio() : infra.getRaio();
+
+        if (latitude == null || longitude == null || raio == null) {
+            log.warn("   Infra '{}' sem coordenadas completas. lat={}, lon={}, raio={}",
+                    info.getNome(), latitude, longitude, raio);
+            return null;
+        }
+
+        infra.setNome(info.getNome());
+        infra.setUrl(baseUrl);
+        infra.setLatitude(latitude);
+        infra.setLongitude(longitude);
+        infra.setRaio(raio);
+        infra.setCapacidade(info.getCapacidade() != null ? info.getCapacidade() : 100);
+        infra.setBonusEntrega(info.getBonusEntrega() != null ? info.getBonusEntrega() : 0);
+        infra.setCustoPost(info.getCustoPost() != null ? info.getCustoPost() : 0);
+        infra.setAtiva(info.isAtiva());
+
+        Infraestrutura guardada = infraestruturaRepository.save(infra);
+        if (novaInfra) {
+            log.info("   Infra sincronizada automaticamente na BD: {} -> {}",
+                    guardada.getNome(), guardada.getUrl());
+        } else {
+            log.info("   Infra atualizada na BD: {} -> {}", guardada.getNome(), guardada.getUrl());
+        }
+        return guardada;
+    }
+
+    private String normalizarBaseUrl(String url) {
+        if (url == null || url.isBlank()) {
+            return url;
+        }
+
+        String normalizada = url.replace("/ws/InfrastructureService", "");
+        if (normalizada.endsWith("/")) {
+            return normalizada.substring(0, normalizada.length() - 1);
+        }
+        return normalizada;
     }
 
     public boolean isUserPertoDeLocal(String email, double latUser, double lonUser) {

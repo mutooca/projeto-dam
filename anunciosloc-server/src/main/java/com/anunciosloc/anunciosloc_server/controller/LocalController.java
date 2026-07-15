@@ -25,10 +25,22 @@ public class LocalController {
             @Valid @RequestBody CriarLocalRequest request,
             @RequestParam double lat,
             @RequestParam double lon) {
+        log.info(" [LOCAL-CONTROLLER] POST /api/locais/criar");
+        log.info("   Query lat={}, lon={}", lat, lon);
+        log.info("   Body nome={}, email={}, latitude={}, longitude={}, raio={}, ssidWifi={}",
+                request.getNome(),
+                request.getEmailUtilizador(),
+                request.getLatitude(),
+                request.getLongitude(),
+                request.getRaio(),
+                request.getSsidWifi());
         try {
             var resultado = localService.criarLocal(request, lat, lon);
+            log.info(" [LOCAL-CONTROLLER] Local criado com sucesso: idLocal={}, mensagem={}",
+                    resultado.getIdLocal(), resultado.getMensagem());
             return ResponseEntity.ok(resultado);
         } catch (Exception e) {
+            log.error(" [LOCAL-CONTROLLER] Erro ao criar local: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
