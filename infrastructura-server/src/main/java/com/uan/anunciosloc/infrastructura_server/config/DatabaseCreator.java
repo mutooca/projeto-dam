@@ -18,7 +18,7 @@ public class DatabaseCreator {
     @Value("${spring.datasource.username:postgres}")
     private String username;
 
-    @Value("${spring.datasource.password:kama2}")
+    @Value("${spring.datasource.password:root}")
     private String password;
 
     // Este método corre depois do contexto estar pronto

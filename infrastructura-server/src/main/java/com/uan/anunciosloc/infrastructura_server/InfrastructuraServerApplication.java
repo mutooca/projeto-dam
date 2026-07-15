@@ -12,9 +12,9 @@ public class InfrastructuraServerApplication {
     public static void main(String[] args) {
 
         
-        String url = "jdbc:postgresql://localhost:5432/bd_infra1"; 
+        String url = "jdbc:postgresql://localhost:5432/bd_infra1";
         String user = "postgres";
-        String pass = "kama2";
+        String pass = "root";
 
         for (String arg : args) {
             if (arg.startsWith("--spring.datasource.url=")) {

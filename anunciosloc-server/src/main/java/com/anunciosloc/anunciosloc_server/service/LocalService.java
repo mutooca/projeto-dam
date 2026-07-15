@@ -1,15 +1,18 @@
 package com.anunciosloc.anunciosloc_server.service;
 
-import com.anunciosloc.anunciosloc_server.uddi.dto.CriarLocalRequestSOAP;
-import com.anunciosloc.anunciosloc_server.uddi.dto.LocalInfoSOAP;
-import com.anunciosloc.anunciosloc_server.uddi.dto.MensagemResponse;
+import com.anunciosloc.anunciosloc_server.dto.CriarLocalRequest;
+import com.anunciosloc.anunciosloc_server.dto.CriarLocalResponse;
 import com.anunciosloc.anunciosloc_server.dto.InfraestruturaAtivaDTO;
 import com.anunciosloc.anunciosloc_server.model.Infraestrutura;
 import com.anunciosloc.anunciosloc_server.repository.InfraestruturaRepository;
 import com.anunciosloc.anunciosloc_server.uddi.InfraProxy;
 import com.anunciosloc.anunciosloc_server.uddi.InfrastruturaSoapClient;
+import com.anunciosloc.anunciosloc_server.uddi.dto.CriarLocalRequestSOAP;
+import com.anunciosloc.anunciosloc_server.uddi.dto.CriarLocalResponseSOAP;
 import com.anunciosloc.anunciosloc_server.uddi.dto.InfraInfoResponse;
 import com.anunciosloc.anunciosloc_server.uddi.dto.ListarLocaisResponse;
+import com.anunciosloc.anunciosloc_server.uddi.dto.LocalInfoSOAP;
+import com.anunciosloc.anunciosloc_server.uddi.dto.MensagemResponse;
 import com.anunciosloc.anunciosloc_server.util.HaversineUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,8 +33,19 @@ public class LocalService {
     private final InfraestruturaRepository infraestruturaRepository;
 
     @SuppressWarnings("null")
-    public String criarLocal(CriarLocalRequestSOAP request, double latUser, double lonUser) {
+    public CriarLocalResponse criarLocal(CriarLocalRequest request, double latUser, double lonUser) {
         log.info("[ANUNCIOSLOC] Criando local: {}", request.getNome());
+
+        CriarLocalRequestSOAP soapRequest = CriarLocalRequestSOAP.builder()
+                .nome(request.getNome())
+                .latitude(request.getLatitude())
+                .longitude(request.getLongitude())
+                .raio(request.getRaio())
+                .latUtilizador(latUser)
+                .lonUtilizador(lonUser)
+                .emailUtilizador(request.getEmailUtilizador())
+                .ssidWifi(request.getSsidWifi())
+                .build();
 
         List<InfraProxy> infrasUDDI = soapClient.obterClientes();
         if (infrasUDDI.isEmpty()) {
@@ -102,10 +116,29 @@ public class LocalService {
         log.info("Infra selecionada: {} (distância: {:.2f} km)",
                 nomeSelecionada, menorDistancia);
 
-        String resultado = infraSelecionada.criarLocal(request);
+        CriarLocalResponseSOAP resultado = infraSelecionada.criarLocal(soapRequest);
+        if (resultado == null) {
+            throw new RuntimeException("Resposta nula ao criar local");
+        }
+
+        if (!resultado.isSucesso()) {
+            throw new RuntimeException(
+                    resultado.getMensagem() != null && !resultado.getMensagem().isBlank()
+                            ? resultado.getMensagem()
+                            : "Falha ao criar local");
+        }
+
         log.info("Local criado na infra: {}", nomeSelecionada);
 
-        return resultado;
+        return CriarLocalResponse.builder()
+                .idLocal(resultado.getIdLocal())
+                .nome(request.getNome())
+                .latitude(resultado.getLatitude() != 0.0 ? resultado.getLatitude() : request.getLatitude())
+                .longitude(resultado.getLongitude() != 0.0 ? resultado.getLongitude() : request.getLongitude())
+                .raio(resultado.getRaio() != 0.0 ? resultado.getRaio() : request.getRaio())
+                .sucesso(true)
+                .mensagem(resultado.getMensagem())
+                .build();
     }
 
     public String eliminarLocal(String idLocal, String emailUtilizador) {

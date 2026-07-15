@@ -24,10 +24,7 @@ import org.jetbrains.annotations.Nullable;
 
 import ao.uan.fc.dam.mobile.R;
 import ao.uan.fc.dam.mobile.contentProvider.LocalizacaoProvider;
-import ao.uan.fc.dam.mobile.data.entity.CoordenadaGps;
 import ao.uan.fc.dam.mobile.data.entity.Local;
-import ao.uan.fc.dam.mobile.data.enums.TipoCoordenada;
-import ao.uan.fc.dam.mobile.data.repository.CoordenadaGpsRepository;
 import ao.uan.fc.dam.mobile.data.repository.LocalRepository;
 import ao.uan.fc.dam.mobile.ui.adapter.LocalAdapter;
 
@@ -39,7 +36,6 @@ public class LocaisFragment extends Fragment {
     private LocalAdapter adapter;
     private LocalRepository repository;
     private LocalizacaoProvider localizacaoProvider;
-    private CoordenadaGpsRepository coordenadaGpsRepository;
     private ExtendedFloatingActionButton btnNovoLocal;
 
 
@@ -57,7 +53,6 @@ public class LocaisFragment extends Fragment {
         recyclerView.setAdapter(adapter);
         repository = new LocalRepository(requireContext());
         localizacaoProvider = new LocalizacaoProvider(requireContext());
-        coordenadaGpsRepository = new CoordenadaGpsRepository(requireContext());
         btnNovoLocal = view.findViewById(R.id.fabAddLocal);
 
         verificarPermissaoLocalizacao();
@@ -157,7 +152,9 @@ public class LocaisFragment extends Fragment {
 
     private void criarLocal(String nome){
         Log.d("LOCAL", "Criar local iniciado");
-        if(nome.trim().isEmpty()){
+        String nomeNormalizado = nome.trim();
+        if(nomeNormalizado.isEmpty()){
+            Toast.makeText(requireContext(), "Introduza o nome do local.", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -168,34 +165,19 @@ public class LocaisFragment extends Fragment {
 
         localizacaoProvider.obterLocalizacao(
                 (latitude, longitude) -> {
-
-
-                    Local local = new Local();
-                    local.setNome(nome);
-                    local.setTipoCoordenada(
-                            TipoCoordenada.GPS
-                    );
                     Log.d("LOCAL", "GPS recebido: "+latitude+" "+longitude);
-                    repository.inserir(local,idLocal -> {
-                        Log.d("LOCAL", "ID Local criado: "+idLocal);
-                        CoordenadaGps gps =
-                                new CoordenadaGps();
-                        gps.setLatitude(latitude);
-                        gps.setLongitude(longitude);
-                        gps.setRaio(100);
-                        gps.setIdLocal(
-                                idLocal.intValue()
-                        );
-                        coordenadaGpsRepository.inserir(
-                                gps,
-                                idGps -> {
-                                    requireActivity()
-                                            .runOnUiThread(
-                                                    this::carregarLocais
-                                            );
-                                }
-                        );
-                    });
+                    repository.criarRemoto(
+                            nomeNormalizado,
+                            latitude,
+                            longitude,
+                            100.0,
+                            localCriado -> requireActivity().runOnUiThread(() -> {
+                                Toast.makeText(requireContext(), "Local criado com sucesso.", Toast.LENGTH_SHORT).show();
+                                carregarLocais();
+                            }),
+                            erro -> requireActivity().runOnUiThread(() ->
+                                    Toast.makeText(requireContext(), erro, Toast.LENGTH_LONG).show())
+                    );
                 }
         );
     }

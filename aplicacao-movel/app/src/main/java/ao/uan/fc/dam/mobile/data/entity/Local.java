@@ -15,6 +15,9 @@ public class Local {
     @ColumnInfo(name = "nome")
     private String nome;
 
+    @ColumnInfo(name = "id_servidor")
+    private String idServidor;
+
     @ColumnInfo(name = "tipo_coordenada")
     private TipoCoordenada tipoCoordenada;
 
@@ -40,6 +43,14 @@ public class Local {
 
     public void setNome(String nome) {
         this.nome = nome;
+    }
+
+    public String getIdServidor() {
+        return idServidor;
+    }
+
+    public void setIdServidor(String idServidor) {
+        this.idServidor = idServidor;
     }
 
     public TipoCoordenada getTipoCoordenada() {

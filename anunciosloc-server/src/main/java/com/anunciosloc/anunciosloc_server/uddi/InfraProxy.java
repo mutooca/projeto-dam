@@ -5,6 +5,7 @@ import java.util.List;
 import com.anunciosloc.anunciosloc_server.dto.PerfilItem;
 import com.anunciosloc.anunciosloc_server.uddi.dto.AnuncioInfoSOAP;
 import com.anunciosloc.anunciosloc_server.uddi.dto.CriarLocalRequestSOAP;
+import com.anunciosloc.anunciosloc_server.uddi.dto.CriarLocalResponseSOAP;
 import com.anunciosloc.anunciosloc_server.uddi.dto.EscreverSaldoResponse;
 import com.anunciosloc.anunciosloc_server.uddi.dto.InfraInfoResponse;
 import com.anunciosloc.anunciosloc_server.uddi.dto.LerSaldoResponse;
@@ -32,7 +33,7 @@ public interface InfraProxy {
 
     ObterSaldoResponse obterSaldo(String email);
 
-    String criarLocal(CriarLocalRequestSOAP request);
+    CriarLocalResponseSOAP criarLocal(CriarLocalRequestSOAP request);
 
     MensagemResponse eliminarLocal(String idLocal, String emailUtilizador);
 

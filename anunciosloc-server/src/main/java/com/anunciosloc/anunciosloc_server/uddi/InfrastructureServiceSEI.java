@@ -36,7 +36,7 @@ public interface InfrastructureServiceSEI {
 
         @WebMethod(operationName = "criarLocal")
         @WebResult(name = "CriarLocalResponse")
-        String criarLocal(@WebParam(name = "request") CriarLocalRequestSOAP request);
+        CriarLocalResponseSOAP criarLocal(@WebParam(name = "request") CriarLocalRequestSOAP request);
 
         @WebMethod(operationName = "listarLocais")
         @WebResult(name = "ListarLocaisResponse")

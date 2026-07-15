@@ -1,26 +1,110 @@
 package ao.uan.fc.dam.mobile.data.repository;
 
 import android.content.Context;
+import android.util.Log;
+
+import java.io.IOException;
 
 import java.util.List;
 
+import ao.uan.fc.dam.mobile.data.dao.CoordenadaGpsDao;
 import ao.uan.fc.dam.mobile.data.dao.LocalDao;
 import ao.uan.fc.dam.mobile.data.database.DatabaseProvider;
+import ao.uan.fc.dam.mobile.data.entity.CoordenadaGps;
 import ao.uan.fc.dam.mobile.data.entity.Local;
+import ao.uan.fc.dam.mobile.data.enums.TipoCoordenada;
 import ao.uan.fc.dam.mobile.data.relation.LocalCompleto;
+import ao.uan.fc.dam.mobile.network.api.RetrofitClient;
+import ao.uan.fc.dam.mobile.network.dto.CriarLocalRequest;
+import ao.uan.fc.dam.mobile.network.dto.CriarLocalResponse;
 import ao.uan.fc.dam.mobile.util.DatabaseExecutor;
 import ao.uan.fc.dam.mobile.util.ResultadoCallback;
+import ao.uan.fc.dam.mobile.util.SessionManager;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class LocalRepository {
 
+    private static final String TAG = "LocalRepository";
+    private final Context context;
     private final LocalDao localDao;
+    private final CoordenadaGpsDao coordenadaGpsDao;
+    private final SessionManager sessionManager;
 
     public LocalRepository(Context context){
-
+        this.context = context.getApplicationContext();
         localDao = DatabaseProvider
-                .getInstance(context)
+                .getInstance(this.context)
                 .localDao();
+        coordenadaGpsDao = DatabaseProvider
+                .getInstance(this.context)
+                .coordenadaGpsDao();
+        sessionManager = new SessionManager(this.context);
 
+    }
+
+    public void criarRemoto(
+            String nome,
+            double latitude,
+            double longitude,
+            double raio,
+            ResultadoCallback<Local> successCallback,
+            ResultadoCallback<String> errorCallback
+    ) {
+        if (!sessionManager.hasKerberosSession()) {
+            if (errorCallback != null) {
+                errorCallback.onResultado("Faça login antes de criar um local.");
+            }
+            return;
+        }
+
+        CriarLocalRequest request = new CriarLocalRequest(
+                nome,
+                latitude,
+                longitude,
+                raio,
+                sessionManager.getEmail(),
+                null
+        );
+
+        RetrofitClient.getApiService(context)
+                .criarLocal(latitude, longitude, request)
+                .enqueue(new Callback<CriarLocalResponse>() {
+                    @Override
+                    public void onResponse(
+                            Call<CriarLocalResponse> call,
+                            Response<CriarLocalResponse> response
+                    ) {
+                        if (response.isSuccessful()
+                                && response.body() != null
+                                && response.body().isSucesso()) {
+                            persistirLocalCriado(
+                                    nome,
+                                    latitude,
+                                    longitude,
+                                    raio,
+                                    response.body().getIdLocal(),
+                                    successCallback
+                            );
+                            return;
+                        }
+
+                        String mensagem = extrairMensagemErro(response);
+                        Log.e(TAG, "Erro ao criar local no servidor: " + mensagem);
+                        if (errorCallback != null) {
+                            errorCallback.onResultado(mensagem);
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<CriarLocalResponse> call, Throwable t) {
+                        Log.e(TAG, "Falha ao criar local remotamente", t);
+                        if (errorCallback != null) {
+                            errorCallback.onResultado("Falha de ligação ao criar local.");
+                        }
+                    }
+                });
     }
 
     public void inserir(Local local,
@@ -34,6 +118,57 @@ public class LocalRepository {
 
         });
 
+    }
+
+    private void persistirLocalCriado(
+            String nome,
+            double latitude,
+            double longitude,
+            double raio,
+            String idServidor,
+            ResultadoCallback<Local> callback
+    ) {
+        DatabaseExecutor.executor.execute(() -> {
+            Local local = new Local();
+            local.setNome(nome);
+            local.setIdServidor(idServidor);
+            local.setTipoCoordenada(TipoCoordenada.GPS);
+
+            long idLocal = localDao.inserir(local);
+            local.setIdLocal((int) idLocal);
+
+            CoordenadaGps gps = new CoordenadaGps();
+            gps.setLatitude(latitude);
+            gps.setLongitude(longitude);
+            gps.setRaio(raio);
+            gps.setIdLocal((int) idLocal);
+            coordenadaGpsDao.inserir(gps);
+
+            if (callback != null) {
+                callback.onResultado(local);
+            }
+        });
+    }
+
+    private String extrairMensagemErro(Response<CriarLocalResponse> response) {
+        if (response.body() != null
+                && response.body().getMensagem() != null
+                && !response.body().getMensagem().isBlank()) {
+            return response.body().getMensagem();
+        }
+
+        if (response.errorBody() != null) {
+            try {
+                String erro = response.errorBody().string();
+                if (erro != null && !erro.isBlank()) {
+                    return erro;
+                }
+            } catch (IOException e) {
+                Log.e(TAG, "Erro ao ler corpo de erro da API", e);
+            }
+        }
+
+        return "Erro ao criar local.";
     }
 
     public void atualizar(Local local,

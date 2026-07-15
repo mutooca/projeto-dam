@@ -1,6 +1,6 @@
 package com.anunciosloc.anunciosloc_server.controller;
 
-import com.anunciosloc.anunciosloc_server.uddi.dto.CriarLocalRequestSOAP;
+import com.anunciosloc.anunciosloc_server.dto.CriarLocalRequest;
 import com.anunciosloc.anunciosloc_server.uddi.dto.LocalInfoSOAP;
 import com.anunciosloc.anunciosloc_server.service.LocalService;
 import lombok.RequiredArgsConstructor;
@@ -22,11 +22,11 @@ public class LocalController {
 
     @PostMapping("/criar")
     public ResponseEntity<?> criarLocal(
-            @Valid @RequestBody CriarLocalRequestSOAP request,
+            @Valid @RequestBody CriarLocalRequest request,
             @RequestParam double lat,
             @RequestParam double lon) {
         try {
-            String resultado = localService.criarLocal(request, lat, lon);
+            var resultado = localService.criarLocal(request, lat, lon);
             return ResponseEntity.ok(resultado);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());

@@ -1,4 +1,4 @@
-package com.anunciosloc.anunciosloc_server.uddi.dto;
+package com.anunciosloc.anunciosloc_server.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,13 +9,12 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CriarLocalRequestSOAP {
+public class CriarLocalResponse {
+    private String idLocal;
     private String nome;
     private Double latitude;
     private Double longitude;
     private Double raio;
-    private Double latUtilizador;
-    private Double lonUtilizador;
-    private String emailUtilizador;
-    private String ssidWifi;
+    private boolean sucesso;
+    private String mensagem;
 }

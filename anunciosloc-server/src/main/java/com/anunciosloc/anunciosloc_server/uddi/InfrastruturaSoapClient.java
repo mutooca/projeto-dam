@@ -200,8 +200,28 @@ public class InfrastruturaSoapClient {
                 return port.obterSaldo(email);
             }
 
-            public String criarLocal(CriarLocalRequestSOAP request) {
-                return port.criarLocal(request);
+            public CriarLocalResponseSOAP criarLocal(CriarLocalRequestSOAP request) {
+                log.info(" SOAP: criarLocal - nome={}, email={}, lat={}, lon={}",
+                        request.getNome(),
+                        request.getEmailUtilizador(),
+                        request.getLatitude(),
+                        request.getLongitude());
+                try {
+                    CriarLocalResponseSOAP response = port.criarLocal(request);
+                    if (response != null) {
+                        log.info(" Resposta criarLocal: sucesso={}, idLocal={}, mensagem={}",
+                                response.isSucesso(),
+                                response.getIdLocal(),
+                                response.getMensagem());
+                    }
+                    return response;
+                } catch (Exception e) {
+                    log.error(" Erro ao criar local: {}", e.getMessage(), e);
+                    return CriarLocalResponseSOAP.builder()
+                            .sucesso(false)
+                            .mensagem("Erro: " + e.getMessage())
+                            .build();
+                }
             }
 
             @Override

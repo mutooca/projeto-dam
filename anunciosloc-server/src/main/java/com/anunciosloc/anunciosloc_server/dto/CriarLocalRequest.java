@@ -1,6 +1,6 @@
 package com.anunciosloc.anunciosloc_server.dto;
 
-
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
@@ -8,6 +8,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class CriarLocalRequest {
     @NotBlank(message = "Nome é obrigatório")
     @Size(min = 2, max = 100, message = "Nome deve ter entre 2 e 100 caracteres")
@@ -30,9 +31,6 @@ public class CriarLocalRequest {
     @NotNull(message = "Raio é obrigatório")
     @DecimalMin(value = "1.0", message = "Raio deve ser pelo menos 1 metro")
     private Double raio;
-    @NotNull(message = "Latitude do utilizador é obrigatória")
-    private Double latUtilizador;
-    @NotNull(message = "Longitude do utilizador é obrigatória") 
-    private Double lonUtilizador;
+
     private String ssidWifi;
 }
