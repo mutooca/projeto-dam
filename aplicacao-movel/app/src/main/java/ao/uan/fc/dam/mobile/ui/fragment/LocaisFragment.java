@@ -166,6 +166,7 @@ public class LocaisFragment extends Fragment {
         localizacaoProvider.obterLocalizacao(
                 (latitude, longitude) -> {
                     Log.d("LOCAL", "GPS recebido: "+latitude+" "+longitude);
+                    Log.d("LOCAL", "A criar local remoto via /api/locais/criar para nome=" + nomeNormalizado);
                     repository.criarRemoto(
                             nomeNormalizado,
                             latitude,

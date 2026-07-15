@@ -53,6 +53,10 @@ public class LocalRepository {
             ResultadoCallback<String> errorCallback
     ) {
         if (!sessionManager.hasKerberosSession()) {
+            Log.e(TAG, "Tentativa de criar local sem sessao Kerberos."
+                    + " email=" + sessionManager.getEmail()
+                    + " ticket=" + resumir(sessionManager.getTicket())
+                    + " sessionId=" + sessionManager.getSessionId());
             if (errorCallback != null) {
                 errorCallback.onResultado("Faça login antes de criar um local.");
             }
@@ -68,6 +72,18 @@ public class LocalRepository {
                 null
         );
 
+        Log.d(TAG, "POST /api/locais/criar"
+                + "?lat=" + latitude
+                + "&lon=" + longitude
+                + " body={nome=" + nome
+                + ", latitude=" + latitude
+                + ", longitude=" + longitude
+                + ", raio=" + raio
+                + ", emailUtilizador=" + sessionManager.getEmail()
+                + ", ssidWifi=null}"
+                + " ticket=" + resumir(sessionManager.getTicket())
+                + " sessionId=" + sessionManager.getSessionId());
+
         RetrofitClient.getApiService(context)
                 .criarLocal(latitude, longitude, request)
                 .enqueue(new Callback<CriarLocalResponse>() {
@@ -76,9 +92,22 @@ public class LocalRepository {
                             Call<CriarLocalResponse> call,
                             Response<CriarLocalResponse> response
                     ) {
+                        Log.d(TAG, "Resposta /api/locais/criar HTTP=" + response.code()
+                                + " successful=" + response.isSuccessful()
+                                + " body=" + resumirResposta(response.body()));
+
                         if (response.isSuccessful()
                                 && response.body() != null
                                 && response.body().isSucesso()) {
+                            if (response.body().getIdLocal() == null
+                                    || response.body().getIdLocal().isBlank()) {
+                                Log.e(TAG, "Servidor respondeu sucesso=true mas sem idLocal remoto.");
+                                if (errorCallback != null) {
+                                    errorCallback.onResultado("Servidor respondeu sem id do local.");
+                                }
+                                return;
+                            }
+
                             persistirLocalCriado(
                                     nome,
                                     latitude,
@@ -136,6 +165,10 @@ public class LocalRepository {
 
             long idLocal = localDao.inserir(local);
             local.setIdLocal((int) idLocal);
+            Log.d(TAG, "Local persistido na Room apos confirmacao remota."
+                    + " idLocalLocal=" + idLocal
+                    + " idLocalServidor=" + idServidor
+                    + " nome=" + nome);
 
             CoordenadaGps gps = new CoordenadaGps();
             gps.setLatitude(latitude);
@@ -143,6 +176,8 @@ public class LocalRepository {
             gps.setRaio(raio);
             gps.setIdLocal((int) idLocal);
             coordenadaGpsDao.inserir(gps);
+            Log.d(TAG, "Coordenada GPS persistida na Room para idLocalLocal=" + idLocal
+                    + " lat=" + latitude + " lon=" + longitude + " raio=" + raio);
 
             if (callback != null) {
                 callback.onResultado(local);
@@ -169,6 +204,28 @@ public class LocalRepository {
         }
 
         return "Erro ao criar local.";
+    }
+
+    private String resumir(String valor) {
+        if (valor == null || valor.isBlank()) {
+            return "vazio";
+        }
+        int tamanho = Math.min(12, valor.length());
+        return valor.substring(0, tamanho) + "...";
+    }
+
+    private String resumirResposta(CriarLocalResponse resposta) {
+        if (resposta == null) {
+            return "null";
+        }
+        return "{sucesso=" + resposta.isSucesso()
+                + ", idLocal=" + resposta.getIdLocal()
+                + ", mensagem=" + resposta.getMensagem()
+                + ", nome=" + resposta.getNome()
+                + ", latitude=" + resposta.getLatitude()
+                + ", longitude=" + resposta.getLongitude()
+                + ", raio=" + resposta.getRaio()
+                + "}";
     }
 
     public void atualizar(Local local,

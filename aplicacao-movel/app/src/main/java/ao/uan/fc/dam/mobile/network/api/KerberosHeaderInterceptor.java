@@ -26,9 +26,21 @@ public class KerberosHeaderInterceptor implements Interceptor {
         Request originalRequest = chain.request();
         String path = originalRequest.url().encodedPath();
 
-        if (!requiresKerberos(path) || !sessionManager.hasKerberosSession()) {
+        if (!requiresKerberos(path)) {
+            Log.d(TAG, "Rota publica, sem headers Kerberos: " + path);
             return chain.proceed(originalRequest);
         }
+
+        if (!sessionManager.hasKerberosSession()) {
+            Log.w(TAG, "Sessao Kerberos ausente para " + path
+                    + " email=" + sessionManager.getEmail()
+                    + " sessionId=" + sessionManager.getSessionId());
+            return chain.proceed(originalRequest);
+        }
+
+        Log.d(TAG, "A gerar authenticator para " + path
+                + " email=" + sessionManager.getEmail()
+                + " sessionId=" + sessionManager.getSessionId());
 
         String authenticator = fetchAuthenticator();
         if (authenticator == null || authenticator.isBlank()) {
@@ -40,6 +52,10 @@ public class KerberosHeaderInterceptor implements Interceptor {
                 .header("X-Kerberos-Ticket", sessionManager.getTicket())
                 .header("X-Kerberos-Authenticator", authenticator)
                 .build();
+
+        Log.d(TAG, "Headers Kerberos aplicados em " + path
+                + " ticketPrefix=" + resumir(sessionManager.getTicket())
+                + " authenticatorPrefix=" + resumir(authenticator));
 
         return chain.proceed(authenticatedRequest);
     }
@@ -77,5 +93,13 @@ public class KerberosHeaderInterceptor implements Interceptor {
             Log.e(TAG, "Erro ao gerar authenticator", e);
             return null;
         }
+    }
+
+    private String resumir(String valor) {
+        if (valor == null || valor.isBlank()) {
+            return "vazio";
+        }
+        int tamanho = Math.min(12, valor.length());
+        return valor.substring(0, tamanho) + "...";
     }
 }
