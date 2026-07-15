@@ -22,9 +22,14 @@ import com.google.android.material.floatingactionbutton.ExtendedFloatingActionBu
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
 import ao.uan.fc.dam.mobile.R;
 import ao.uan.fc.dam.mobile.contentProvider.LocalizacaoProvider;
 import ao.uan.fc.dam.mobile.data.entity.Local;
+import ao.uan.fc.dam.mobile.data.relation.LocalCompleto;
 import ao.uan.fc.dam.mobile.data.repository.LocalRepository;
 import ao.uan.fc.dam.mobile.ui.adapter.LocalAdapter;
 
@@ -37,6 +42,7 @@ public class LocaisFragment extends Fragment {
     private LocalRepository repository;
     private LocalizacaoProvider localizacaoProvider;
     private ExtendedFloatingActionButton btnNovoLocal;
+    private final List<LocalCompleto> locaisCarregados = new ArrayList<>();
 
 
     public LocaisFragment(){
@@ -56,17 +62,30 @@ public class LocaisFragment extends Fragment {
         btnNovoLocal = view.findViewById(R.id.fabAddLocal);
 
         verificarPermissaoLocalizacao();
-
-        carregarLocais();
+        if (localizacaoProvider.possuiPermissao(requireContext())) {
+            carregarLocais();
+        }
 
         adapter.setOnLocalClickListener(new LocalAdapter.OnLocalClickListener() {
             @Override
             public void onClick(Local local) {
+                if (local.getIdLocal() <= 0 && local.getIdServidor() != null && !local.getIdServidor().isBlank()) {
+                    Toast.makeText(requireContext(),
+                            "Edição de locais remotos ainda não está disponível nesta tela.",
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 editarLocal(local);
             }
 
             @Override
             public void onLongClick(Local local) {
+                if (local.getIdLocal() <= 0 && local.getIdServidor() != null && !local.getIdServidor().isBlank()) {
+                    Toast.makeText(requireContext(),
+                            "Remoção de locais remotos ainda não está disponível nesta tela.",
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 confirmarRemocao(local);
             }
         });
@@ -79,11 +98,7 @@ public class LocaisFragment extends Fragment {
 
             @Override
             public boolean onQueryTextChange(String s) {
-                repository.pesquisarComCoordenadas(s, lista -> {
-                    requireActivity().runOnUiThread(() -> {
-                        adapter.setLocais(lista);
-                    });
-                });
+                filtrarLocais(s);
                 return true;
             }
         });
@@ -94,11 +109,55 @@ public class LocaisFragment extends Fragment {
     }
 
     private void carregarLocais(){
-        repository.listarTodosComCoordenadas(lista -> {
+        if(!localizacaoProvider.possuiPermissao(requireContext())){
+            Toast.makeText(requireContext(),
+                    "Permissão de localização necessária para listar locais próximos.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        localizacaoProvider.obterLocalizacao((latitude, longitude) -> {
             requireActivity().runOnUiThread(() -> {
-                adapter.setLocais(lista);
+                if (Double.isNaN(latitude) || Double.isNaN(longitude)) {
+                    Toast.makeText(requireContext(),
+                            "Não foi possível obter a localização atual.",
+                            Toast.LENGTH_LONG).show();
+                    return;
+                }
+
+                Log.d("LOCAL", "A listar locais próximos em lat=" + latitude + " lon=" + longitude);
+                repository.listarProximosRemoto(
+                        latitude,
+                        longitude,
+                        lista -> requireActivity().runOnUiThread(() -> {
+                            locaisCarregados.clear();
+                            locaisCarregados.addAll(lista);
+                            adapter.setLocais(new ArrayList<>(lista));
+                            Log.d("LOCAL", "Locais próximos carregados: " + lista.size());
+                        }),
+                        erro -> requireActivity().runOnUiThread(() ->
+                                Toast.makeText(requireContext(), erro, Toast.LENGTH_LONG).show())
+                );
             });
         });
+    }
+
+    private void filtrarLocais(String texto) {
+        String filtro = texto == null ? "" : texto.trim().toLowerCase(Locale.ROOT);
+        if (filtro.isEmpty()) {
+            adapter.setLocais(new ArrayList<>(locaisCarregados));
+            return;
+        }
+
+        List<LocalCompleto> filtrados = new ArrayList<>();
+        for (LocalCompleto local : locaisCarregados) {
+            if (local.getLocal() != null
+                    && local.getLocal().getNome() != null
+                    && local.getLocal().getNome().toLowerCase(Locale.ROOT).contains(filtro)) {
+                filtrados.add(local);
+            }
+        }
+        adapter.setLocais(filtrados);
     }
 
     private void editarLocal(Local local){
@@ -212,7 +271,7 @@ public class LocaisFragment extends Fragment {
         if(requestCode == REQUEST_LOCATION){
             if(grantResults.length > 0
                     && grantResults[0] == PackageManager.PERMISSION_GRANTED){
-                // Permissão concedida
+                carregarLocais();
             }else{
                 Toast.makeText(requireContext(), "A localização é necessária para criar Locais.", Toast.LENGTH_LONG).show();
             }

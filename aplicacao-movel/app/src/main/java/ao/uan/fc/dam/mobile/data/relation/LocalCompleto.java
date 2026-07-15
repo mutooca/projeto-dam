@@ -1,6 +1,7 @@
 package ao.uan.fc.dam.mobile.data.relation;
 
 import androidx.room.Embedded;
+import androidx.room.Ignore;
 import androidx.room.Relation;
 
 import ao.uan.fc.dam.mobile.data.entity.CoordenadaGps;
@@ -23,6 +24,9 @@ public class LocalCompleto {
             entityColumn = "id_local"
     )
     public CoordenadaWifi coordenadaWifi;
+
+    @Ignore
+    public Double distanciaMetros;
 
     public LocalCompleto() {
     }
@@ -55,5 +59,13 @@ public class LocalCompleto {
 
     public void setCoordenadaWifi(CoordenadaWifi coordenadaWifi) {
         this.coordenadaWifi = coordenadaWifi;
+    }
+
+    public Double getDistanciaMetros() {
+        return distanciaMetros;
+    }
+
+    public void setDistanciaMetros(Double distanciaMetros) {
+        this.distanciaMetros = distanciaMetros;
     }
 }

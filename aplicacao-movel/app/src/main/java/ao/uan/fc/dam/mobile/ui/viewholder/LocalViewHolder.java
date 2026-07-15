@@ -39,7 +39,14 @@ public class LocalViewHolder extends RecyclerView.ViewHolder {
                             + localCompleto.coordenadaGps.getLatitude()
                             + "\nLon: "
                             + localCompleto.coordenadaGps.getLongitude();
+            if (localCompleto.getDistanciaMetros() != null) {
+                texto += "\nDistância: " + Math.round(localCompleto.getDistanciaMetros()) + " m";
+            }
             coordenadas.setText(texto);
+        }else if (localCompleto.coordenadaWifi != null
+                && localCompleto.coordenadaWifi.getSsid() != null
+                && !localCompleto.coordenadaWifi.getSsid().isBlank()) {
+            coordenadas.setText("WiFi: " + localCompleto.coordenadaWifi.getSsid());
         }else{
             coordenadas.setText(
                     "Sem coordenadas"

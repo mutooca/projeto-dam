@@ -9,6 +9,7 @@ import ao.uan.fc.dam.mobile.network.dto.CriarLocalRequest;
 import ao.uan.fc.dam.mobile.network.dto.CriarLocalResponse;
 import ao.uan.fc.dam.mobile.network.dto.LoginRequest;
 import ao.uan.fc.dam.mobile.network.dto.LoginResponse;
+import ao.uan.fc.dam.mobile.network.dto.LocalProximoResponse;
 import ao.uan.fc.dam.mobile.network.dto.LogoutRequest;
 import ao.uan.fc.dam.mobile.request.RegistarUtilizadorRequest;
 import retrofit2.Call;
@@ -48,6 +49,12 @@ public interface ApiService {
             @Query("lat") double lat,
             @Query("lon") double lon,
             @Body CriarLocalRequest request
+    );
+
+    @GET("/api/locais/proximos")
+    Call<List<LocalProximoResponse>> listarLocaisProximos(
+            @Query("lat") double lat,
+            @Query("lon") double lon
     );
 
     @GET("api/anuncios/local/{id}")
