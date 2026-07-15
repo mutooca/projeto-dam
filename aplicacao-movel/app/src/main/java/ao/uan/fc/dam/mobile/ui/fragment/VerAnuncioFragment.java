@@ -1,8 +1,10 @@
 package ao.uan.fc.dam.mobile.ui.fragment;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -80,6 +82,27 @@ public class VerAnuncioFragment extends Fragment {
         if(anuncioAtual == null)
             return;
 
+        if (anuncioAtual.getIdServidor() != null && !anuncioAtual.getIdServidor().isBlank()) {
+            Log.d("VerAnuncio", "A eliminar anuncio remoto idServidor=" + anuncioAtual.getIdServidor());
+            repository.eliminarRemoto(
+                    anuncioAtual,
+                    resultado -> requireActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), "Anúncio eliminado com sucesso.", Toast.LENGTH_SHORT).show();
+                        requireActivity().getSupportFragmentManager().popBackStack();
+                    }),
+                    erro -> requireActivity().runOnUiThread(() ->
+                            Toast.makeText(requireContext(), erro, Toast.LENGTH_LONG).show())
+            );
+            return;
+        }
+
+        // Anuncio criado antes desta funcionalidade existir: sem idServidor nao ha como eliminar
+        // remotamente. Remove-se apenas o registo local para nao bloquear o utilizador.
+        Log.w("VerAnuncio", "Anuncio sem idServidor (id_anuncio=" + anuncioAtual.getIdAnuncio()
+                + "). A remover apenas localmente.");
+        Toast.makeText(requireContext(),
+                "Este anúncio não tem ID remoto (foi criado antes desta funcionalidade). A remover apenas localmente.",
+                Toast.LENGTH_LONG).show();
         repository.remover(anuncioAtual, resultado -> {
                     requireActivity().runOnUiThread(() -> {
                         requireActivity().getSupportFragmentManager().popBackStack();

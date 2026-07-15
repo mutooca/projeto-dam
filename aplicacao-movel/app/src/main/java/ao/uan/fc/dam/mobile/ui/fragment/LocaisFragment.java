@@ -69,9 +69,9 @@ public class LocaisFragment extends Fragment {
         adapter.setOnLocalClickListener(new LocalAdapter.OnLocalClickListener() {
             @Override
             public void onClick(Local local) {
-                if (local.getIdLocal() <= 0 && local.getIdServidor() != null && !local.getIdServidor().isBlank()) {
+                if (local.getIdServidor() == null || local.getIdServidor().isBlank()) {
                     Toast.makeText(requireContext(),
-                            "Edição de locais remotos ainda não está disponível nesta tela.",
+                            "Este local não tem um ID remoto válido para edição.",
                             Toast.LENGTH_SHORT).show();
                     return;
                 }
@@ -80,9 +80,9 @@ public class LocaisFragment extends Fragment {
 
             @Override
             public void onLongClick(Local local) {
-                if (local.getIdLocal() <= 0 && local.getIdServidor() != null && !local.getIdServidor().isBlank()) {
+                if (local.getIdServidor() == null || local.getIdServidor().isBlank()) {
                     Toast.makeText(requireContext(),
-                            "Remoção de locais remotos ainda não está disponível nesta tela.",
+                            "Este local não tem um ID remoto válido para remoção.",
                             Toast.LENGTH_SHORT).show();
                     return;
                 }
@@ -169,12 +169,26 @@ public class LocaisFragment extends Fragment {
                 .setTitle("Editar Local")
                 .setView(view)
                 .setPositiveButton("Guardar",(d,w)->{
-                    local.setNome(nome.getText().toString());
-                    repository.atualizar(local, resultado -> {
-                        requireActivity().runOnUiThread(() -> {
-                            carregarLocais();
-                        });
-                    });
+                    String novoNome = nome.getText().toString().trim();
+                    if (novoNome.isEmpty()) {
+                        Toast.makeText(requireContext(), "Introduza o nome do local.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    Log.d("LOCAL", "A editar local remoto idServidor=" + local.getIdServidor() + " novoNome=" + novoNome);
+                    repository.editarRemoto(
+                            local.getIdServidor(),
+                            novoNome,
+                            null,
+                            null,
+                            null,
+                            null,
+                            resultado -> requireActivity().runOnUiThread(() -> {
+                                Toast.makeText(requireContext(), "Local editado com sucesso.", Toast.LENGTH_SHORT).show();
+                                carregarLocais();
+                            }),
+                            erro -> requireActivity().runOnUiThread(() ->
+                                    Toast.makeText(requireContext(), erro, Toast.LENGTH_LONG).show())
+                    );
                 })
                 .setNegativeButton("Cancelar",null)
                 .show();
@@ -186,11 +200,16 @@ public class LocaisFragment extends Fragment {
                 .setMessage("Deseja remover este local?")
 
                 .setPositiveButton("Sim",(d,w)->{
-                    repository.remover(local, resultado -> {
-                        requireActivity().runOnUiThread(() -> {
-                            carregarLocais();
-                        });
-                    });
+                    Log.d("LOCAL", "A remover local remoto idServidor=" + local.getIdServidor());
+                    repository.removerRemoto(
+                            local.getIdServidor(),
+                            resultado -> requireActivity().runOnUiThread(() -> {
+                                Toast.makeText(requireContext(), "Local removido com sucesso.", Toast.LENGTH_SHORT).show();
+                                carregarLocais();
+                            }),
+                            erro -> requireActivity().runOnUiThread(() ->
+                                    Toast.makeText(requireContext(), erro, Toast.LENGTH_LONG).show())
+                    );
                 })
                 .setNegativeButton("Cancelar",null)
                 .show();

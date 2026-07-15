@@ -15,6 +15,8 @@ import ao.uan.fc.dam.mobile.data.entity.Anuncio;
 import ao.uan.fc.dam.mobile.data.relation.AnuncioCompleto;
 import ao.uan.fc.dam.mobile.data.enums.ModoEntrega;
 import ao.uan.fc.dam.mobile.network.api.RetrofitClient;
+import ao.uan.fc.dam.mobile.network.dto.AnuncioInfoResponse;
+import ao.uan.fc.dam.mobile.network.dto.MensagemResponse;
 import ao.uan.fc.dam.mobile.network.dto.PostarAnuncioRequest;
 import ao.uan.fc.dam.mobile.util.DatabaseExecutor;
 import ao.uan.fc.dam.mobile.util.ResultadoCallback;
@@ -131,7 +133,12 @@ public class AnuncioRepository {
                             return;
                         }
 
-                        inserir(anuncio, successCallback);
+                        inserir(anuncio, id -> {
+                            if (successCallback != null) {
+                                successCallback.onResultado(id);
+                            }
+                            sincronizarIdServidor(anuncio, emailAutor);
+                        });
                     }
 
                     @Override
@@ -139,6 +146,126 @@ public class AnuncioRepository {
                         Log.e(TAG, "Falha de rede ao publicar anuncio", t);
                         if (errorCallback != null) {
                             errorCallback.onResultado("Falha de ligação ao publicar anúncio.");
+                        }
+                    }
+                });
+    }
+
+    /**
+     * Após publicar um anuncio centralizado, o backend so devolve uma mensagem de texto
+     * (nao o UUID remoto). Para permitir eliminacao remota mais tarde, procura o anuncio
+     * recem-criado em "meus anuncios" (que ja devolve o UUID real) e associa-o ao registo local.
+     */
+    private void sincronizarIdServidor(Anuncio anuncio, String emailAutor) {
+        if (emailAutor == null || emailAutor.isBlank()) {
+            return;
+        }
+
+        Log.d(TAG, "GET /api/anuncios/meus?email=" + emailAutor + " para sincronizar idServidor do anuncio local id="
+                + anuncio.getIdAnuncio());
+
+        RetrofitClient.getApiService(context)
+                .listarMeusAnunciosRemoto(emailAutor)
+                .enqueue(new Callback<List<AnuncioInfoResponse>>() {
+                    @Override
+                    public void onResponse(Call<List<AnuncioInfoResponse>> call, Response<List<AnuncioInfoResponse>> response) {
+                        if (!response.isSuccessful() || response.body() == null) {
+                            Log.w(TAG, "Nao foi possivel sincronizar idServidor: HTTP " + response.code());
+                            return;
+                        }
+
+                        AnuncioInfoResponse correspondente = null;
+                        for (AnuncioInfoResponse remoto : response.body()) {
+                            if (remoto.getTitulo() != null && remoto.getTitulo().equals(anuncio.getTitulo())
+                                    && remoto.getConteudo() != null && remoto.getConteudo().equals(anuncio.getConteudo())) {
+                                correspondente = remoto;
+                                break;
+                            }
+                        }
+
+                        if (correspondente == null || correspondente.getId() == null) {
+                            Log.w(TAG, "Nao foi encontrado o anuncio remoto correspondente para sincronizar idServidor.");
+                            return;
+                        }
+
+                        String idServidor = correspondente.getId();
+                        anuncio.setIdServidor(idServidor);
+                        DatabaseExecutor.executor.execute(() -> {
+                            dao.atualizar(anuncio);
+                            Log.d(TAG, "idServidor sincronizado para anuncio local id=" + anuncio.getIdAnuncio()
+                                    + " -> idServidor=" + idServidor);
+                        });
+                    }
+
+                    @Override
+                    public void onFailure(Call<List<AnuncioInfoResponse>> call, Throwable t) {
+                        Log.e(TAG, "Falha ao sincronizar idServidor do anuncio", t);
+                    }
+                });
+    }
+
+    public void eliminarRemoto(
+            Anuncio anuncio,
+            ResultadoCallback<String> successCallback,
+            ResultadoCallback<String> errorCallback
+    ) {
+        if (!sessionManager.hasKerberosSession()) {
+            Log.e(TAG, "Tentativa de eliminar anuncio sem sessao Kerberos."
+                    + " email=" + sessionManager.getEmail()
+                    + " idAnuncioLocal=" + anuncio.getIdAnuncio());
+            if (errorCallback != null) {
+                errorCallback.onResultado("Sessão remota ausente. Faça login novamente com o servidor ligado.");
+            }
+            return;
+        }
+
+        if (anuncio.getIdServidor() == null || anuncio.getIdServidor().isBlank()) {
+            Log.w(TAG, "Anuncio local id=" + anuncio.getIdAnuncio() + " nao tem idServidor. Eliminacao remota indisponivel.");
+            if (errorCallback != null) {
+                errorCallback.onResultado("Este anúncio não tem um ID remoto válido (foi criado antes desta funcionalidade).");
+            }
+            return;
+        }
+
+        Log.d(TAG, "DELETE /api/anuncios/" + anuncio.getIdServidor()
+                + "?emailUtilizador=" + sessionManager.getEmail()
+                + " ticket=" + resumir(sessionManager.getTicket())
+                + " sessionId=" + sessionManager.getSessionId());
+
+        RetrofitClient.getApiService(context)
+                .eliminarAnuncioRemoto(anuncio.getIdServidor(), sessionManager.getEmail())
+                .enqueue(new Callback<MensagemResponse>() {
+                    @Override
+                    public void onResponse(Call<MensagemResponse> call, Response<MensagemResponse> response) {
+                        Log.d(TAG, "Resposta DELETE /api/anuncios/" + anuncio.getIdServidor()
+                                + " HTTP=" + response.code()
+                                + " successful=" + response.isSuccessful()
+                                + " sucesso=" + (response.body() != null && response.body().isSucesso())
+                                + " mensagem=" + (response.body() != null ? response.body().getMensagem() : null));
+
+                        if (response.isSuccessful() && response.body() != null && response.body().isSucesso()) {
+                            remover(anuncio, resultado -> {
+                                if (successCallback != null) {
+                                    successCallback.onResultado(response.body().getMensagem());
+                                }
+                            });
+                            return;
+                        }
+
+                        String mensagem = response.body() != null && response.body().getMensagem() != null
+                                ? response.body().getMensagem()
+                                : lerMensagemErro(response, "Erro ao eliminar anúncio.");
+                        Log.e(TAG, "Erro ao eliminar anuncio no servidor: " + mensagem);
+                        if (errorCallback != null) {
+                            errorCallback.onResultado(mensagem);
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<MensagemResponse> call, Throwable t) {
+                        Log.e(TAG, "Falha ao eliminar anuncio remotamente", t);
+                        if (errorCallback != null) {
+                            errorCallback.onResultado("Falha de ligação ao eliminar anúncio.");
                         }
                     }
                 });

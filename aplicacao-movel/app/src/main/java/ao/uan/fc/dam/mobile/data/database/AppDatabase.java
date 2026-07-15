@@ -34,7 +34,7 @@ import ao.uan.fc.dam.mobile.data.entity.Utilizador;
                 AtributoPerfil.class,
                 AnuncioRecebido.class
         },
-        version = 6,
+        version = 7,
         exportSchema = false
 )
 @TypeConverters({

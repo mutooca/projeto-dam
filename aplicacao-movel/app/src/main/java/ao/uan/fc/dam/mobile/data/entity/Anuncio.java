@@ -74,6 +74,9 @@ public class Anuncio {
     @ColumnInfo(name = "id_local")
     private int idLocal;
 
+    @ColumnInfo(name = "id_servidor")
+    private String idServidor;
+
     public Anuncio() {
     }
 
@@ -171,5 +174,13 @@ public class Anuncio {
 
     public void setIdLocal(int idLocal) {
         this.idLocal = idLocal;
+    }
+
+    public String getIdServidor() {
+        return idServidor;
+    }
+
+    public void setIdServidor(String idServidor) {
+        this.idServidor = idServidor;
     }
 }

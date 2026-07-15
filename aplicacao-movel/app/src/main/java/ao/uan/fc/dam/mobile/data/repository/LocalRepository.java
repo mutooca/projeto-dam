@@ -20,7 +20,10 @@ import ao.uan.fc.dam.mobile.data.relation.LocalCompleto;
 import ao.uan.fc.dam.mobile.network.api.RetrofitClient;
 import ao.uan.fc.dam.mobile.network.dto.CriarLocalRequest;
 import ao.uan.fc.dam.mobile.network.dto.CriarLocalResponse;
+import ao.uan.fc.dam.mobile.network.dto.EditarLocalRequest;
+import ao.uan.fc.dam.mobile.network.dto.EditarLocalResponse;
 import ao.uan.fc.dam.mobile.network.dto.LocalProximoResponse;
+import ao.uan.fc.dam.mobile.network.dto.MensagemResponse;
 import ao.uan.fc.dam.mobile.util.DatabaseExecutor;
 import ao.uan.fc.dam.mobile.util.ResultadoCallback;
 import ao.uan.fc.dam.mobile.util.SessionManager;
@@ -204,6 +207,147 @@ public class LocalRepository {
                         Log.e(TAG, "Falha ao listar locais proximos remotamente", t);
                         if (errorCallback != null) {
                             errorCallback.onResultado("Falha de ligação ao listar locais próximos.");
+                        }
+                    }
+                });
+    }
+
+    public void editarRemoto(
+            String idLocalServidor,
+            String nome,
+            Double latitude,
+            Double longitude,
+            Double raio,
+            String ssidWifi,
+            ResultadoCallback<EditarLocalResponse> successCallback,
+            ResultadoCallback<String> errorCallback
+    ) {
+        if (!sessionManager.hasKerberosSession()) {
+            Log.e(TAG, "Tentativa de editar local sem sessao Kerberos."
+                    + " email=" + sessionManager.getEmail()
+                    + " idLocalServidor=" + idLocalServidor);
+            if (errorCallback != null) {
+                errorCallback.onResultado("Sessão remota ausente. Faça login novamente com o servidor ligado.");
+            }
+            return;
+        }
+
+        if (idLocalServidor == null || idLocalServidor.isBlank()) {
+            Log.e(TAG, "Tentativa de editar local sem idLocal remoto.");
+            if (errorCallback != null) {
+                errorCallback.onResultado("Este local não tem um ID remoto válido.");
+            }
+            return;
+        }
+
+        EditarLocalRequest request = new EditarLocalRequest(nome, latitude, longitude, raio, ssidWifi);
+
+        Log.d(TAG, "PUT /api/locais/" + idLocalServidor
+                + " body={nome=" + nome
+                + ", latitude=" + latitude
+                + ", longitude=" + longitude
+                + ", raio=" + raio
+                + ", ssidWifi=" + ssidWifi + "}"
+                + " ticket=" + resumir(sessionManager.getTicket())
+                + " sessionId=" + sessionManager.getSessionId());
+
+        RetrofitClient.getApiService(context)
+                .editarLocal(idLocalServidor, request)
+                .enqueue(new Callback<EditarLocalResponse>() {
+                    @Override
+                    public void onResponse(Call<EditarLocalResponse> call, Response<EditarLocalResponse> response) {
+                        Log.d(TAG, "Resposta PUT /api/locais/" + idLocalServidor
+                                + " HTTP=" + response.code()
+                                + " successful=" + response.isSuccessful()
+                                + " sucesso=" + (response.body() != null && response.body().isSucesso())
+                                + " mensagem=" + (response.body() != null ? response.body().getMensagem() : null));
+
+                        if (response.isSuccessful() && response.body() != null && response.body().isSucesso()) {
+                            if (successCallback != null) {
+                                successCallback.onResultado(response.body());
+                            }
+                            return;
+                        }
+
+                        String mensagem = response.body() != null && response.body().getMensagem() != null
+                                ? response.body().getMensagem()
+                                : lerMensagemErroGenerica(response);
+                        Log.e(TAG, "Erro ao editar local no servidor: " + mensagem);
+                        if (errorCallback != null) {
+                            errorCallback.onResultado(mensagem);
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<EditarLocalResponse> call, Throwable t) {
+                        Log.e(TAG, "Falha ao editar local remotamente", t);
+                        if (errorCallback != null) {
+                            errorCallback.onResultado("Falha de ligação ao editar local.");
+                        }
+                    }
+                });
+    }
+
+    public void removerRemoto(
+            String idLocalServidor,
+            ResultadoCallback<String> successCallback,
+            ResultadoCallback<String> errorCallback
+    ) {
+        if (!sessionManager.hasKerberosSession()) {
+            Log.e(TAG, "Tentativa de remover local sem sessao Kerberos."
+                    + " email=" + sessionManager.getEmail()
+                    + " idLocalServidor=" + idLocalServidor);
+            if (errorCallback != null) {
+                errorCallback.onResultado("Sessão remota ausente. Faça login novamente com o servidor ligado.");
+            }
+            return;
+        }
+
+        if (idLocalServidor == null || idLocalServidor.isBlank()) {
+            Log.e(TAG, "Tentativa de remover local sem idLocal remoto.");
+            if (errorCallback != null) {
+                errorCallback.onResultado("Este local não tem um ID remoto válido.");
+            }
+            return;
+        }
+
+        Log.d(TAG, "DELETE /api/locais/" + idLocalServidor
+                + "?emailUtilizador=" + sessionManager.getEmail()
+                + " ticket=" + resumir(sessionManager.getTicket())
+                + " sessionId=" + sessionManager.getSessionId());
+
+        RetrofitClient.getApiService(context)
+                .removerLocalRemoto(idLocalServidor, sessionManager.getEmail())
+                .enqueue(new Callback<MensagemResponse>() {
+                    @Override
+                    public void onResponse(Call<MensagemResponse> call, Response<MensagemResponse> response) {
+                        Log.d(TAG, "Resposta DELETE /api/locais/" + idLocalServidor
+                                + " HTTP=" + response.code()
+                                + " successful=" + response.isSuccessful()
+                                + " sucesso=" + (response.body() != null && response.body().isSucesso())
+                                + " mensagem=" + (response.body() != null ? response.body().getMensagem() : null));
+
+                        if (response.isSuccessful() && response.body() != null && response.body().isSucesso()) {
+                            if (successCallback != null) {
+                                successCallback.onResultado(response.body().getMensagem());
+                            }
+                            return;
+                        }
+
+                        String mensagem = response.body() != null && response.body().getMensagem() != null
+                                ? response.body().getMensagem()
+                                : lerMensagemErroGenerica(response);
+                        Log.e(TAG, "Erro ao remover local no servidor: " + mensagem);
+                        if (errorCallback != null) {
+                            errorCallback.onResultado(mensagem);
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<MensagemResponse> call, Throwable t) {
+                        Log.e(TAG, "Falha ao remover local remotamente", t);
+                        if (errorCallback != null) {
+                            errorCallback.onResultado("Falha de ligação ao remover local.");
                         }
                     }
                 });
