@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import ao.uan.fc.dam.mobile.data.dao.CoordenadaGpsDao;
+import ao.uan.fc.dam.mobile.data.dao.CoordenadaWifiDao;
 import ao.uan.fc.dam.mobile.data.dao.LocalDao;
 import ao.uan.fc.dam.mobile.data.database.DatabaseProvider;
 import ao.uan.fc.dam.mobile.data.entity.CoordenadaGps;
@@ -33,6 +34,7 @@ public class LocalRepository {
     private final Context context;
     private final LocalDao localDao;
     private final CoordenadaGpsDao coordenadaGpsDao;
+    private final CoordenadaWifiDao coordenadaWifiDao;
     private final SessionManager sessionManager;
 
     public LocalRepository(Context context){
@@ -43,6 +45,9 @@ public class LocalRepository {
         coordenadaGpsDao = DatabaseProvider
                 .getInstance(this.context)
                 .coordenadaGpsDao();
+        coordenadaWifiDao = DatabaseProvider
+                .getInstance(this.context)
+                .coordenadaWifiDao();
         sessionManager = new SessionManager(this.context);
 
     }
@@ -215,6 +220,87 @@ public class LocalRepository {
 
         });
 
+    }
+
+    public void garantirLocalPersistido(
+            LocalCompleto origem,
+            ResultadoCallback<Local> successCallback,
+            ResultadoCallback<String> errorCallback
+    ) {
+        DatabaseExecutor.executor.execute(() -> {
+            try {
+                if (origem == null || origem.getLocal() == null) {
+                    if (errorCallback != null) {
+                        errorCallback.onResultado("Local selecionado inválido.");
+                    }
+                    return;
+                }
+
+                Local localOrigem = origem.getLocal();
+                Local existente = null;
+
+                if (localOrigem.getIdLocal() > 0) {
+                    existente = localDao.buscarPorId(localOrigem.getIdLocal());
+                }
+
+                if (existente == null
+                        && localOrigem.getIdServidor() != null
+                        && !localOrigem.getIdServidor().isBlank()) {
+                    existente = localDao.buscarPorIdServidor(localOrigem.getIdServidor());
+                }
+
+                if (existente != null) {
+                    Log.d(TAG, "Local reutilizado na Room."
+                            + " idLocalLocal=" + existente.getIdLocal()
+                            + " idLocalServidor=" + existente.getIdServidor()
+                            + " nome=" + existente.getNome());
+                    if (successCallback != null) {
+                        successCallback.onResultado(existente);
+                    }
+                    return;
+                }
+
+                Local novoLocal = new Local();
+                novoLocal.setNome(localOrigem.getNome());
+                novoLocal.setIdServidor(localOrigem.getIdServidor());
+                novoLocal.setTipoCoordenada(localOrigem.getTipoCoordenada());
+
+                long novoId = localDao.inserir(novoLocal);
+                novoLocal.setIdLocal((int) novoId);
+
+                if (origem.getCoordenadaGps() != null) {
+                    CoordenadaGps gps = new CoordenadaGps();
+                    gps.setIdLocal((int) novoId);
+                    gps.setLatitude(origem.getCoordenadaGps().getLatitude());
+                    gps.setLongitude(origem.getCoordenadaGps().getLongitude());
+                    gps.setRaio(origem.getCoordenadaGps().getRaio());
+                    coordenadaGpsDao.inserir(gps);
+                }
+
+                if (origem.getCoordenadaWifi() != null
+                        && origem.getCoordenadaWifi().getSsid() != null
+                        && !origem.getCoordenadaWifi().getSsid().isBlank()) {
+                    CoordenadaWifi wifi = new CoordenadaWifi();
+                    wifi.setIdLocal((int) novoId);
+                    wifi.setSsid(origem.getCoordenadaWifi().getSsid());
+                    coordenadaWifiDao.inserir(wifi);
+                }
+
+                Log.d(TAG, "Local remoto persistido na Room para associar ao anuncio."
+                        + " idLocalLocal=" + novoId
+                        + " idLocalServidor=" + novoLocal.getIdServidor()
+                        + " nome=" + novoLocal.getNome());
+
+                if (successCallback != null) {
+                    successCallback.onResultado(novoLocal);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Erro ao garantir local persistido", e);
+                if (errorCallback != null) {
+                    errorCallback.onResultado("Erro ao preparar o local selecionado.");
+                }
+            }
+        });
     }
 
     private void persistirLocalCriado(

@@ -28,6 +28,9 @@ public interface LocalDao {
     @Query("SELECT * FROM locais WHERE id_local=:id")
     Local buscarPorId(int id);
 
+    @Query("SELECT * FROM locais WHERE id_servidor = :idServidor ORDER BY id_local DESC LIMIT 1")
+    Local buscarPorIdServidor(String idServidor);
+
     @Query("SELECT * FROM locais WHERE nome LIKE '%' || :nome || '%'")
     List<Local> pesquisar(String nome);
 

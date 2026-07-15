@@ -11,6 +11,7 @@ import ao.uan.fc.dam.mobile.network.dto.LoginRequest;
 import ao.uan.fc.dam.mobile.network.dto.LoginResponse;
 import ao.uan.fc.dam.mobile.network.dto.LocalProximoResponse;
 import ao.uan.fc.dam.mobile.network.dto.LogoutRequest;
+import ao.uan.fc.dam.mobile.network.dto.PostarAnuncioRequest;
 import ao.uan.fc.dam.mobile.request.RegistarUtilizadorRequest;
 import retrofit2.Call;
 import retrofit2.http.Body;
@@ -38,8 +39,8 @@ public interface ApiService {
     @GET("api/anuncios")
     Call<List<Anuncio>> listarAnuncios();
 
-    @POST("api/anuncios")
-    Call<Anuncio> publicarAnuncio(@Body Anuncio anuncio);
+    @POST("/api/anuncios/postar")
+    Call<String> postarAnuncio(@Body PostarAnuncioRequest request);
 
     @GET("/api/infraestruturas/locais/todos")
     Call<List<Local>> listarLocais();
