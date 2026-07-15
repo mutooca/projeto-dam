@@ -6,6 +6,7 @@ import android.util.Log;
 import java.time.LocalDateTime;
 import java.util.Locale;
 
+import ao.uan.fc.dam.mobile.BuildConfig;
 import ao.uan.fc.dam.mobile.data.dao.UtilizadorDao;
 import ao.uan.fc.dam.mobile.data.database.DatabaseProvider;
 import ao.uan.fc.dam.mobile.data.entity.Utilizador;
@@ -24,6 +25,8 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 public class UtilizadorRepository {
+
+    private static final String TAG = "UtilizadorRepository";
 
     private final UtilizadorDao utilizadorDao;
     private final Context context;
@@ -105,6 +108,9 @@ public class UtilizadorRepository {
                     @Override
                     public void onResponse(Call<LoginResponse> call,
                                            Response<LoginResponse> response) {
+                        Log.d(TAG, "Resposta login remoto HTTP=" + response.code()
+                                + " success=" + response.isSuccessful()
+                                + " body=" + response.body());
 
 
                         if (response.isSuccessful()
@@ -112,6 +118,9 @@ public class UtilizadorRepository {
                                 && response.body().isSuccess()) {
                             persistirSessaoRemota(email, senha, response.body(), callback);
                         } else {
+                            Log.e(TAG, "Login remoto rejeitado pelo servidor."
+                                    + " endpoint=" + BuildConfig.API_BASE_URL
+                                    + " errorBody=" + lerErro(response));
 
                             callback.onResultado(null);
                         }
@@ -124,17 +133,11 @@ public class UtilizadorRepository {
                                           Throwable t) {
 
 
-                        Log.e("API",
-                                "Erro autenticação remota",
+                        Log.e(TAG,
+                                "Falha de ligacao no login remoto. endpoint="
+                                        + BuildConfig.API_BASE_URL,
                                 t);
-
-
-                        // fallback offline
-                        autenticarLocal(
-                                email,
-                                senha,
-                                callback
-                        );
+                        callback.onResultado(null);
                     }
                 });
     }
@@ -434,6 +437,19 @@ public class UtilizadorRepository {
         String primeiraLetra = localPart.substring(0, 1).toUpperCase(Locale.ROOT);
         String resto = localPart.length() > 1 ? localPart.substring(1) : "";
         return primeiraLetra + resto;
+    }
+
+    private String lerErro(Response<?> response) {
+        if (response == null || response.errorBody() == null) {
+            return "sem corpo";
+        }
+
+        try {
+            String erro = response.errorBody().string();
+            return erro == null || erro.isBlank() ? "vazio" : erro;
+        } catch (Exception e) {
+            return "erro ao ler corpo: " + e.getMessage();
+        }
     }
 
 }

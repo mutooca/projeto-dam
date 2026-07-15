@@ -58,7 +58,9 @@ public class LocalRepository {
                     + " ticket=" + resumir(sessionManager.getTicket())
                     + " sessionId=" + sessionManager.getSessionId());
             if (errorCallback != null) {
-                errorCallback.onResultado("Faça login antes de criar um local.");
+                errorCallback.onResultado(
+                        "Sessão remota ausente. Faça login novamente com o servidor ligado."
+                );
             }
             return;
         }

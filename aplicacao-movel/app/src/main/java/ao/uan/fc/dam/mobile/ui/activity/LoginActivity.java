@@ -23,6 +23,7 @@ public class LoginActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private UtilizadorRepository repository;
     private SessionManager sessionManager;
+    private static final String TAG = "LoginActivity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,7 +67,25 @@ public class LoginActivity extends AppCompatActivity {
             btnEntrar.setEnabled(true);
 
             if (utilizador == null) {
-                Toast.makeText(LoginActivity.this, "Falha na autenticação. Verifique os dados ou a ligação.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(
+                        LoginActivity.this,
+                        "Falha no login remoto. Verifique a ligação ao servidor e tente novamente.",
+                        Toast.LENGTH_LONG
+                ).show();
+                return;
+            }
+
+            if (!sessionManager.hasKerberosSession()) {
+                android.util.Log.e(TAG, "Login concluido sem sessao Kerberos."
+                        + " email=" + utilizador.getEmail()
+                        + " ticket=" + sessionManager.getTicket()
+                        + " sessionId=" + sessionManager.getSessionId());
+                sessionManager.terminarSessao();
+                Toast.makeText(
+                        LoginActivity.this,
+                        "Sessão remota não foi criada. Faça login novamente com o servidor ligado.",
+                        Toast.LENGTH_LONG
+                ).show();
                 return;
             }
 
