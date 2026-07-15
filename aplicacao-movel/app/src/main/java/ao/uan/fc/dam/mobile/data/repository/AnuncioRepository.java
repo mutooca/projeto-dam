@@ -17,10 +17,12 @@ import retrofit2.Response;
 
 public class AnuncioRepository {
     private final AnuncioDao dao;
+    private final Context context;
     private static final String TAG = "AnuncioRepository";
 
     public AnuncioRepository(Context context){
-        dao = DatabaseProvider.getInstance(context).anuncioDao();
+        this.context = context.getApplicationContext();
+        dao = DatabaseProvider.getInstance(this.context).anuncioDao();
     }
 
     public void inserir(Anuncio anuncio, ResultadoCallback<Long> callback){
@@ -41,7 +43,7 @@ public class AnuncioRepository {
     }
 
     private void publicarNoServidor(Anuncio anuncio) {
-        RetrofitClient.getApiService().publicarAnuncio(anuncio).enqueue(new Callback<Anuncio>() {
+        RetrofitClient.getApiService(context).publicarAnuncio(anuncio).enqueue(new Callback<Anuncio>() {
             @Override
             public void onResponse(Call<Anuncio> call, Response<Anuncio> response) {
                 if (response.isSuccessful()) {
@@ -59,7 +61,7 @@ public class AnuncioRepository {
     }
 
     public void sincronizarAnunciosRemotos(ResultadoCallback<Void> callback) {
-        RetrofitClient.getApiService().listarAnuncios().enqueue(new Callback<List<Anuncio>>() {
+        RetrofitClient.getApiService(context).listarAnuncios().enqueue(new Callback<List<Anuncio>>() {
             @Override
             public void onResponse(Call<List<Anuncio>> call, Response<List<Anuncio>> response) {
                 if (response.isSuccessful() && response.body() != null) {

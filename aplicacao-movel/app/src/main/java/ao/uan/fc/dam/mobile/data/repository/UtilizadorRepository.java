@@ -3,13 +3,21 @@ package ao.uan.fc.dam.mobile.data.repository;
 import android.content.Context;
 import android.util.Log;
 
+import java.time.LocalDateTime;
+import java.util.Locale;
+
 import ao.uan.fc.dam.mobile.data.dao.UtilizadorDao;
 import ao.uan.fc.dam.mobile.data.database.DatabaseProvider;
 import ao.uan.fc.dam.mobile.data.entity.Utilizador;
 import ao.uan.fc.dam.mobile.network.api.RetrofitClient;
+import ao.uan.fc.dam.mobile.network.dto.AtualizarUtilizadorRequest;
+import ao.uan.fc.dam.mobile.network.dto.LoginRequest;
+import ao.uan.fc.dam.mobile.network.dto.LoginResponse;
+import ao.uan.fc.dam.mobile.network.dto.LogoutRequest;
 import ao.uan.fc.dam.mobile.request.RegistarUtilizadorRequest;
 import ao.uan.fc.dam.mobile.util.DatabaseExecutor;
 import ao.uan.fc.dam.mobile.util.ResultadoCallback;
+import ao.uan.fc.dam.mobile.util.SessionManager;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -19,13 +27,15 @@ public class UtilizadorRepository {
 
     private final UtilizadorDao utilizadorDao;
     private final Context context;
+    private final SessionManager sessionManager;
 
 
     public UtilizadorRepository(Context context){
-        this.context = context;
+        this.context = context.getApplicationContext();
         utilizadorDao = DatabaseProvider
-                .getInstance(context)
+                .getInstance(this.context)
                 .utilizadorDao();
+        sessionManager = new SessionManager(this.context);
     }
 
 
@@ -38,29 +48,33 @@ public class UtilizadorRepository {
                 new RegistarUtilizadorRequest(utilizador.getNome(), utilizador.getEmail(), utilizador.getPalavraChave());
 
 
-        RetrofitClient.getApiService().registar(request)
-                .enqueue(new Callback<Utilizador>() {
+        RetrofitClient.getApiService(context).registar(request)
+                .enqueue(new Callback<String>() {
 
                     @Override
-                    public void onResponse(Call<Utilizador> call,
-                                           Response<Utilizador> response) {
+                    public void onResponse(Call<String> call,
+                                           Response<String> response) {
 
-                        if(response.isSuccessful()
-                                && response.body()!=null){
+                        if (response.isSuccessful()) {
+                            DatabaseExecutor.executor.execute(() -> {
+                                if (utilizador.getSaldo() == null) {
+                                    utilizador.setSaldo(10);
+                                }
+                                if (utilizador.getDataCriacao() == null) {
+                                    utilizador.setDataCriacao(LocalDateTime.now());
+                                }
+                                Utilizador persistido = salvarOuAtualizarLocal(utilizador);
+                                callback.onResultado(persistido);
+                            });
 
-                            // Guarda também localmente
-                            inserirLocal(response.body(), id ->
-                                    callback.onResultado(response.body())
-                            );
-
-                        }else{
+                        } else {
                             callback.onResultado(null);
                         }
                     }
 
 
                     @Override
-                    public void onFailure(Call<Utilizador> call,
+                    public void onFailure(Call<String> call,
                                           Throwable t) {
 
                         Log.e("API",
@@ -81,37 +95,23 @@ public class UtilizadorRepository {
     public void autenticarRemoto(String email,
                                  String senha,
                                  ResultadoCallback<Utilizador> callback){
+        LoginRequest dadosLogin = new LoginRequest(email, senha);
 
-
-        Utilizador dadosLogin = new Utilizador();
-
-        dadosLogin.setEmail(email);
-        dadosLogin.setPalavraChave(senha);
-
-
-        RetrofitClient.getApiService()
+        RetrofitClient.getApiService(context)
                 .login(dadosLogin)
-                .enqueue(new Callback<Utilizador>() {
+                .enqueue(new Callback<LoginResponse>() {
 
 
                     @Override
-                    public void onResponse(Call<Utilizador> call,
-                                           Response<Utilizador> response) {
+                    public void onResponse(Call<LoginResponse> call,
+                                           Response<LoginResponse> response) {
 
 
-                        if(response.isSuccessful()
-                                && response.body()!=null){
-
-
-                            Utilizador user = response.body();
-
-
-                            // Guarda cache local
-                            inserirLocal(user,
-                                    id -> callback.onResultado(user));
-
-
-                        }else{
+                        if (response.isSuccessful()
+                                && response.body() != null
+                                && response.body().isSuccess()) {
+                            persistirSessaoRemota(email, senha, response.body(), callback);
+                        } else {
 
                             callback.onResultado(null);
                         }
@@ -120,7 +120,7 @@ public class UtilizadorRepository {
 
 
                     @Override
-                    public void onFailure(Call<Utilizador> call,
+                    public void onFailure(Call<LoginResponse> call,
                                           Throwable t) {
 
 
@@ -148,58 +148,111 @@ public class UtilizadorRepository {
     public void atualizarRemoto(Utilizador utilizador,
                                 ResultadoCallback<Utilizador> callback){
 
+        DatabaseExecutor.executor.execute(() -> {
+            String emailSessao = sessionManager.getEmail();
+            String emailActual = emailSessao.isBlank() ? utilizador.getEmail() : emailSessao;
+            Utilizador utilizadorActual = utilizadorDao.buscarPorEmail(emailActual);
+            String palavraChaveActual = utilizadorActual != null ? utilizadorActual.getPalavraChave() : "";
 
-        RetrofitClient.getApiService()
-                .atualizar(
-                        utilizador.getIdUtilizador(),
-                        utilizador
-                )
-                .enqueue(new Callback<Utilizador>() {
+            String novaPalavraChave = null;
+            if (utilizador.getPalavraChave() != null
+                    && !utilizador.getPalavraChave().isBlank()
+                    && !utilizador.getPalavraChave().equals(palavraChaveActual)) {
+                novaPalavraChave = utilizador.getPalavraChave();
+            }
+
+            AtualizarUtilizadorRequest request = new AtualizarUtilizadorRequest(
+                    emailActual,
+                    utilizador.getNome(),
+                    novaPalavraChave,
+                    novaPalavraChave != null ? palavraChaveActual : null,
+                    null
+            );
+
+            final Utilizador utilizadorBase = utilizadorActual;
+            final String emailAtualFinal = emailActual;
+            final String novaPalavraChaveFinal = novaPalavraChave;
+
+            RetrofitClient.getApiService(context)
+                    .atualizar(request)
+                    .enqueue(new Callback<String>() {
 
 
-                    @Override
-                    public void onResponse(Call<Utilizador> call,
-                                           Response<Utilizador> response) {
+                        @Override
+                        public void onResponse(Call<String> call,
+                                               Response<String> response) {
 
 
-                        if(response.isSuccessful()
-                                && response.body()!=null){
+                            if (response.isSuccessful()) {
+                                DatabaseExecutor.executor.execute(() -> {
+                                    Utilizador atualizado = utilizadorBase != null ? utilizadorBase : new Utilizador();
+                                    atualizado.setNome(utilizador.getNome());
+                                    atualizado.setEmail(emailAtualFinal);
+
+                                    if (novaPalavraChaveFinal != null) {
+                                        atualizado.setPalavraChave(novaPalavraChaveFinal);
+                                    } else if (atualizado.getPalavraChave() == null || atualizado.getPalavraChave().isBlank()) {
+                                        atualizado.setPalavraChave(utilizador.getPalavraChave());
+                                    }
+
+                                    if (atualizado.getSaldo() == null) {
+                                        atualizado.setSaldo(0);
+                                    }
+
+                                    Utilizador persistido = salvarOuAtualizarLocal(atualizado);
+                                    sessionManager.iniciarSessao(
+                                            persistido.getIdUtilizador(),
+                                            persistido.getNome(),
+                                            persistido.getEmail()
+                                    );
+                                    callback.onResultado(persistido);
+                                });
+
+                            } else {
+
+                                callback.onResultado(null);
+
+                            }
+
+                        }
 
 
-                            Utilizador atualizado =
-                                    response.body();
+
+                        @Override
+                        public void onFailure(Call<String> call,
+                                              Throwable t) {
 
 
-                            // Atualiza cache local
-                            atualizarLocal(
-                                    atualizado,
-                                    resultado ->
-                                            callback.onResultado(atualizado)
-                            );
+                            Log.e("API",
+                                    "Erro ao atualizar utilizador",
+                                    t);
 
-
-                        }else{
 
                             callback.onResultado(null);
 
                         }
+                    });
+        });
+    }
 
+    public void terminarSessaoRemota(ResultadoCallback<Boolean> callback) {
+        if (!sessionManager.hasKerberosSession()) {
+            callback.onResultado(true);
+            return;
+        }
+
+        RetrofitClient.getApiService(context)
+                .logout(new LogoutRequest(sessionManager.getSessionId()))
+                .enqueue(new Callback<String>() {
+                    @Override
+                    public void onResponse(Call<String> call, Response<String> response) {
+                        callback.onResultado(response.isSuccessful());
                     }
 
-
-
                     @Override
-                    public void onFailure(Call<Utilizador> call,
-                                          Throwable t) {
-
-
-                        Log.e("API",
-                                "Erro ao atualizar utilizador",
-                                t);
-
-
-                        callback.onResultado(null);
-
+                    public void onFailure(Call<String> call, Throwable t) {
+                        Log.e("API", "Erro ao terminar sessao remota", t);
+                        callback.onResultado(false);
                     }
                 });
     }
@@ -297,6 +350,90 @@ public class UtilizadorRepository {
 
         });
 
+    }
+
+    private void persistirSessaoRemota(
+            String email,
+            String senha,
+            LoginResponse response,
+            ResultadoCallback<Utilizador> callback
+    ) {
+        DatabaseExecutor.executor.execute(() -> {
+            Utilizador utilizador = new Utilizador();
+            utilizador.setNome(construirNomePadrao(email));
+            utilizador.setEmail(email);
+            utilizador.setPalavraChave(senha);
+            utilizador.setSaldo(0);
+            utilizador.setDataCriacao(LocalDateTime.now());
+
+            Utilizador persistido = salvarOuAtualizarLocal(utilizador);
+
+            sessionManager.iniciarSessao(
+                    persistido.getIdUtilizador(),
+                    persistido.getNome(),
+                    persistido.getEmail(),
+                    response.getTicket(),
+                    response.getSessionId(),
+                    response.getSessionKey()
+            );
+
+            callback.onResultado(persistido);
+        });
+    }
+
+    private Utilizador salvarOuAtualizarLocal(Utilizador utilizador) {
+        Utilizador existente = utilizadorDao.buscarPorEmail(utilizador.getEmail());
+
+        if (existente == null) {
+            if (utilizador.getNome() == null || utilizador.getNome().isBlank()) {
+                utilizador.setNome(construirNomePadrao(utilizador.getEmail()));
+            }
+            long id = utilizadorDao.inserir(utilizador);
+            utilizador.setIdUtilizador((int) id);
+            return utilizador;
+        }
+
+        if (utilizador.getNome() != null && !utilizador.getNome().isBlank()) {
+            existente.setNome(utilizador.getNome());
+        } else if (existente.getNome() == null || existente.getNome().isBlank()) {
+            existente.setNome(construirNomePadrao(existente.getEmail()));
+        }
+
+        existente.setEmail(utilizador.getEmail());
+
+        if (utilizador.getPalavraChave() != null && !utilizador.getPalavraChave().isBlank()) {
+            existente.setPalavraChave(utilizador.getPalavraChave());
+        }
+
+        if (utilizador.getSaldo() != null) {
+            existente.setSaldo(utilizador.getSaldo());
+        } else if (existente.getSaldo() == null) {
+            existente.setSaldo(0);
+        }
+
+        if (utilizador.getDataCriacao() != null) {
+            existente.setDataCriacao(utilizador.getDataCriacao());
+        } else if (existente.getDataCriacao() == null) {
+            existente.setDataCriacao(LocalDateTime.now());
+        }
+
+        utilizadorDao.atualizar(existente);
+        return existente;
+    }
+
+    private String construirNomePadrao(String email) {
+        if (email == null || email.isBlank()) {
+            return "Utilizador";
+        }
+
+        String localPart = email.split("@")[0].replace('.', ' ').replace('_', ' ').trim();
+        if (localPart.isEmpty()) {
+            return "Utilizador";
+        }
+
+        String primeiraLetra = localPart.substring(0, 1).toUpperCase(Locale.ROOT);
+        String resto = localPart.length() > 1 ? localPart.substring(1) : "";
+        return primeiraLetra + resto;
     }
 
 }

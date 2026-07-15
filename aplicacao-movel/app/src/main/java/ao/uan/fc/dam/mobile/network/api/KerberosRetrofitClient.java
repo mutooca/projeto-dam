@@ -1,36 +1,34 @@
 package ao.uan.fc.dam.mobile.network.api;
 
-import android.content.Context;
-
 import ao.uan.fc.dam.mobile.BuildConfig;
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
-import retrofit2.converter.scalars.ScalarsConverterFactory;
 
-public class RetrofitClient {
+public final class KerberosRetrofitClient {
 
     private static Retrofit retrofit;
 
-    public static synchronized ApiService getApiService(Context context) {
+    private KerberosRetrofitClient() {
+    }
+
+    public static synchronized KerberosApiService getApiService() {
         if (retrofit == null) {
             HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
             loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
 
             OkHttpClient client = new OkHttpClient.Builder()
-                    .addInterceptor(new KerberosHeaderInterceptor(context))
                     .addInterceptor(loggingInterceptor)
                     .build();
 
             retrofit = new Retrofit.Builder()
-                    .baseUrl(BuildConfig.API_BASE_URL)
-                    .addConverterFactory(ScalarsConverterFactory.create())
+                    .baseUrl(BuildConfig.KERBEROS_API_BASE_URL)
                     .addConverterFactory(GsonConverterFactory.create())
                     .client(client)
                     .build();
         }
 
-        return retrofit.create(ApiService.class);
+        return retrofit.create(KerberosApiService.class);
     }
 }

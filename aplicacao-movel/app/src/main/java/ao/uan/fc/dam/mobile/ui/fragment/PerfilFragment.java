@@ -90,11 +90,15 @@ public class PerfilFragment extends Fragment {
         );
 
         btnLogout.setOnClickListener(v -> {
-            sessionManager.terminarSessao();
-            Intent intent = new Intent(requireContext(), LoginActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            requireActivity().finish();
+            utilizadorRepository.terminarSessaoRemota(resultado ->
+                    requireActivity().runOnUiThread(() -> {
+                        sessionManager.terminarSessao();
+                        Intent intent = new Intent(requireContext(), LoginActivity.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(intent);
+                        requireActivity().finish();
+                    })
+            );
         });
 
         btnEditName.setOnClickListener(v -> abrirDialogEditarPerfil());
