@@ -19,6 +19,7 @@ import ao.uan.fc.dam.mobile.network.dto.PerfilItemDto;
 import ao.uan.fc.dam.mobile.network.dto.PerfilRequestDto;
 import ao.uan.fc.dam.mobile.network.dto.PerfilResponseDto;
 import ao.uan.fc.dam.mobile.network.dto.PostarAnuncioRequest;
+import ao.uan.fc.dam.mobile.network.dto.SaldoResponseDto;
 import ao.uan.fc.dam.mobile.request.RegistarUtilizadorRequest;
 import retrofit2.Call;
 import retrofit2.http.Body;
@@ -113,4 +114,7 @@ public interface ApiService {
 
     @GET("/api/perfil/todos")
     Call<List<PerfilItemDto>> listarCatalogoPerfilRemoto();
+
+    @GET("/api/perfil/saldo")
+    Call<SaldoResponseDto> consultarSaldo(@Query("email") String email);
 }

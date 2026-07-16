@@ -28,11 +28,7 @@ public class AnuncioViewHolder extends RecyclerView.ViewHolder {
     public void bind(AnuncioModel anuncio)
     {
         titulo.setText(anuncio.getTitulo());
-        autorLocal.setText(
-                anuncio.getAutor()
-                        + " • "
-                        + anuncio.getLocal()
-        );
+        autorLocal.setText(anuncio.getLocal());
         tempo.setText("Agora");
         if (anuncio.getModoEntrega()
                 .equals("DESCENTRALIZADO")) {

@@ -124,8 +124,22 @@ public class PerfilFragment extends Fragment {
 
                     nomeUtilizador.setText(utilizador.getNome());
                     emailUtilizador.setText(utilizador.getEmail());
-                    saldo.setText(String.valueOf(utilizador.getSaldo()));
                 })
+        );
+
+        carregarSaldo();
+    }
+
+    /**
+     * O saldo tem de vir sempre do servidor (nunca da cópia local): é incrementado no
+     * anunciosloc-server sempre que outro utilizador abre um anúncio nosso, por isso o valor
+     * guardado localmente fica desatualizado assim que isso acontece noutro dispositivo/sessão.
+     */
+    private void carregarSaldo() {
+        utilizadorRepository.obterSaldoRemoto(
+                sessionManager.getEmail(),
+                valor -> requireActivity().runOnUiThread(() -> saldo.setText(String.valueOf(valor))),
+                erro -> requireActivity().runOnUiThread(() -> Log.w(TAG, "Erro ao carregar saldo: " + erro))
         );
     }
 

@@ -452,4 +452,44 @@ public class UtilizadorRepository {
         }
     }
 
+    /**
+     * Saldo de pontos atual do utilizador (ganho quando outros abrem os seus anúncios).
+     * Vai sempre ao servidor: o perfil deve mostrar o valor mais recente, não uma cópia local.
+     */
+    public void obterSaldoRemoto(
+            String email,
+            ResultadoCallback<Integer> successCallback,
+            ResultadoCallback<String> errorCallback
+    ) {
+        RetrofitClient.getApiService(context)
+                .consultarSaldo(email)
+                .enqueue(new Callback<ao.uan.fc.dam.mobile.network.dto.SaldoResponseDto>() {
+                    @Override
+                    public void onResponse(
+                            Call<ao.uan.fc.dam.mobile.network.dto.SaldoResponseDto> call,
+                            Response<ao.uan.fc.dam.mobile.network.dto.SaldoResponseDto> response
+                    ) {
+                        if (!response.isSuccessful() || response.body() == null) {
+                            Log.w(TAG, "Falha ao consultar saldo: HTTP " + response.code() + " " + lerErro(response));
+                            if (errorCallback != null) {
+                                errorCallback.onResultado("Não foi possível obter o saldo atual.");
+                            }
+                            return;
+                        }
+
+                        if (successCallback != null) {
+                            successCallback.onResultado(response.body().getSaldo());
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<ao.uan.fc.dam.mobile.network.dto.SaldoResponseDto> call, Throwable t) {
+                        Log.e(TAG, "Falha de ligação ao consultar saldo", t);
+                        if (errorCallback != null) {
+                            errorCallback.onResultado("Falha de ligação ao obter o saldo.");
+                        }
+                    }
+                });
+    }
+
 }
