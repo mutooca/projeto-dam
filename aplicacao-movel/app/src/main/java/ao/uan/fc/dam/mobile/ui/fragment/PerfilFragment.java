@@ -2,6 +2,7 @@ package ao.uan.fc.dam.mobile.ui.fragment;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
@@ -21,17 +22,22 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import ao.uan.fc.dam.mobile.R;
-import ao.uan.fc.dam.mobile.data.entity.AtributoPerfil;
 import ao.uan.fc.dam.mobile.data.repository.AnuncioRepository;
 import ao.uan.fc.dam.mobile.data.repository.AtributoPerfilRepository;
 import ao.uan.fc.dam.mobile.data.repository.HistoricoRepository;
 import ao.uan.fc.dam.mobile.data.repository.UtilizadorRepository;
+import ao.uan.fc.dam.mobile.network.dto.PerfilItemDto;
 import ao.uan.fc.dam.mobile.ui.activity.LoginActivity;
 import ao.uan.fc.dam.mobile.ui.adapter.HistoricoAdapter;
 import ao.uan.fc.dam.mobile.util.SessionManager;
 
 public class PerfilFragment extends Fragment {
+    private static final String TAG = "PerfilFragment";
+
     private TextView nomeUtilizador;
     private TextView emailUtilizador;
     private TextView saldo;
@@ -47,7 +53,9 @@ public class PerfilFragment extends Fragment {
     private HistoricoRepository historicoRepository;
     private AnuncioRepository anuncioRepository;
     private LinearLayout layoutProperties;
+    private LinearLayout layoutCatalogo;
     private AtributoPerfilRepository atributoPerfilRepository;
+    private List<PerfilItemDto> meuPerfilAtual = new ArrayList<>();
 
     public PerfilFragment() {
         super(R.layout.fragment_perfil);
@@ -67,6 +75,7 @@ public class PerfilFragment extends Fragment {
         btnEditName = view.findViewById(R.id.btnEditName);
         btnAddProperty = view.findViewById(R.id.btnAddProperty);
         layoutProperties = view.findViewById(R.id.layoutProperties);   // só o findViewById aqui
+        layoutCatalogo = view.findViewById(R.id.layoutCatalogo);
 
         sessionManager = new SessionManager(requireContext());          // <- sessionManager nasce aqui
         anuncioRepository = new AnuncioRepository(requireContext());
@@ -196,31 +205,129 @@ public class PerfilFragment extends Fragment {
         );
     }
 
+    /**
+     * O perfil e o catálogo são partilhados por todos os utilizadores (residem no servidor).
+     * Por isso carregamos sempre o MEU perfil primeiro e, com essa referência, o catálogo global,
+     * para saber quais os pares chave=valor que já são meus.
+     */
     private void carregarAtributos() {
-        atributoPerfilRepository.listarPorUtilizador(
-                sessionManager.getIdUtilizador(),
-                lista -> requireActivity().runOnUiThread(() -> {
-                    layoutProperties.removeAllViews();
-
-                    for (AtributoPerfil atributo : lista) {
-                        View itemView = LayoutInflater.from(requireContext())
-                                .inflate(R.layout.item_atributo_perfil, layoutProperties, false);
-
-                        TextView txtChave = itemView.findViewById(R.id.txtChave);
-                        TextView txtValor = itemView.findViewById(R.id.txtValor);
-                        ImageView btnRemover = itemView.findViewById(R.id.btnRemoverAtributo);
-
-                        txtChave.setText(atributo.getChave());
-                        txtValor.setText(atributo.getValor());
-
-                        btnRemover.setOnClickListener(v ->
-                                atributoPerfilRepository.remover(atributo, resultado ->
-                                        requireActivity().runOnUiThread(this::carregarAtributos))
-                        );
-
-                        layoutProperties.addView(itemView);
-                    }
+        atributoPerfilRepository.listarMeuPerfilRemoto(
+                meuPerfil -> requireActivity().runOnUiThread(() -> {
+                    meuPerfilAtual = meuPerfil != null ? new ArrayList<>(meuPerfil) : new ArrayList<>();
+                    renderMeusAtributos();
+                    carregarCatalogo();
+                }),
+                erro -> requireActivity().runOnUiThread(() -> {
+                    Log.e(TAG, "Erro ao carregar o meu perfil: " + erro);
+                    Toast.makeText(requireContext(), erro, Toast.LENGTH_LONG).show();
                 })
+        );
+    }
+
+    private void carregarCatalogo() {
+        atributoPerfilRepository.listarCatalogoRemoto(
+                catalogo -> requireActivity().runOnUiThread(() -> renderCatalogo(catalogo)),
+                erro -> requireActivity().runOnUiThread(() -> {
+                    Log.e(TAG, "Erro ao carregar catálogo de atributos: " + erro);
+                    Toast.makeText(requireContext(), erro, Toast.LENGTH_LONG).show();
+                })
+        );
+    }
+
+    private void renderMeusAtributos() {
+        layoutProperties.removeAllViews();
+
+        for (PerfilItemDto atributo : meuPerfilAtual) {
+            View itemView = LayoutInflater.from(requireContext())
+                    .inflate(R.layout.item_atributo_perfil, layoutProperties, false);
+
+            TextView txtChave = itemView.findViewById(R.id.txtChave);
+            TextView txtValor = itemView.findViewById(R.id.txtValor);
+            ImageView btnRemover = itemView.findViewById(R.id.btnRemoverAtributo);
+
+            txtChave.setText(atributo.getChave());
+            txtValor.setText(atributo.getValor());
+
+            btnRemover.setOnClickListener(v -> {
+                Log.d(TAG, "A remover atributo do meu perfil: " + atributo.getChave() + "=" + atributo.getValor());
+                atributoPerfilRepository.removerChaveRemota(
+                        atributo.getChave(),
+                        resultado -> requireActivity().runOnUiThread(() -> {
+                            Toast.makeText(requireContext(), "Atributo removido.", Toast.LENGTH_SHORT).show();
+                            carregarAtributos();
+                        }),
+                        erro -> requireActivity().runOnUiThread(() ->
+                                Toast.makeText(requireContext(), erro, Toast.LENGTH_LONG).show())
+                );
+            });
+
+            layoutProperties.addView(itemView);
+        }
+    }
+
+    private void renderCatalogo(List<PerfilItemDto> catalogo) {
+        layoutCatalogo.removeAllViews();
+
+        if (catalogo == null) {
+            return;
+        }
+
+        for (PerfilItemDto item : catalogo) {
+            if (jaEhMeuAtributo(item.getChave(), item.getValor())) {
+                continue;
+            }
+
+            View itemView = LayoutInflater.from(requireContext())
+                    .inflate(R.layout.item_atributo_catalogo, layoutCatalogo, false);
+
+            TextView txtChave = itemView.findViewById(R.id.txtChaveCatalogo);
+            TextView txtValor = itemView.findViewById(R.id.txtValorCatalogo);
+            ImageView btnAdicionar = itemView.findViewById(R.id.btnAdicionarAtributo);
+
+            txtChave.setText(item.getChave());
+            txtValor.setText(item.getValor());
+
+            btnAdicionar.setOnClickListener(v -> adicionarAoMeuPerfil(item.getChave(), item.getValor()));
+            itemView.setOnClickListener(v -> adicionarAoMeuPerfil(item.getChave(), item.getValor()));
+
+            layoutCatalogo.addView(itemView);
+        }
+    }
+
+    private boolean jaEhMeuAtributo(String chave, String valor) {
+        for (PerfilItemDto meu : meuPerfilAtual) {
+            if (meu.getChave().equalsIgnoreCase(chave) && meu.getValor().equalsIgnoreCase(valor)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * O endpoint /api/perfil substitui SEMPRE o perfil completo do utilizador, por isso
+     * enviamos a lista actual + o novo par (substituindo qualquer valor anterior da mesma chave,
+     * já que o servidor só permite um valor por chave por utilizador).
+     */
+    private void adicionarAoMeuPerfil(String chave, String valor) {
+        List<PerfilItemDto> atualizado = new ArrayList<>();
+        for (PerfilItemDto item : meuPerfilAtual) {
+            if (!item.getChave().equalsIgnoreCase(chave)) {
+                atualizado.add(item);
+            }
+        }
+        atualizado.add(new PerfilItemDto(chave, valor));
+
+        Log.d(TAG, "A adicionar atributo ao meu perfil: " + chave + "=" + valor
+                + " (total apos adicionar=" + atualizado.size() + ")");
+
+        atributoPerfilRepository.guardarPerfilRemoto(
+                atualizado,
+                resultado -> requireActivity().runOnUiThread(() -> {
+                    Toast.makeText(requireContext(), "Atributo adicionado ao seu perfil.", Toast.LENGTH_SHORT).show();
+                    carregarAtributos();
+                }),
+                erro -> requireActivity().runOnUiThread(() ->
+                        Toast.makeText(requireContext(), erro, Toast.LENGTH_LONG).show())
         );
     }
 
@@ -243,11 +350,7 @@ public class PerfilFragment extends Fragment {
                         return;
                     }
 
-                    AtributoPerfil atributo = new AtributoPerfil(chave, valor, sessionManager.getIdUtilizador());
-
-                    atributoPerfilRepository.inserir(atributo, id ->
-                            requireActivity().runOnUiThread(this::carregarAtributos)
-                    );
+                    adicionarAoMeuPerfil(chave, valor);
                 })
                 .setNegativeButton("Cancelar", null)
                 .show();

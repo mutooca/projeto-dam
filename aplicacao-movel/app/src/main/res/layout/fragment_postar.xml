@@ -126,6 +126,14 @@
                 android:padding="12dp"
                 android:textSize="14sp" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSelecionarAtributos"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Selecionar atributos de perfil" />
+
             <!-- Modo de Entrega -->
             <TextView
                 android:layout_width="wrap_content"

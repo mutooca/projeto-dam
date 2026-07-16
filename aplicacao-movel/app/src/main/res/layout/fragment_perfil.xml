@@ -244,5 +244,28 @@
             android:orientation="vertical"
             app:layout_constraintTop_toBottomOf="@+id/propertiesLabel" />
 
+        <TextView
+            android:id="@+id/catalogoLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginTop="24dp"
+            android:text="Atributos disponíveis (de todos os utilizadores)"
+            android:textColor="#1A1A1A"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/layoutProperties" />
+
+        <LinearLayout
+            android:id="@+id/layoutCatalogo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="24dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="24dp"
+            android:orientation="vertical"
+            app:layout_constraintTop_toBottomOf="@+id/catalogoLabel" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.core.widget.NestedScrollView>

@@ -18,14 +18,18 @@ import android.widget.Toast;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import ao.uan.fc.dam.mobile.R;
 import ao.uan.fc.dam.mobile.contentProvider.LocalizacaoProvider;
@@ -36,11 +40,13 @@ import ao.uan.fc.dam.mobile.data.enums.ModoEntrega;
 import ao.uan.fc.dam.mobile.data.enums.Visibilidade;
 import ao.uan.fc.dam.mobile.data.relation.LocalCompleto;
 import ao.uan.fc.dam.mobile.data.repository.AnuncioRepository;
+import ao.uan.fc.dam.mobile.data.repository.AtributoPerfilRepository;
 import ao.uan.fc.dam.mobile.data.repository.HistoricoRepository;
 import ao.uan.fc.dam.mobile.data.repository.LocalRepository;
 import ao.uan.fc.dam.mobile.network.MessagePublisher;
 import ao.uan.fc.dam.mobile.network.UdpServidor;
 import ao.uan.fc.dam.mobile.network.WifiDirectManager;
+import ao.uan.fc.dam.mobile.network.dto.PerfilItemDto;
 import ao.uan.fc.dam.mobile.util.SessionManager;
 
 public class PostarFragment extends Fragment {
@@ -63,6 +69,7 @@ public class PostarFragment extends Fragment {
     private LocalRepository localRepository;
     private AnuncioRepository anuncioRepository;
     private HistoricoRepository historicoRepository;
+    private AtributoPerfilRepository atributoPerfilRepository;
     private SessionManager sessionManager;
     private LocalizacaoProvider localizacaoProvider;
 
@@ -86,10 +93,12 @@ public class PostarFragment extends Fragment {
         modoEntrega = view.findViewById(R.id.radioGroupEntrega);
         Button btnPublicar = view.findViewById(R.id.btnPublicar);
         Button btnTestarP2p = view.findViewById(R.id.btnTestarP2p);
+        Button btnSelecionarAtributos = view.findViewById(R.id.btnSelecionarAtributos);
 
         localRepository = new LocalRepository(requireContext());
         anuncioRepository = new AnuncioRepository(requireContext());
         historicoRepository = new HistoricoRepository(requireContext());
+        atributoPerfilRepository = new AtributoPerfilRepository(requireContext());
         sessionManager = new SessionManager(requireContext());
         localizacaoProvider = new LocalizacaoProvider(requireContext());
         messagePublisher = new MessagePublisher(requireContext());
@@ -97,6 +106,7 @@ public class PostarFragment extends Fragment {
         carregarLocais();
 
         btnPublicar.setOnClickListener(v -> publicar());
+        btnSelecionarAtributos.setOnClickListener(v -> abrirDialogSelecionarAtributos());
 
         pedirPermissoesP2p();
         inicializarP2p();
@@ -376,6 +386,87 @@ public class PostarFragment extends Fragment {
                                     ).show())
                     );
                 }));
+    }
+
+    /**
+     * A politica de whitelist/blacklist funciona com pares chave=valor do perfil (2.1.2):
+     * o publicador ve o catalogo global de atributos (criados por qualquer utilizador) e
+     * seleciona explicitamente quais devem servir de filtro, em vez de digitar às cegas.
+     */
+    private void abrirDialogSelecionarAtributos() {
+        atributoPerfilRepository.listarCatalogoRemoto(
+                catalogo -> requireActivity().runOnUiThread(() -> mostrarDialogSelecionarAtributos(catalogo)),
+                erro -> requireActivity().runOnUiThread(() ->
+                        Toast.makeText(requireContext(), erro, Toast.LENGTH_LONG).show())
+        );
+    }
+
+    private void mostrarDialogSelecionarAtributos(List<PerfilItemDto> catalogo) {
+        if (catalogo == null || catalogo.isEmpty()) {
+            Toast.makeText(
+                    requireContext(),
+                    "Ainda não existem atributos no sistema. Crie um no seu Perfil primeiro.",
+                    Toast.LENGTH_LONG
+            ).show();
+            return;
+        }
+
+        Set<String> selecionadosAtualmente = parseRestricoesAtuais();
+
+        CharSequence[] itens = new CharSequence[catalogo.size()];
+        boolean[] marcados = new boolean[catalogo.size()];
+        for (int i = 0; i < catalogo.size(); i++) {
+            String par = catalogo.get(i).getChave() + "=" + catalogo.get(i).getValor();
+            itens[i] = par;
+            marcados[i] = selecionadosAtualmente.contains(par.toLowerCase(Locale.ROOT));
+        }
+
+        Set<Integer> selecionados = new LinkedHashSet<>();
+        for (int i = 0; i < marcados.length; i++) {
+            if (marcados[i]) {
+                selecionados.add(i);
+            }
+        }
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Selecionar atributos (" + (visibilidade.getCheckedRadioButtonId() == R.id.radioWhitelist ? "Whitelist" : "Blacklist") + ")")
+                .setMultiChoiceItems(itens, marcados, (dialog, which, isChecked) -> {
+                    if (isChecked) {
+                        selecionados.add(which);
+                    } else {
+                        selecionados.remove(which);
+                    }
+                })
+                .setPositiveButton("Aplicar", (dialog, which) -> {
+                    StringBuilder resultado = new StringBuilder();
+                    for (Integer indice : selecionados) {
+                        if (resultado.length() > 0) {
+                            resultado.append(",");
+                        }
+                        resultado.append(catalogo.get(indice).getChave())
+                                .append("=")
+                                .append(catalogo.get(indice).getValor());
+                    }
+                    restricoes.setText(resultado.toString());
+                    Log.d("POSTAR", "Atributos selecionados para a politica: " + resultado);
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    private Set<String> parseRestricoesAtuais() {
+        Set<String> atuais = new LinkedHashSet<>();
+        String texto = restricoes.getText().toString().trim();
+        if (texto.isEmpty()) {
+            return atuais;
+        }
+        for (String par : texto.split(",")) {
+            String normalizado = par.trim().toLowerCase(Locale.ROOT);
+            if (!normalizado.isEmpty()) {
+                atuais.add(normalizado);
+            }
+        }
+        return atuais;
     }
 
     private LocalDateTime lerDataOpcional(EditText campo, String nomeCampo) {

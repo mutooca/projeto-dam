@@ -15,6 +15,9 @@ import ao.uan.fc.dam.mobile.network.dto.LoginResponse;
 import ao.uan.fc.dam.mobile.network.dto.LocalProximoResponse;
 import ao.uan.fc.dam.mobile.network.dto.LogoutRequest;
 import ao.uan.fc.dam.mobile.network.dto.MensagemResponse;
+import ao.uan.fc.dam.mobile.network.dto.PerfilItemDto;
+import ao.uan.fc.dam.mobile.network.dto.PerfilRequestDto;
+import ao.uan.fc.dam.mobile.network.dto.PerfilResponseDto;
 import ao.uan.fc.dam.mobile.network.dto.PostarAnuncioRequest;
 import ao.uan.fc.dam.mobile.request.RegistarUtilizadorRequest;
 import retrofit2.Call;
@@ -88,4 +91,19 @@ public interface ApiService {
 
     @GET("api/anuncios/local/{id}")
     Call<List<Anuncio>> listarAnunciosPorLocal(@Path("id") int idLocal);
+
+    @POST("/api/perfil")
+    Call<MensagemResponse> adicionarPerfil(@Body PerfilRequestDto request);
+
+    @GET("/api/perfil")
+    Call<PerfilResponseDto> consultarPerfil(@Query("email") String email);
+
+    @DELETE("/api/perfil/{chave}")
+    Call<MensagemResponse> removerChavePerfilRemoto(
+            @Path("chave") String chave,
+            @Query("email") String email
+    );
+
+    @GET("/api/perfil/todos")
+    Call<List<PerfilItemDto>> listarCatalogoPerfilRemoto();
 }
