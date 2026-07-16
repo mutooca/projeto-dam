@@ -17,6 +17,7 @@ import ao.uan.fc.dam.mobile.network.dto.PerfilResponseDto;
 import ao.uan.fc.dam.mobile.util.DatabaseExecutor;
 import ao.uan.fc.dam.mobile.util.ResultadoCallback;
 import ao.uan.fc.dam.mobile.util.SessionManager;
+import ao.uan.fc.dam.mobile.util.UtilizadorLocalGuard;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -37,6 +38,7 @@ public class AtributoPerfilRepository {
 
     public void inserir(AtributoPerfil atributo, ResultadoCallback<Long> callback) {
         DatabaseExecutor.executor.execute(() -> {
+            UtilizadorLocalGuard.garantir(context, sessionManager);
             long id = dao.inserir(atributo);
             if (callback != null) callback.onResultado(id);
         });
@@ -170,6 +172,7 @@ public class AtributoPerfilRepository {
                                 + " sucesso=" + (response.body() != null && response.body().isSucesso()));
 
                         if (response.isSuccessful() && response.body() != null && response.body().isSucesso()) {
+                            espelharPerfilNoRoomLocal(perfilCompleto);
                             if (successCallback != null) {
                                 successCallback.onResultado(response.body().getMensagem());
                             }
@@ -190,6 +193,24 @@ public class AtributoPerfilRepository {
                 });
     }
 
+    /**
+     * O ProfileMatcher usado na entrega P2P (descentralizada) lê o perfil do utilizador
+     * a partir do Room local (não tem acesso à rede nesse momento). Por isso, sempre que o
+     * perfil remoto (fonte de verdade) é actualizado com sucesso, espelhamos aqui a mesma
+     * lista completa no Room, substituindo o que lá estava.
+     */
+    private void espelharPerfilNoRoomLocal(List<PerfilItemDto> perfilCompleto) {
+        int idUtilizador = sessionManager.getIdUtilizador();
+        DatabaseExecutor.executor.execute(() -> {
+            UtilizadorLocalGuard.garantir(context, sessionManager);
+            dao.limparPorUtilizador(idUtilizador);
+            for (PerfilItemDto item : perfilCompleto) {
+                dao.inserir(new AtributoPerfil(item.getChave(), item.getValor(), idUtilizador));
+            }
+            Log.d(TAG, "Cache local de perfil (Room) sincronizada: " + perfilCompleto.size() + " atributo(s)");
+        });
+    }
+
     public void removerChaveRemota(
             String chave,
             ResultadoCallback<String> successCallback,
@@ -208,6 +229,8 @@ public class AtributoPerfilRepository {
                                 + " sucesso=" + (response.body() != null && response.body().isSucesso()));
 
                         if (response.isSuccessful() && response.body() != null && response.body().isSucesso()) {
+                            int idUtilizador = sessionManager.getIdUtilizador();
+                            DatabaseExecutor.executor.execute(() -> dao.removerPorChave(idUtilizador, chave));
                             if (successCallback != null) {
                                 successCallback.onResultado(response.body().getMensagem());
                             }

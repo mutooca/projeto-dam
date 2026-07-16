@@ -28,4 +28,10 @@ public interface AtributoPerfilDao {
 
     @Query("SELECT * FROM atributos_perfil WHERE id_utilizador = :idUtilizador AND chave = :chave LIMIT 1")
     AtributoPerfil buscarPorChaveSync(int idUtilizador, String chave);
+
+    @Query("DELETE FROM atributos_perfil WHERE id_utilizador = :idUtilizador")
+    void limparPorUtilizador(int idUtilizador);
+
+    @Query("DELETE FROM atributos_perfil WHERE id_utilizador = :idUtilizador AND chave = :chave")
+    void removerPorChave(int idUtilizador, String chave);
 }

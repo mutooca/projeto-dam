@@ -15,13 +15,16 @@ public interface AnuncioRecebidoDao {
     @Insert
     long inserir(AnuncioRecebido anuncio);
 
-    @Query("SELECT * FROM anuncios_recebidos ORDER BY data_rececao DESC")
-    List<AnuncioRecebido> listarTodos();
+    @Query("SELECT * FROM anuncios_recebidos WHERE id_utilizador = :idUtilizador ORDER BY data_rececao DESC")
+    List<AnuncioRecebido> listarTodos(int idUtilizador);
 
-    @Query("SELECT * FROM anuncios_recebidos ORDER BY data_rececao DESC")
-    LiveData<List<AnuncioRecebido>> listarTodosLiveData();
+    @Query("SELECT * FROM anuncios_recebidos WHERE id_utilizador = :idUtilizador ORDER BY data_rececao DESC")
+    LiveData<List<AnuncioRecebido>> listarTodosLiveData(int idUtilizador);
 
     @Query("SELECT * FROM anuncios_recebidos WHERE msg_id = :msgId LIMIT 1")
     AnuncioRecebido buscarPorMsgId(String msgId);
+
+    @Query("SELECT * FROM anuncios_recebidos WHERE msg_id = :msgId AND id_utilizador = :idUtilizador LIMIT 1")
+    AnuncioRecebido buscarPorMsgId(String msgId, int idUtilizador);
 
 }

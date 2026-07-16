@@ -63,7 +63,7 @@ public class DetailAnuncioFragment extends Fragment {
 
             requireActivity().runOnUiThread(() -> {
                 txtTituloDetalhe.setText(anuncio.getTitulo());
-                txtModoEntrega.setText("DESCENTRALIZADO");
+                txtModoEntrega.setText(anuncio.getModoEntrega() != null ? anuncio.getModoEntrega() : "DESCENTRALIZADO");
                 txtLocalDetalhe.setText(anuncio.getLocal());
                 txtMensagemDetalhe.setText(anuncio.getConteudo());
                 txtAutorNome.setText(anuncio.getAutor());

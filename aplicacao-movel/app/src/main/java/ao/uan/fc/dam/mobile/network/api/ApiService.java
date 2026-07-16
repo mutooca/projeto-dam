@@ -89,6 +89,13 @@ public interface ApiService {
             @Query("email") String email
     );
 
+    @GET("/api/anuncios/receber-por-localizacao")
+    Call<List<AnuncioInfoResponse>> receberPorLocalizacao(
+            @Query("email") String email,
+            @Query("lat") double lat,
+            @Query("lon") double lon
+    );
+
     @GET("api/anuncios/local/{id}")
     Call<List<Anuncio>> listarAnunciosPorLocal(@Path("id") int idLocal);
 

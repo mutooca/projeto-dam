@@ -21,6 +21,7 @@ import ao.uan.fc.dam.mobile.network.dto.PostarAnuncioRequest;
 import ao.uan.fc.dam.mobile.util.DatabaseExecutor;
 import ao.uan.fc.dam.mobile.util.ResultadoCallback;
 import ao.uan.fc.dam.mobile.util.SessionManager;
+import ao.uan.fc.dam.mobile.util.UtilizadorLocalGuard;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -39,6 +40,7 @@ public class AnuncioRepository {
 
     public void inserir(Anuncio anuncio, ResultadoCallback<Long> callback){
         DatabaseExecutor.executor.execute(() ->{
+            UtilizadorLocalGuard.garantir(context, sessionManager);
             long id = dao.inserir(anuncio);
             anuncio.setIdAnuncio((int) id);
 
@@ -344,8 +346,8 @@ public class AnuncioRepository {
         });
     }
 
-    public LiveData<List<AnuncioCompleto>> listarTodosLiveData() {
-        return dao.listarTodosComRelacionamentosLiveData();
+    public LiveData<List<AnuncioCompleto>> listarTodosLiveData(int idUtilizador) {
+        return dao.listarTodosComRelacionamentosLiveData(idUtilizador);
     }
 
     public void listarTodos(ResultadoCallback<List<AnuncioCompleto>> callback){

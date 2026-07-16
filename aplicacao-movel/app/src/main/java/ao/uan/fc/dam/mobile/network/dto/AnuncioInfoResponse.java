@@ -9,6 +9,8 @@ public class AnuncioInfoResponse {
     private String dataPublicacao;
     private String nomeLocal;
     private String estado;
+    private String tipoPolitica;
+    private String politicaFiltro;
 
     public String getId() {
         return id;
@@ -36,5 +38,13 @@ public class AnuncioInfoResponse {
 
     public String getEstado() {
         return estado;
+    }
+
+    public String getTipoPolitica() {
+        return tipoPolitica;
+    }
+
+    public String getPoliticaFiltro() {
+        return politicaFiltro;
     }
 }

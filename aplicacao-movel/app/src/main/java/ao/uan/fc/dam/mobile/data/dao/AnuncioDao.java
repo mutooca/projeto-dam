@@ -37,8 +37,8 @@ public interface AnuncioDao {
     List<AnuncioCompleto> listarTodosComRelacionamentos();
 
     @Transaction
-    @Query("SELECT * FROM anuncios ORDER BY data_publicacao DESC")
-    LiveData<List<AnuncioCompleto>> listarTodosComRelacionamentosLiveData();
+    @Query("SELECT * FROM anuncios WHERE id_utilizador = :idUtilizador ORDER BY data_publicacao DESC")
+    LiveData<List<AnuncioCompleto>> listarTodosComRelacionamentosLiveData(int idUtilizador);
 
     @Transaction
     @Query("SELECT * FROM anuncios WHERE id_anuncio=:id")

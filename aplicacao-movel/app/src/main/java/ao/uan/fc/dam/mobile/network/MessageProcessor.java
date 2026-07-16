@@ -131,7 +131,20 @@ public class MessageProcessor {
                 perfil.put(atributo.getChave(), atributo.getValor());
             }
 
-            if (!ProfileMatcher.aceitar(mensagem.getPoliticaTipo(), mensagem.getPoliticaChaves(), perfil)) {
+            boolean aceite = ProfileMatcher.aceitar(
+                    mensagem.getPoliticaTipo(),
+                    mensagem.getPoliticaChaves(),
+                    perfil
+            );
+
+            Log.d(TAG, "Avaliacao P2P da politica"
+                    + " tipo=" + mensagem.getPoliticaTipo()
+                    + " restricoes=" + mensagem.getPoliticaChaves()
+                    + " perfil=" + perfil
+                    + " aceite=" + aceite);
+
+            if (!aceite) {
+                Log.d(TAG, "Anuncio P2P rejeitado pela politica de perfil. msgId=" + mensagem.getMsgId());
                 return;
             }
 
@@ -148,6 +161,8 @@ public class MessageProcessor {
 
                         AnuncioRecebido anuncio = new AnuncioRecebido();
                         anuncio.setMsgId(mensagem.getMsgId());
+                        anuncio.setIdUtilizador(idUtilizador);
+                        anuncio.setModoEntrega("DESCENTRALIZADO");
                         anuncio.setAutor(mensagem.getAutor());
                         anuncio.setTitulo(mensagem.getTitulo());
                         anuncio.setConteudo(mensagem.getConteudo());

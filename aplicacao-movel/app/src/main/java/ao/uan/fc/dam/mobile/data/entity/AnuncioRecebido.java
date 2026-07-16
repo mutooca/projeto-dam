@@ -16,6 +16,12 @@ public class AnuncioRecebido {
     @ColumnInfo(name = "msg_id")
     private String msgId;
 
+    @ColumnInfo(name = "id_utilizador")
+    private int idUtilizador;
+
+    @ColumnInfo(name = "modo_entrega")
+    private String modoEntrega;
+
     @ColumnInfo(name = "autor")
     private String autor;
 
@@ -60,6 +66,22 @@ public class AnuncioRecebido {
 
     public void setMsgId(String msgId) {
         this.msgId = msgId;
+    }
+
+    public int getIdUtilizador() {
+        return idUtilizador;
+    }
+
+    public void setIdUtilizador(int idUtilizador) {
+        this.idUtilizador = idUtilizador;
+    }
+
+    public String getModoEntrega() {
+        return modoEntrega;
+    }
+
+    public void setModoEntrega(String modoEntrega) {
+        this.modoEntrega = modoEntrega;
     }
 
     public String getAutor() {
