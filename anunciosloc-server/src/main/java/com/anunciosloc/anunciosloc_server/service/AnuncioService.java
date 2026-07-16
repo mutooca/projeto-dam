@@ -1,9 +1,14 @@
 package com.anunciosloc.anunciosloc_server.service;
 
 import com.anunciosloc.anunciosloc_server.dto.PerfilItem;
+import com.anunciosloc.anunciosloc_server.model.Infraestrutura;
+import com.anunciosloc.anunciosloc_server.model.SaldoUtilizador;
 import com.anunciosloc.anunciosloc_server.model.Utilizador;
+import com.anunciosloc.anunciosloc_server.repository.InfraestruturaRepository;
+import com.anunciosloc.anunciosloc_server.repository.SaldoUtilizadorRepository;
 import com.anunciosloc.anunciosloc_server.repository.UtilizadorRepository;
 import com.anunciosloc.anunciosloc_server.uddi.dto.AnuncioInfoSOAP;
+import com.anunciosloc.anunciosloc_server.uddi.dto.ResultadoLeituraSOAP;
 import com.anunciosloc.anunciosloc_server.uddi.dto.MensagemResponse;
 import com.anunciosloc.anunciosloc_server.uddi.dto.PerfilItemSOAP;
 import com.anunciosloc.anunciosloc_server.uddi.dto.PostarAnuncioRequestSOAP;
@@ -16,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -28,6 +34,8 @@ public class AnuncioService {
     private final InfrastruturaSoapClient soapClient;
     private final UtilizadorRepository utilizadorRepository;
     private final PerfilService perfilService;
+    private final InfraestruturaRepository infraestruturaRepository;
+    private final SaldoUtilizadorRepository saldoUtilizadorRepository;
 
     public String postarAnuncio(PostarAnuncioRequestSOAP request) {
         log.info(" [ANUNCIOSLOC] Postando anúncio: {}", request.getTitulo());
@@ -198,7 +206,7 @@ public class AnuncioService {
         return todosAnuncios;
     }
 
-    public MensagemResponse marcarComoLido(String idAnuncio, String emailUtilizador) {
+    public ResultadoLeituraSOAP marcarComoLido(String idAnuncio, String emailUtilizador) {
         log.info(" [ANUNCIOSLOC] Marcando anúncio como lido");
 
         List<InfraProxy> infras = soapClient.obterClientes();
@@ -209,9 +217,19 @@ public class AnuncioService {
 
         for (InfraProxy infra : infras) {
             try {
-                MensagemResponse resultado = infra.marcarComoLido(idAnuncio, emailUtilizador);
-                log.info(" Anúncio marcado como lido na infra: {}",
-                        infra.getServiceUrl());
+                ResultadoLeituraSOAP resultado = infra.marcarComoLido(idAnuncio, emailUtilizador);
+                if (resultado == null || !resultado.isSucesso()) {
+                    log.warn("  Infra {} devolveu sucesso=false ao marcar como lido: {}",
+                            infra.getServiceUrl(), resultado != null ? resultado.getMensagem() : "resposta nula");
+                    continue;
+                }
+
+                log.info(" Anúncio marcado como lido na infra: {}", infra.getServiceUrl());
+
+                if (resultado.isLeituraNova() && resultado.getAutorEmail() != null) {
+                    creditarPontosAoAutor(resultado.getAutorEmail(), infra.getServiceUrl());
+                }
+
                 return resultado;
             } catch (Exception e) {
                 log.warn("  Falha ao marcar como lido na infra {}: {}",
@@ -220,6 +238,48 @@ public class AnuncioService {
         }
 
         throw new RuntimeException("Não foi possível marcar o anúncio como lido");
+    }
+
+    /**
+     * Cada abertura (primeira leitura) de um anúncio credita o autor com o bonus_entrega da
+     * infraestrutura onde o anúncio foi publicado. O saldo vive aqui no anunciosloc-server
+     * (não no servidor de infraestrutura), para que o perfil mostre sempre o valor mais atual
+     * sem depender de uma chamada SOAP adicional no momento da consulta.
+     */
+    private void creditarPontosAoAutor(String autorEmail, String infraUrl) {
+        // A URL guardada na BD é a base da infra (ex.: http://localhost:8091), enquanto o proxy
+        // SOAP usa o endpoint completo (ex.: http://localhost:8091/ws/InfrastructureService) —
+        // por isso um match exato falha sempre; usa-se startsWith para comparar as duas.
+        Infraestrutura infra = infraestruturaRepository.findAll().stream()
+                .filter(i -> i.getUrl() != null && infraUrl.startsWith(i.getUrl()))
+                .findFirst()
+                .orElse(null);
+        int bonus = infra != null && infra.getBonusEntrega() != null ? infra.getBonusEntrega() : 0;
+        if (bonus <= 0) {
+            log.warn("   Sem bonus_entrega configurado para a infra {}, autor {} não creditado",
+                    infraUrl, autorEmail);
+            return;
+        }
+
+        Utilizador autor = utilizadorRepository.findByEmail(autorEmail).orElse(null);
+        if (autor == null) {
+            log.warn("   Autor '{}' não encontrado na BD local, não foi possível creditar pontos", autorEmail);
+            return;
+        }
+
+        SaldoUtilizador saldo = saldoUtilizadorRepository.findByUtilizador(autor)
+                .orElseGet(() -> SaldoUtilizador.builder()
+                        .utilizador(autor)
+                        .saldo(0)
+                        .build());
+
+        int saldoAntigo = saldo.getSaldo() != null ? saldo.getSaldo() : 0;
+        saldo.setSaldo(saldoAntigo + bonus);
+        saldo.setUltimaAtualizacao(LocalDateTime.now());
+        saldoUtilizadorRepository.save(saldo);
+
+        log.info("   Autor '{}' creditado com {} pontos (saldo: {} → {})",
+                autorEmail, bonus, saldoAntigo, saldo.getSaldo());
     }
 
     private String resolverRole(String emailUtilizador) {

@@ -4,8 +4,10 @@ import com.anunciosloc.anunciosloc_server.dto.PerfilItem;
 import com.anunciosloc.anunciosloc_server.dto.PerfilRequest;
 import com.anunciosloc.anunciosloc_server.dto.PerfilResponse;
 import com.anunciosloc.anunciosloc_server.model.PerfilUtilizador;
+import com.anunciosloc.anunciosloc_server.model.SaldoUtilizador;
 import com.anunciosloc.anunciosloc_server.model.Utilizador;
 import com.anunciosloc.anunciosloc_server.repository.PerfilUtilizadorRepository;
+import com.anunciosloc.anunciosloc_server.repository.SaldoUtilizadorRepository;
 import com.anunciosloc.anunciosloc_server.repository.UtilizadorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +37,19 @@ public class PerfilService {
 
     private final PerfilUtilizadorRepository perfilRepository;
     private final UtilizadorRepository utilizadorRepository;
+    private final SaldoUtilizadorRepository saldoUtilizadorRepository;
+
+    /**
+     * Saldo de pontos ganhos quando outros utilizadores abrem os anúncios deste utilizador
+     * (ver AnuncioService.marcarComoLido). Vive aqui no anunciosloc-server para que o perfil
+     * mostre sempre o valor mais atual sem depender de uma chamada SOAP à infraestrutura.
+     */
+    public int obterSaldo(String email) {
+        Utilizador utilizador = obterUtilizador(email);
+        return saldoUtilizadorRepository.findByUtilizador(utilizador)
+                .map(SaldoUtilizador::getSaldo)
+                .orElse(0);
+    }
 
     @Transactional
     public String adicionarPerfil(PerfilRequest request) {

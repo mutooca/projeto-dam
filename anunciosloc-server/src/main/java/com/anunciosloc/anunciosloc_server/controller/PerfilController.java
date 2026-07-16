@@ -97,6 +97,28 @@ public class PerfilController {
     }
 
     /**
+     * Saldo de pontos atual do utilizador (ganho quando outros abrem os seus anúncios).
+     * GET /api/perfil/saldo?email=joao@teste.com
+     */
+    @GetMapping("/saldo")
+    public ResponseEntity<?> consultarSaldo(@RequestParam String email) {
+        log.info(" [PERFIL] Consultando saldo para: {}", email);
+        try {
+            int saldo = perfilService.obterSaldo(email);
+            return ResponseEntity.ok(Map.of(
+                    "email", email,
+                    "saldo", saldo
+            ));
+        } catch (Exception e) {
+            log.error(" Erro ao consultar saldo: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "sucesso", false,
+                    "mensagem", e.getMessage()
+            ));
+        }
+    }
+
+    /**
      * Remover uma chave específica do perfil
      * DELETE /api/perfil/{chave}?email=kama@gmail.com
      */

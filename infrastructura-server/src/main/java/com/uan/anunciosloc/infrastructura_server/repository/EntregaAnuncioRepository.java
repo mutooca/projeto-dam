@@ -11,7 +11,13 @@ import java.util.UUID;
 
 public interface EntregaAnuncioRepository extends JpaRepository<EntregaAnuncio, UUID> {
 
-       Optional<EntregaAnuncio> findByIdAnuncioAndEmailUtilizador(UUID idAnuncio, String emailUtilizador);
+       // Nao usar Optional/single-result aqui: registos de entrega duplicados para o mesmo par
+       // (idAnuncio, emailUtilizador) podem existir (ex.: corrida entre sincronizacoes
+       // concorrentes), e um resultado "unico" faria o Spring Data lancar
+       // IncorrectResultSizeDataAccessException, abortando toda a resposta de receberAnuncios
+       // para o local inteiro. Devolver a lista e deixar o chamador escolher (ex.: o mais
+       // recente) e seguro mesmo com duplicados.
+       List<EntregaAnuncio> findByIdAnuncioAndEmailUtilizador(UUID idAnuncio, String emailUtilizador);
 
        boolean existsByIdAnuncioAndEmailUtilizador(UUID idAnuncio, String emailUtilizador);
 

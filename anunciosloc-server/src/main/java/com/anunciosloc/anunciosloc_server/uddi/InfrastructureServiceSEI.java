@@ -59,8 +59,8 @@ public interface InfrastructureServiceSEI {
                         @WebParam(name = "email") String email);
 
         @WebMethod(operationName = "marcarComoLido")
-        @WebResult(name = "MensagemResponse")
-        MensagemResponse marcarComoLido(
+        @WebResult(name = "ResultadoLeitura")
+        ResultadoLeituraSOAP marcarComoLido(
                         @WebParam(name = "idAnuncio") String idAnuncio,
                         @WebParam(name = "emailUtilizador") String emailUtilizador);
 

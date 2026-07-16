@@ -11,6 +11,7 @@ import com.anunciosloc.anunciosloc_server.uddi.dto.EscreverSaldoResponse;
 import com.anunciosloc.anunciosloc_server.uddi.dto.InfraInfoResponse;
 import com.anunciosloc.anunciosloc_server.uddi.dto.LerSaldoResponse;
 import com.anunciosloc.anunciosloc_server.uddi.dto.ListarLocaisResponse;
+import com.anunciosloc.anunciosloc_server.uddi.dto.ResultadoLeituraSOAP;
 import com.anunciosloc.anunciosloc_server.uddi.dto.MensagemResponse;
 import com.anunciosloc.anunciosloc_server.uddi.dto.ObterSaldoResponse;
 import com.anunciosloc.anunciosloc_server.uddi.dto.PostarAnuncioRequestSOAP;
@@ -51,7 +52,7 @@ public interface InfraProxy {
 
     List<AnuncioInfoSOAP> listarAnunciosPorEmail(String email);
 
-    MensagemResponse marcarComoLido(String idAnuncio, String emailUtilizador);
+    ResultadoLeituraSOAP marcarComoLido(String idAnuncio, String emailUtilizador);
 
 
     String obterUltimoPost(String email);

@@ -20,6 +20,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -33,17 +34,30 @@ public class InfrastruturaSoapClient {
     private static final QName SERVICE_QNAME = new QName(NAMESPACE, "InfrastructureService");
     private static final QName PORT_QNAME = new QName(NAMESPACE, "InfrastructurePort");
 
+    // Criar o proxy JAX-WS implica reler o WSDL via rede a cada chamada. Quando um pedido
+    // agrega vários locais em alcance (cada um chamando obterClientes()), isto multiplica a
+    // latência e aumenta o risco de timeout no cliente (Android), fazendo a lista parecer
+    // "não carregar" ou mostrar apenas o que já estava em cache local. Cachear por serviceUrl
+    // evita reconstruir o proxy quando já foi criado com sucesso.
+    private final ConcurrentHashMap<String, InfraProxy> proxyCache = new ConcurrentHashMap<>();
+
     public List<InfraProxy> obterClientes() {
         List<String> urls = uddiClient.obterUrlsInfraestruturas();
         List<InfraProxy> clientes = new ArrayList<>();
 
         for (String serviceUrl : urls) {
-            try {
-                clientes.add(criarProxy(serviceUrl));
-                log.debug("Cliente SOAP criado para: {}", serviceUrl);
-            } catch (Exception e) {
-                log.warn("Não foi possível criar cliente para {}: {}", serviceUrl, e.getMessage());
+            InfraProxy proxy = proxyCache.get(serviceUrl);
+            if (proxy == null) {
+                try {
+                    proxy = criarProxy(serviceUrl);
+                    proxyCache.put(serviceUrl, proxy);
+                    log.debug("Cliente SOAP criado e cacheado para: {}", serviceUrl);
+                } catch (Exception e) {
+                    log.warn("Não foi possível criar cliente para {}: {}", serviceUrl, e.getMessage());
+                    continue;
+                }
             }
+            clientes.add(proxy);
         }
         return clientes;
     }
@@ -410,23 +424,25 @@ public class InfrastruturaSoapClient {
             }
 
             @Override
-            public MensagemResponse marcarComoLido(String idAnuncio, String emailUtilizador) {
+            public ResultadoLeituraSOAP marcarComoLido(String idAnuncio, String emailUtilizador) {
                 log.info(" SOAP: marcarComoLido - idAnuncio={}, email={}",
                         idAnuncio, emailUtilizador);
 
                 try {
-                    MensagemResponse response = port.marcarComoLido(idAnuncio, emailUtilizador);
+                    ResultadoLeituraSOAP response = port.marcarComoLido(idAnuncio, emailUtilizador);
 
                     if (response != null) {
-                        log.info(" Resposta SOAP: sucesso={}, mensagem={}",
+                        log.info(" Resposta SOAP: sucesso={}, mensagem={}, autorEmail={}, leituraNova={}",
                                 response.isSucesso(),
-                                response.getMensagem());
+                                response.getMensagem(),
+                                response.getAutorEmail(),
+                                response.isLeituraNova());
                     }
 
                     return response;
                 } catch (Exception e) {
                     log.error("  Erro ao marcar como lido: {}", e.getMessage());
-                    return MensagemResponse.builder()
+                    return ResultadoLeituraSOAP.builder()
                             .sucesso(false)
                             .mensagem("Erro: " + e.getMessage())
                             .build();

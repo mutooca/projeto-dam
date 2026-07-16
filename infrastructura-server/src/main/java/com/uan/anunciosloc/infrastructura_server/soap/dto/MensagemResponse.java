@@ -7,9 +7,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlType(name = "MensagemResponse", 
+@XmlType(name = "MensagemResponse",
          namespace = "http://infrastructura.anunciosloc.uan.com",
-         propOrder = {"sucesso", "mensagem", "estado", "idAnuncio"})  
+         propOrder = {"sucesso", "mensagem", "estado", "idAnuncio"})
 @Data
 @Builder
 @NoArgsConstructor
@@ -22,7 +22,7 @@ public class MensagemResponse {
     @XmlElement(name = "mensagem", namespace = "http://infrastructura.anunciosloc.uan.com")
     private String mensagem;
 
-    
+
     @XmlElement(name = "estado", namespace = "http://infrastructura.anunciosloc.uan.com")
     private String estado;
 

@@ -225,18 +225,9 @@ public class LocalService {
                     infra.getLongitude());
 
             infra.setDistancia(distanciaInfra);
-            log.info("   Consultando infra '{}' (distância={}m, raio={}m)",
+            log.info("   Consultando infra '{}' (distância={}m)",
                     infra.getNome(),
-                    Math.round(distanciaInfra),
-                    Math.round(infra.getRaio()));
-
-            if (distanciaInfra > infra.getRaio()) {
-                log.warn("   A ignorar infra '{}' por estar fora do raio da infraestrutura ({}m > {}m)",
-                        infra.getNome(),
-                        Math.round(distanciaInfra),
-                        Math.round(infra.getRaio()));
-                continue;
-            }
+                    Math.round(distanciaInfra));
 
             try {
                 ListarLocaisResponse response = infra.getProxy().listarLocais(latUser, lonUser);
@@ -314,7 +305,18 @@ public class LocalService {
                         ? Math.round(maisProximo.getDistancia())
                         : "desconhecida");
 
-        return locaisOrdenados;
+        // A infra devolve todos os locais (o raio próprio de cada local é o geofence de entrega,
+        // não o critério de "está perto"), por isso é aqui, num único sítio, que se decide o que
+        // conta como "próximo" para efeitos de listagem — o mesmo limiar usado para elegibilidade
+        // de anúncios (AnuncioController), evitando os dois critérios divergirem.
+        List<LocalInfoSOAP> locaisProximos = locaisOrdenados.stream()
+                .filter(local -> local.getDistancia() != null && local.getDistancia() <= 100.0)
+                .collect(Collectors.toList());
+
+        log.info(" {} local(is) dentro do alcance (<=100m) de {} candidato(s) agregado(s)",
+                locaisProximos.size(), locaisOrdenados.size());
+
+        return locaisProximos;
     }
 
     /*
@@ -343,7 +345,6 @@ public class LocalService {
             return null;
         }
 
-        List<InfraestruturaAtivaDTO> infrasDentroDoRaio = new ArrayList<>();
         for (InfraestruturaAtivaDTO infra : infrasAtivas) {
             double distancia = HaversineUtil.calcularDistancia(
                     latUser, lonUser,
@@ -351,24 +352,11 @@ public class LocalService {
                     infra.getLongitude());
 
             infra.setDistancia(distancia);
-
-            if (distancia > infra.getRaio()) {
-                log.warn("    User está fora do raio da infra '{}' ({}m > {}m)",
-                        infra.getNome(), Math.round(distancia), Math.round(infra.getRaio()));
-                continue;
-            }
-
-            infrasDentroDoRaio.add(infra);
         }
 
-        if (infrasDentroDoRaio.isEmpty()) {
-            log.warn(" Nenhuma infraestrutura ativa e próxima encontrada");
-            return null;
-        }
+        infrasAtivas.sort(Comparator.comparingDouble(InfraestruturaAtivaDTO::getDistancia));
 
-        infrasDentroDoRaio.sort(Comparator.comparingDouble(InfraestruturaAtivaDTO::getDistancia));
-
-        InfraestruturaAtivaDTO maisProxima = infrasDentroDoRaio.get(0);
+        InfraestruturaAtivaDTO maisProxima = infrasAtivas.get(0);
         log.info("  Infra MAIS PRÓXIMA: {} (distância: {}m)",
                 maisProxima.getNome(), Math.round(maisProxima.getDistancia()));
 

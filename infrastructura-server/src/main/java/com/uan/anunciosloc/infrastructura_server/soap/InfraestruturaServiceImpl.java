@@ -273,15 +273,17 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                                 log.info("   Distância do utilizador até '{}': {}m",
                                                 local.getNome(), Math.round(distancia));
 
-                                if (distancia <= raioLocal) {
-                                        LocalInfo localInfo = toLocalInfo(local, distancia);
-                                        locaisComDistancia.add(localInfo);
-                                        log.info("    Local '{}' está DENTRO do raio ({}m <= {}m)",
-                                                        local.getNome(), Math.round(distancia), raioLocal);
-                                } else {
-                                        log.info("    Local '{}' está FORA do raio ({}m > {}m)",
-                                                        local.getNome(), Math.round(distancia), raioLocal);
-                                }
+                                // Não descartar aqui com base no raio (geofence) próprio do local: esse raio é
+                                // frequentemente pequeno (50-200m, definido na criação do local) e é um conceito
+                                // diferente de "está perto o suficiente para aparecer na lista". Quem decide isso
+                                // é o anunciosloc-server, que aplica um único limiar consistente (atualmente 100m)
+                                // sobre a distância aqui calculada. Filtrar já aqui pelo raio do local causava
+                                // locais genuinamente próximos (dentro do limiar da app) a nunca aparecerem, só
+                                // por terem sido criados com um raio de geofence menor que a distância real.
+                                LocalInfo localInfo = toLocalInfo(local, distancia);
+                                locaisComDistancia.add(localInfo);
+                                log.info("   Local '{}' incluído com distância {}m (raio próprio: {}m)",
+                                                local.getNome(), Math.round(distancia), raioLocal);
                         }
 
                         // Ordenar por distância
@@ -642,13 +644,14 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                                                         email, anuncio.getTitulo());
                                 } else {
                                         // Verifica se já foi lido
-                                        EntregaAnuncio entregaExistente = entregaRepository
+                                        List<EntregaAnuncio> entregasExistentes = entregaRepository
                                                         .findByIdAnuncioAndEmailUtilizador(anuncio.getIdAnuncio(),
-                                                                        email)
-                                                        .orElse(null);
+                                                                        email);
 
-                                        if (entregaExistente != null
-                                                        && "LIDO".equals(entregaExistente.getEstadoEntrega())) {
+                                        boolean jaLido = entregasExistentes.stream()
+                                                        .anyMatch(e -> "LIDO".equals(e.getEstadoEntrega()));
+
+                                        if (jaLido) {
                                                 log.info("  Anúncio '{}' já foi lido por '{}'",
                                                                 anuncio.getTitulo(), email);
                                         }
@@ -819,7 +822,7 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
         @SuppressWarnings("null")
         @Override
         @Transactional
-        public MensagemResponse marcarComoLido(String idAnuncio, String emailUtilizador) {
+        public ResultadoLeitura marcarComoLido(String idAnuncio, String emailUtilizador) {
                 log.info(" [INFRA] Marcando anúncio como lido");
                 log.info("   ID Anúncio: {}", idAnuncio);
                 log.info("   Utilizador: {}", emailUtilizador);
@@ -833,17 +836,21 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                         log.info("   Anúncio: {}", anuncio.getTitulo());
                         log.info("   Autor: {}", anuncio.getAutorEmail());
 
-                        EntregaAnuncio entrega = entregaRepository
-                                        .findByIdAnuncioAndEmailUtilizador(anuncioUUID, emailUtilizador)
-                                        .orElseThrow(() -> new RuntimeException(
-                                                        "Entrega não encontrada para este anúncio e utilizador"));
+                        List<EntregaAnuncio> entregasExistentes = entregaRepository
+                                        .findByIdAnuncioAndEmailUtilizador(anuncioUUID, emailUtilizador);
+                        if (entregasExistentes.isEmpty()) {
+                                throw new RuntimeException("Entrega não encontrada para este anúncio e utilizador");
+                        }
+                        EntregaAnuncio entrega = entregasExistentes.get(0);
 
                         if (entrega.isLido()) {
                                 log.warn("   Anúncio já foi marcado como lido anteriormente");
-                                return MensagemResponse.builder()
+                                return ResultadoLeitura.builder()
                                                 .sucesso(true)
                                                 .mensagem("Anúncio já foi lido anteriormente")
                                                 .estado("LIDO")
+                                                .autorEmail(anuncio.getAutorEmail())
+                                                .leituraNova(false)
                                                 .build();
                         }
 
@@ -924,18 +931,20 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
 
                         log.info(" Anúncio marcado como lido com sucesso!");
 
-                        return MensagemResponse.builder()
+                        return ResultadoLeitura.builder()
                                         .sucesso(true)
                                         .mensagem(String.format(
                                                         " Anúncio lido! Dono ganhou %d pontos, Leitor ganhou %d pontos",
                                                         bonusEntrega, bonusLeitor))
                                         .estado("LIDO")
                                         .idAnuncio(idAnuncio)
+                                        .autorEmail(emailDono)
+                                        .leituraNova(true)
                                         .build();
 
                 } catch (Exception e) {
                         log.error(" Erro ao marcar anúncio como lido: {}", e.getMessage(), e);
-                        return MensagemResponse.builder()
+                        return ResultadoLeitura.builder()
                                         .sucesso(false)
                                         .mensagem("Erro ao marcar anúncio como lido: " + e.getMessage())
                                         .build();
@@ -1176,10 +1185,13 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
 
                 String estado = "NAO_ENTREGUE";
                 if (emailUtilizador != null && !emailUtilizador.isEmpty()) {
-                        Optional<EntregaAnuncio> entrega = entregaRepository
+                        List<EntregaAnuncio> entregas = entregaRepository
                                         .findByIdAnuncioAndEmailUtilizador(anuncio.getIdAnuncio(), emailUtilizador);
-                        if (entrega.isPresent()) {
-                                estado = entrega.get().getEstadoEntrega();
+                        if (!entregas.isEmpty()) {
+                                estado = entregas.stream()
+                                                .anyMatch(e -> "LIDO".equals(e.getEstadoEntrega()))
+                                                ? "LIDO"
+                                                : entregas.get(0).getEstadoEntrega();
                         }
                 }
 

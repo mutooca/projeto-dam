@@ -2,7 +2,7 @@ package com.anunciosloc.anunciosloc_server.controller;
 
 import com.anunciosloc.anunciosloc_server.uddi.dto.AnuncioInfoSOAP;
 import com.anunciosloc.anunciosloc_server.uddi.dto.LocalInfoSOAP;
-import com.anunciosloc.anunciosloc_server.uddi.dto.MensagemResponse;
+import com.anunciosloc.anunciosloc_server.uddi.dto.ResultadoLeituraSOAP;
 import com.anunciosloc.anunciosloc_server.security.KerberosAuthInterceptor;
 import com.anunciosloc.anunciosloc_server.service.LocalService;
 import com.anunciosloc.anunciosloc_server.uddi.dto.PostarAnuncioRequestSOAP;
@@ -193,7 +193,7 @@ public class AnuncioController {
         log.info("   Utilizador: {}", request.getEmailUtilizador());
 
         try {
-            MensagemResponse resultado = anuncioService.marcarComoLido(
+            ResultadoLeituraSOAP resultado = anuncioService.marcarComoLido(
                     request.getIdAnuncio(),
                     request.getEmailUtilizador());
 

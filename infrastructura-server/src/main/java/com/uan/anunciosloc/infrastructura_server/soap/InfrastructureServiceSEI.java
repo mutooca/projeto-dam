@@ -12,6 +12,7 @@ import com.uan.anunciosloc.infrastructura_server.soap.dto.EscreverSaldoResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.LerSaldoResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.ObterInfraResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.ListarLocaisResponse;
+import com.uan.anunciosloc.infrastructura_server.soap.dto.ResultadoLeitura;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.MensagemResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.ObterSaldoResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.PingResponse;
@@ -122,7 +123,8 @@ public interface InfrastructureServiceSEI {
                         @WebParam(name = "email") String email);
 
         @WebMethod(operationName = "marcarComoLido")
-        MensagemResponse marcarComoLido(
+        @WebResult(name = "ResultadoLeitura")
+        ResultadoLeitura marcarComoLido(
                         @WebParam(name = "idAnuncio") String idAnuncio,
                         @WebParam(name = "emailUtilizador") String emailUtilizador);
 
