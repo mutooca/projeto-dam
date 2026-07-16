@@ -86,7 +86,9 @@ public class AnuncioRecebidoRepository {
     /**
      * Pede ao servidor os anúncios centralizados elegíveis para este utilizador na localização
      * indicada (o backend já aplica a política whitelist/blacklist com base no perfil real).
-     * Os resultados são guardados como "recebidos" (idempotente por msgId).
+     * A lista local é sempre substituída pela resposta do servidor (não é incremental): assim,
+     * cada vez que o utilizador entra na app ou volta ao Início, o que aparece é exatamente o
+     * que o servidor diz agora, incluindo anúncios publicados há poucos segundos.
      */
     public void sincronizarPorLocalizacao(
             double lat,
@@ -122,35 +124,41 @@ public class AnuncioRecebidoRepository {
                         List<AnuncioInfoResponse> recebidos = response.body();
 
                         DatabaseExecutor.executor.execute(() -> {
-                            int novos = 0;
-                            for (AnuncioInfoResponse item : recebidos) {
-                                if (item.getId() == null || item.getId().isBlank()) {
-                                    continue;
+                            // O delete+reinsert tem de ser atómico numa única transação. Sem isto,
+                            // o LiveData do Room (que observa a tabela) pode disparar a meio da
+                            // sequência — por vezes logo a seguir ao DELETE (lista aparenta estar
+                            // vazia), por vezes a meio dos inserts (lista aparenta estar incompleta).
+                            // Isso é exatamente o "às vezes aparece, às vezes não, às vezes só
+                            // metade" relatado: cada chamada a sincronizarPorLocalizacao arrisca
+                            // mostrar um estado transitório da tabela em vez do resultado final.
+                            DatabaseProvider.getInstance(context).runInTransaction(() -> {
+                                dao.deletarTodosDoUtilizador(idUtilizador);
+
+                                for (AnuncioInfoResponse item : recebidos) {
+                                    if (item.getId() == null || item.getId().isBlank()) {
+                                        continue;
+                                    }
+
+                                    AnuncioRecebido anuncio = new AnuncioRecebido();
+                                    anuncio.setMsgId(item.getId());
+                                    anuncio.setIdUtilizador(idUtilizador);
+                                    anuncio.setModoEntrega("CENTRALIZADO");
+                                    anuncio.setAutor(item.getAutorEmail());
+                                    anuncio.setTitulo(item.getTitulo());
+                                    anuncio.setConteudo(item.getConteudo());
+                                    anuncio.setLocal(item.getNomeLocal());
+                                    anuncio.setPoliticaTipo(item.getTipoPolitica());
+                                    anuncio.setPoliticaChaves(item.getPoliticaFiltro());
+                                    anuncio.setDataRececao(LocalDateTime.now());
+                                    anuncio.setDataInicio(parseDataOpcional(item.getDataPublicacao()));
+
+                                    dao.inserir(anuncio);
                                 }
-                                if (dao.buscarPorMsgId(item.getId(), idUtilizador) != null) {
-                                    continue;
-                                }
+                            });
 
-                                AnuncioRecebido anuncio = new AnuncioRecebido();
-                                anuncio.setMsgId(item.getId());
-                                anuncio.setIdUtilizador(idUtilizador);
-                                anuncio.setModoEntrega("CENTRALIZADO");
-                                anuncio.setAutor(item.getAutorEmail());
-                                anuncio.setTitulo(item.getTitulo());
-                                anuncio.setConteudo(item.getConteudo());
-                                anuncio.setLocal(item.getNomeLocal());
-                                anuncio.setPoliticaTipo(item.getTipoPolitica());
-                                anuncio.setPoliticaChaves(item.getPoliticaFiltro());
-                                anuncio.setDataRececao(LocalDateTime.now());
-                                anuncio.setDataInicio(parseDataOpcional(item.getDataPublicacao()));
-
-                                dao.inserir(anuncio);
-                                novos++;
-                            }
-
-                            Log.d(TAG, novos + " novo(s) anúncio(s) centralizado(s) recebido(s) de " + recebidos.size() + " elegíveis.");
+                            Log.d(TAG, recebidos.size() + " anúncio(s) centralizado(s) sincronizado(s) (substituição completa).");
                             if (successCallback != null) {
-                                successCallback.onResultado(novos);
+                                successCallback.onResultado(recebidos.size());
                             }
                         });
                     }

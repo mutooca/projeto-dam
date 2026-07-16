@@ -79,7 +79,13 @@ public class InicioFragment extends Fragment {
 
         setupObservers();
         carregarNumeroLocais();
-        sincronizarAnunciosPorLocalizacao();
+        // Nao chamar sincronizarAnunciosPorLocalizacao() aqui: onResume() e sempre chamado logo
+        // a seguir a onViewCreated() no ciclo de vida do fragment (incluindo na primeira vez que
+        // o Inicio e criado), por isso chamar aqui tambem disparava a sincronizacao DUAS vezes
+        // seguidas em toda a entrada no ecra — o servidor registava duas entregas quase
+        // simultaneas para o mesmo par (anuncio, utilizador), o que rebentava consultas que
+        // esperam um resultado unico e esvaziava a lista inteira. onResume() sozinho ja cobre
+        // tanto "entrar na app" como "clicar em Inicio".
 
         adapter.setOnAnuncioClickListener(new AnuncioAdapter.OnAnuncioClickListener() {
             @Override
@@ -126,6 +132,15 @@ public class InicioFragment extends Fragment {
     }
 
     private void updateCombinedList(List<AnuncioCompleto> lista, List<AnuncioRecebido> recebidos) {
+        // As duas LiveData (Room) emitem de forma assíncrona e independente. Se uma delas ainda
+        // não emitiu o primeiro valor (null) quando a outra já disparou, publicar já a lista
+        // combinada mostra só metade dos dados durante um instante (ou só "meus anúncios" se
+        // "recebidos" ainda não carregou). Esperar que ambas tenham emitido pelo menos uma vez
+        // evita esse estado parcial na composição inicial.
+        if (lista == null || recebidos == null) {
+            return;
+        }
+
         List<AnuncioModel> modelos = new ArrayList<>();
 
         if (lista != null) {
@@ -192,7 +207,16 @@ public class InicioFragment extends Fragment {
                     lat,
                     lon,
                     novos -> Log.d(TAG, novos + " novo(s) anuncio(s) centralizado(s) recebido(s)"),
-                    erro -> Log.w(TAG, "Erro ao sincronizar anuncios por localizacao: " + erro)
+                    erro -> {
+                        Log.w(TAG, "Erro ao sincronizar anuncios por localizacao: " + erro);
+                        if (isAdded()) {
+                            requireActivity().runOnUiThread(() -> Toast.makeText(
+                                    requireContext(),
+                                    "Não foi possível atualizar os anúncios. A mostrar a última lista conhecida.",
+                                    Toast.LENGTH_SHORT
+                            ).show());
+                        }
+                    }
             );
         });
     }

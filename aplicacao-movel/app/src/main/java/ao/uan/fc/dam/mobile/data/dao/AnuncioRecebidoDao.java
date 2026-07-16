@@ -15,6 +15,9 @@ public interface AnuncioRecebidoDao {
     @Insert
     long inserir(AnuncioRecebido anuncio);
 
+    @Query("DELETE FROM anuncios_recebidos WHERE id_utilizador = :idUtilizador")
+    void deletarTodosDoUtilizador(int idUtilizador);
+
     @Query("SELECT * FROM anuncios_recebidos WHERE id_utilizador = :idUtilizador ORDER BY data_rececao DESC")
     List<AnuncioRecebido> listarTodos(int idUtilizador);
 
