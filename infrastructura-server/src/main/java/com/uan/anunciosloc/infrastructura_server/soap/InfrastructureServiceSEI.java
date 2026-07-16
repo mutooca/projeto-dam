@@ -5,6 +5,8 @@ import java.util.List;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.AnuncioInfo;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.CriarLocalRequest;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.CriarLocalResponse;
+import com.uan.anunciosloc.infrastructura_server.soap.dto.EditarLocalRequest;
+import com.uan.anunciosloc.infrastructura_server.soap.dto.EditarLocalResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.DiasInatividadeResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.EscreverSaldoResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.LerSaldoResponse;
@@ -12,7 +14,6 @@ import com.uan.anunciosloc.infrastructura_server.soap.dto.ObterInfraResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.ListarLocaisResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.MensagemResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.ObterSaldoResponse;
-import com.uan.anunciosloc.infrastructura_server.soap.dto.PerfilItem;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.PingResponse;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.PostarAnuncioRequest;
 import com.uan.anunciosloc.infrastructura_server.soap.dto.PostarAnuncioResponse;
@@ -50,6 +51,11 @@ public interface InfrastructureServiceSEI {
         MensagemResponse eliminarLocal(
                         @WebParam(name = "idLocal") String idLocal,
                         @WebParam(name = "emailUtilizador") String emailUtilizador);
+
+        @WebMethod(operationName = "editarLocal")
+        @WebResult(name = "EditarLocalResponse")
+        EditarLocalResponse editarLocal(
+                        @WebParam(name = "request") EditarLocalRequest request);
 
         @WebMethod(operationName = "listarLocais")
         @WebResult(name = "ListarLocaisResponse")
@@ -119,23 +125,6 @@ public interface InfrastructureServiceSEI {
         MensagemResponse marcarComoLido(
                         @WebParam(name = "idAnuncio") String idAnuncio,
                         @WebParam(name = "emailUtilizador") String emailUtilizador);
-
-        @WebMethod(operationName = "adicionarPerfil")
-        @WebResult(name = "MensagemResponse")
-        MensagemResponse adicionarPerfil(
-                        @WebParam(name = "email") String email,
-                        @WebParam(name = "perfil") List<PerfilItem> perfil);
-
-        @WebMethod(operationName = "consultarPerfil")
-        @WebResult(name = "PerfilResponse")
-        List<PerfilItem> consultarPerfil(
-                        @WebParam(name = "email") String email);
-
-        @WebMethod(operationName = "removerChavePerfil")
-        @WebResult(name = "MensagemResponse")
-        MensagemResponse removerChavePerfil(
-                        @WebParam(name = "email") String email,
-                        @WebParam(name = "chave") String chave);
 
         @WebMethod(operationName = "verificarInatividade")
         @WebResult(name = "MensagemResponse")

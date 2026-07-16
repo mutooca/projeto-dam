@@ -41,11 +41,12 @@ public class KerberosServiceSOAPImpl implements KerberosServiceSEI {
     @Override
     public ValidateTicketResponse validateTicket(String ticket, String authenticator) {
         try {
-            boolean isValid = kerberosService.validateTicketAndAuthenticator(ticket, authenticator);
-            
+            KerberosService.ValidationResult resultado = kerberosService.validateTicketAndAuthenticator(ticket, authenticator);
+
             ValidateTicketResponse response = new ValidateTicketResponse();
-            response.setValid(isValid);
-            response.setMessage(isValid ? "Autenticação válida" : "Autenticação inválida");
+            response.setValid(resultado.valid());
+            response.setMessage(resultado.valid() ? "Autenticação válida" : "Autenticação inválida");
+            response.setEmail(resultado.email());
             return response;
         } catch (Exception e) {
             ValidateTicketResponse response = new ValidateTicketResponse();

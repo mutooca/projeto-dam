@@ -28,7 +28,6 @@ public class InfraConfig {
     private final LocalRepository localRepository;
     private final AnuncioRepository anuncioRepository;
     private final SaldoUtilizadorRepository saldoRepository;
-    private final PerfilUtilizadorRepository perfilRepository;
     private final EntregaAnuncioRepository entregaRepository;
     private final CoordenadaGpsRepository gpsRepository;
     private final CoordenadaWifiRepository wifiRepository;
@@ -53,11 +52,10 @@ public class InfraConfig {
                 localRepository,         // 2 - LocalRepository
                 anuncioRepository,       // 3 - AnuncioRepository
                 saldoRepository,         // 4 - SaldoUtilizadorRepository
-                perfilRepository,        // 5 - PerfilUtilizadorRepository
-                entregaRepository,       // 6 - EntregaAnuncioRepository
-                gpsRepository,           // 7 - CoordenadaGpsRepository
-                wifiRepository,          // 8 - CoordenadaWifiRepository
-                inatividadeService       // 9 - InatividadeService
+                entregaRepository,       // 5 - EntregaAnuncioRepository
+                gpsRepository,           // 6 - CoordenadaGpsRepository
+                wifiRepository,          // 7 - CoordenadaWifiRepository
+                inatividadeService       // 8 - InatividadeService
         );
 
             String endpointUrl = "http://localhost:" + soapPort + "/ws/InfrastructureService";

@@ -41,6 +41,7 @@
             <xs:sequence>
                 <xs:element name="valid" type="xs:boolean"/>
                 <xs:element name="message" type="xs:string"/>
+                <xs:element name="email" type="xs:string" minOccurs="0"/>
             </xs:sequence>
         </xs:complexType>
     </xs:element>

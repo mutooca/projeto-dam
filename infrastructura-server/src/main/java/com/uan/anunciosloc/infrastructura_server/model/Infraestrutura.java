@@ -23,6 +23,15 @@ public class Infraestrutura {
     @Column(name = "url_endpoint", nullable = false)
     private String urlEndpoint;
 
+    @Column
+    private Double latitude;
+
+    @Column
+    private Double longitude;
+
+    @Column
+    private Double raio;
+
     @Column(nullable = false)
     private Integer capacidade;
 

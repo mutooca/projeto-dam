@@ -5,14 +5,16 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ReceberAnunciosRequestSOAP {
-    private String email;
+public class EditarLocalRequestSOAP {
     private String idLocal;
-    private List<PerfilItemSOAP> perfil;
+    private String nome;
+    private Double latitude;
+    private Double longitude;
+    private Double raio;
+    private String ssidWifi;
+    private String emailUtilizador;
 }

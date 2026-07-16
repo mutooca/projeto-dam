@@ -46,7 +46,7 @@ public interface InfrastructureServiceSEI {
 
         @WebMethod(operationName = "postarAnuncio")
         @WebResult(name = "PostarAnuncioResponse")
-        String postarAnuncio(@WebParam(name = "request") PostarAnuncioRequestSOAP request);
+        PostarAnuncioResponseSOAP postarAnuncio(@WebParam(name = "request") PostarAnuncioRequestSOAP request);
 
         @WebMethod(operationName = "receberAnuncios")
         @WebResult(name = "ReceberAnunciosResponse")
@@ -70,29 +70,17 @@ public interface InfrastructureServiceSEI {
                         @WebParam(name = "idLocal") String idLocal,
                         @WebParam(name = "emailUtilizador") String emailUtilizador);
 
+        @WebMethod(operationName = "editarLocal")
+        @WebResult(name = "EditarLocalResponse")
+        EditarLocalResponseSOAP editarLocal(
+                        @WebParam(name = "request") EditarLocalRequestSOAP request);
+
         @WebMethod(operationName = "eliminarAnuncio")
         @WebResult(name = "MensagemResponse")
         MensagemResponse eliminarAnuncio(
                         @WebParam(name = "idAnuncio") String idAnuncio,
                         @WebParam(name = "emailUtilizador") String emailUtilizador,
                         @WebParam(name = "role") String role);
-
-        @WebMethod(operationName = "adicionarPerfil")
-        @WebResult(name = "MensagemResponse")
-        MensagemResponse adicionarPerfil(
-                        @WebParam(name = "email") String email,
-                        @WebParam(name = "perfil") List<PerfilItemSOAP> perfil);
-
-        @WebMethod(operationName = "consultarPerfil")
-        @WebResult(name = "PerfilResponse")
-        List<PerfilItemSOAP> consultarPerfil(
-                        @WebParam(name = "email") String email);
-
-        @WebMethod(operationName = "removerChavePerfil")
-        @WebResult(name = "MensagemResponse")
-        MensagemResponse removerChavePerfil(
-                        @WebParam(name = "email") String email,
-                        @WebParam(name = "chave") String chave);
 
         @WebMethod(operationName = "contarAnunciosPorEmail")
         @WebResult(name = "count")

@@ -30,7 +30,6 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
         private final EntregaAnuncioRepository entregaRepository;
         private final SaldoUtilizadorRepository saldoRepository;
         private final RestricaoRepository restricaoRepository;
-        private final PerfilUtilizadorRepository perfilRepository;
 
         private final ConexaoRepository conexaoRepository;
 
@@ -39,7 +38,6 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                         LocalRepository localRepository,
                         AnuncioRepository anuncioRepository,
                         SaldoUtilizadorRepository saldoRepository,
-                        PerfilUtilizadorRepository perfilRepository,
                         EntregaAnuncioRepository entregaRepository,
                         CoordenadaGpsRepository gpsRepository,
                         CoordenadaWifiRepository wifiRepository,
@@ -51,7 +49,6 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                 this.anuncioRepository = anuncioRepository;
                 this.saldoRepository = saldoRepository;
                 this.restricaoRepository = null;
-                this.perfilRepository = perfilRepository;
                 this.entregaRepository = entregaRepository;
                 this.conexaoRepository = null;
         }
@@ -91,12 +88,19 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                         log.info("   Ativa: {}", infra.isAtiva());
                         log.info("   Locais: {}", infra.getTotalLocais());
                         log.info("   Anúncios: {}", infra.getTotalAnuncios());
+                        log.info("   Cobertura: lat={}, lon={}, raio={}m",
+                                        infraEstadoService.getLatitude(),
+                                        infraEstadoService.getLongitude(),
+                                        infraEstadoService.getRaio());
 
                         return ObterInfraResponse.builder()
                                         .sucesso(true)
                                         .id(infra.getIdInfraestrutura().toString())
                                         .nome(infra.getNome())
                                         .url(infra.getUrlEndpoint())
+                                        .latitude(infraEstadoService.getLatitude())
+                                        .longitude(infraEstadoService.getLongitude())
+                                        .raio(infraEstadoService.getRaio())
                                         .capacidade(infra.getCapacidade())
                                         .bonusEntrega(infra.getBonusEntrega() != null ? infra.getBonusEntrega() : 0)
                                         .custoPost(infra.getCustoPost() != null ? infra.getCustoPost() : 1)
@@ -387,6 +391,97 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
         @SuppressWarnings("null")
         @Override
         @Transactional
+        public EditarLocalResponse editarLocal(EditarLocalRequest request) {
+                log.info("═══════════════════════════════════════════════════════════════");
+                log.info(" [INFRA] Editando local: {}", request.getIdLocal());
+                log.info("   Utilizador: {} (assumido: qualquer utilizador autenticado pode editar)",
+                                request.getEmailUtilizador());
+                log.info("═══════════════════════════════════════════════════════════════");
+
+                try {
+                        UUID localUUID = UUID.fromString(request.getIdLocal());
+
+                        Local local = localRepository.findById(localUUID)
+                                        .orElseThrow(() -> new RuntimeException("Local não encontrado"));
+
+                        log.info("   Local encontrado: id={}, nome={}", local.getIdLocal(), local.getNome());
+
+                        if (request.getNome() != null && !request.getNome().isBlank()
+                                        && !request.getNome().equalsIgnoreCase(local.getNome())) {
+                                boolean nomeEmUso = localRepository.existsByNomeIgnoreCase(request.getNome());
+                                if (nomeEmUso) {
+                                        log.warn("   Nome '{}' já está em uso por outro local", request.getNome());
+                                        return EditarLocalResponse.builder()
+                                                        .sucesso(false)
+                                                        .mensagem("Já existe um local com o nome '" + request.getNome() + "'")
+                                                        .build();
+                                }
+                                log.info("   Nome alterado: '{}' -> '{}'", local.getNome(), request.getNome());
+                                local.setNome(request.getNome());
+                        }
+
+                        if (request.getLatitude() != null && request.getLongitude() != null) {
+                                CoordenadaGps gps = local.getCoordenadaGps();
+                                if (gps == null) {
+                                        gps = new CoordenadaGps();
+                                        local.setCoordenadaGps(gps);
+                                        log.info("   Coordenada GPS criada para o local");
+                                }
+                                gps.setLatitude(request.getLatitude());
+                                gps.setLongitude(request.getLongitude());
+                                if (request.getRaio() != null) {
+                                        gps.setRaio(request.getRaio());
+                                }
+                                log.info("   GPS atualizado: lat={}, lon={}, raio={}",
+                                                gps.getLatitude(), gps.getLongitude(), gps.getRaio());
+                        } else if (request.getRaio() != null && local.getCoordenadaGps() != null) {
+                                local.getCoordenadaGps().setRaio(request.getRaio());
+                                log.info("   Raio atualizado: {}", request.getRaio());
+                        }
+
+                        if (request.getSsidWifi() != null && !request.getSsidWifi().isBlank()) {
+                                CoordenadaWifi wifi = local.getCoordenadaWifi();
+                                if (wifi == null) {
+                                        wifi = new CoordenadaWifi();
+                                        local.setCoordenadaWifi(wifi);
+                                        log.info("   Coordenada WiFi criada para o local");
+                                }
+                                wifi.setSsid(request.getSsidWifi());
+                                log.info("   WiFi atualizado: ssid={}", wifi.getSsid());
+                        }
+
+                        Local salvo = localRepository.save(local);
+                        log.info("  Local editado com sucesso: id={}, nome={}", salvo.getIdLocal(), salvo.getNome());
+
+                        return EditarLocalResponse.builder()
+                                        .sucesso(true)
+                                        .idLocal(salvo.getIdLocal().toString())
+                                        .nome(salvo.getNome())
+                                        .latitude(salvo.getCoordenadaGps() != null ? salvo.getCoordenadaGps().getLatitude() : 0.0)
+                                        .longitude(salvo.getCoordenadaGps() != null ? salvo.getCoordenadaGps().getLongitude() : 0.0)
+                                        .raio(salvo.getCoordenadaGps() != null ? salvo.getCoordenadaGps().getRaio() : 0.0)
+                                        .ssidWifi(salvo.getCoordenadaWifi() != null ? salvo.getCoordenadaWifi().getSsid() : null)
+                                        .mensagem("Local editado com sucesso")
+                                        .build();
+
+                } catch (IllegalArgumentException e) {
+                        log.error(" [INFRA] ID de local inválido: {}", request.getIdLocal(), e);
+                        return EditarLocalResponse.builder()
+                                        .sucesso(false)
+                                        .mensagem("ID de local inválido: " + request.getIdLocal())
+                                        .build();
+                } catch (Exception e) {
+                        log.error(" [INFRA] Erro ao editar local: {}", e.getMessage(), e);
+                        return EditarLocalResponse.builder()
+                                        .sucesso(false)
+                                        .mensagem("Erro ao editar local: " + e.getMessage())
+                                        .build();
+                }
+        }
+
+        @SuppressWarnings("null")
+        @Override
+        @Transactional
         public PostarAnuncioResponse postarAnuncio(PostarAnuncioRequest request) {
                 log.info("[INFRA] Postando anúncio");
                 log.info("   Autor: {}", request.getEmailAutor());
@@ -506,20 +601,27 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
 
                         log.info("   Anúncios encontrados: {}", anuncios.size());
 
-                        List<PerfilUtilizador> perfil = perfilRepository.findByEmail(email);
-                        log.info("   Perfil: {} atributos", perfil.size());
+                        // O perfil já não é lido de uma BD local: o anunciosloc-server é o único
+                        // dono destes dados e envia-os como parte do próprio pedido.
+                        List<PerfilItem> perfil = request.getPerfil() != null ? request.getPerfil() : List.of();
+                        log.info("   Perfil recebido no pedido: {} atributos", perfil.size());
 
-                        List<AnuncioInfo> anunciosFiltrados = anuncios.stream()
+                        List<Anuncio> anunciosElegiveis = anuncios.stream()
                                         .filter(a -> passaNaPolitica(a, perfil))
+                                        .collect(Collectors.toList());
+
+                        List<AnuncioInfo> anunciosFiltrados = anunciosElegiveis.stream()
                                         .map(a -> toAnuncioInfo(a, email))
                                         .collect(Collectors.toList());
 
-                        log.info("   Anúncios após filtros: {}", anunciosFiltrados.size());
+                        log.info("   Anúncios após filtros: {} de {} activo(s)",
+                                        anunciosFiltrados.size(),
+                                        anuncios.size());
 
                         UUID infraId = infraEstadoService.getInfraId();
                         int entregasRegistadas = 0;
 
-                        for (Anuncio anuncio : anuncios) {
+                        for (Anuncio anuncio : anunciosElegiveis) {
 
                                 boolean jaEntregue = entregaRepository
                                                 .existsByIdAnuncioAndEmailUtilizador(anuncio.getIdAnuncio(), email);
@@ -536,7 +638,7 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                                         entregaRepository.save(entrega);
                                         entregasRegistadas++;
 
-                                        log.info(" Entrega registrada para '{}' - anúncio: {}",
+                                        log.info(" Entrega registrada para '{}' - anúncio elegível: {}",
                                                         email, anuncio.getTitulo());
                                 } else {
                                         // Verifica se já foi lido
@@ -840,104 +942,6 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                 }
         }
 
-        @SuppressWarnings("null")
-        @Override
-        @Transactional
-        public MensagemResponse adicionarPerfil(String email, List<PerfilItem> perfil) {
-                log.info(" [INFRA] Adicionando perfil para: {}", email);
-                log.info("   Itens: {}", perfil.size());
-
-                try {
-
-                        UUID idUtilizador = obterIdUtilizador(email);
-
-                        perfilRepository.deleteByEmail(email);
-
-                        for (PerfilItem item : perfil) {
-                                PerfilUtilizador perfilEntity = PerfilUtilizador.builder()
-                                                .idUtilizador(idUtilizador)
-                                                .email(email)
-                                                .chave(item.getChave())
-                                                .valor(item.getValor())
-                                                .build();
-                                perfilRepository.save(perfilEntity);
-                                log.info("  {} = {}", item.getChave(), item.getValor());
-                        }
-
-                        log.info(" Perfil atualizado com sucesso para: {}", email);
-                        return MensagemResponse.builder()
-                                        .sucesso(true)
-                                        .mensagem("Perfil atualizado com sucesso!")
-                                        .build();
-
-                } catch (Exception e) {
-                        log.error("  Erro ao adicionar perfil: {}", e.getMessage(), e);
-                        return MensagemResponse.builder()
-                                        .sucesso(false)
-                                        .mensagem("Erro: " + e.getMessage())
-                                        .build();
-                }
-        }
-
-        @Override
-        public List<PerfilItem> consultarPerfil(String email) {
-                log.info(" [INFRA] Consultando perfil para: {}", email);
-
-                try {
-                        List<PerfilUtilizador> perfis = perfilRepository.findByEmail(email);
-
-                        List<PerfilItem> result = perfis.stream()
-                                        .map(p -> PerfilItem.builder()
-                                                        .chave(p.getChave())
-                                                        .valor(p.getValor())
-                                                        .build())
-                                        .collect(Collectors.toList());
-
-                        log.info("   Encontrados {} itens", result.size());
-                        return result;
-
-                } catch (Exception e) {
-                        log.error("  Erro ao consultar perfil: {}", e.getMessage(), e);
-                        return List.of();
-                }
-        }
-
-        @Override
-        @Transactional
-        public MensagemResponse removerChavePerfil(String email, String chave) {
-                log.info(" [INFRA] Removendo chave '{}' do perfil de: {}", chave, email);
-
-                try {
-                        int removidos = perfilRepository.deleteByEmailAndChave(email, chave);
-
-                        if (removidos > 0) {
-                                log.info("   Chave '{}' removida com sucesso", chave);
-                                return MensagemResponse.builder()
-                                                .sucesso(true)
-                                                .mensagem("Chave '" + chave + "' removida com sucesso!")
-                                                .build();
-                        } else {
-                                log.warn("   Chave '{}' não encontrada para: {}", chave, email);
-                                return MensagemResponse.builder()
-                                                .sucesso(false)
-                                                .mensagem("Chave '" + chave + "' não encontrada")
-                                                .build();
-                        }
-                } catch (Exception e) {
-                        log.error("  Erro ao remover chave: {}", e.getMessage(), e);
-                        return MensagemResponse.builder()
-                                        .sucesso(false)
-                                        .mensagem("Erro: " + e.getMessage())
-                                        .build();
-                }
-        }
-
-        // Helper para obter ID do utilizador
-        private UUID obterIdUtilizador(String email) {
-                // Buscar na tabela de utilizadores ou criar um mapping
-                // Por simplicidade, usar um UUID baseado no email (ou criar um novo)
-                return UUID.nameUUIDFromBytes(email.getBytes());
-        }
 
         @Override
         public LerSaldoResponse lerSaldo(String email) {
@@ -1152,7 +1156,6 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
                 log.warn("clear() chamado em {}", infraNome);
                 entregaRepository.deleteAll();
                 anuncioRepository.deleteAll();
-                perfilRepository.deleteAll();
                 saldoRepository.deleteAll();
                 conexaoRepository.deleteAll();
                 localRepository.deleteAll();
@@ -1237,38 +1240,83 @@ public class InfraestruturaServiceImpl implements InfrastructureServiceSEI {
 
         // Helper politica whitelist/blacklist
         @SuppressWarnings("null")
-        private boolean passaNaPolitica(Anuncio anuncio, List<PerfilUtilizador> perfil) {
+        private boolean passaNaPolitica(Anuncio anuncio, List<PerfilItem> perfil) {
                 if (anuncio.getTipoPolitica() == null || anuncio.getTipoPolitica().isBlank()) {
+                        log.info("   Politica vazia para anuncio '{}': entrega liberada", anuncio.getTitulo());
                         return true;
                 }
                 if (anuncio.getPoliticaFiltro() == null || anuncio.getPoliticaFiltro().isBlank()) {
+                        log.info("   Filtro vazio para anuncio '{}': entrega liberada", anuncio.getTitulo());
                         return true;
                 }
 
                 var perfilMap = perfil.stream()
                                 .collect(Collectors.toMap(
-                                                PerfilUtilizador::getChave,
-                                                PerfilUtilizador::getValor,
+                                                item -> normalizar(item.getChave()),
+                                                item -> item.getValor() != null ? item.getValor().trim() : "",
                                                 (a, b) -> a));
 
-                String[] pares = anuncio.getPoliticaFiltro().split(",");
+                List<String[]> restricoes = parseRestricoes(anuncio.getPoliticaFiltro());
+                if (restricoes.isEmpty()) {
+                        log.warn("   Politica '{}' do anuncio '{}' sem pares validos em '{}'. A liberar entrega.",
+                                        anuncio.getTipoPolitica(),
+                                        anuncio.getTitulo(),
+                                        anuncio.getPoliticaFiltro());
+                        return true;
+                }
 
-                boolean corresponde = java.util.Arrays.stream(pares)
-                                .map(par -> par.split("="))
-                                .filter(kv -> kv.length == 2)
-                                .allMatch(kv -> {
-                                        String chave = kv[0].trim();
-                                        String valor = kv[1].trim();
-                                        String valorPerfil = perfilMap.get(chave);
-                                        return valorPerfil != null && valorPerfil.equalsIgnoreCase(valor);
-                                });
+                boolean corresponde = restricoes.stream().anyMatch(kv -> {
+                        String valorPerfil = perfilMap.get(kv[0]);
+                        boolean igual = valorPerfil != null && valorPerfil.equalsIgnoreCase(kv[1]);
+                        log.info("   Avaliando anuncio '{}': perfil[{}]={}, esperado={}, match={}",
+                                        anuncio.getTitulo(),
+                                        kv[0],
+                                        valorPerfil,
+                                        kv[1],
+                                        igual);
+                        return igual;
+                });
 
                 if ("WHITELIST".equalsIgnoreCase(anuncio.getTipoPolitica())) {
+                        log.info("   Resultado WHITELIST para anuncio '{}': {}", anuncio.getTitulo(), corresponde);
                         return corresponde;
                 } else if ("BLACKLIST".equalsIgnoreCase(anuncio.getTipoPolitica())) {
+                        log.info("   Resultado BLACKLIST para anuncio '{}': {}", anuncio.getTitulo(), !corresponde);
                         return !corresponde;
                 }
+                log.info("   Tipo de politica desconhecido '{}' no anuncio '{}': entrega liberada",
+                                anuncio.getTipoPolitica(), anuncio.getTitulo());
                 return true;
+        }
+
+        private List<String[]> parseRestricoes(String politicaFiltro) {
+                List<String[]> restricoes = new ArrayList<>();
+                for (String par : politicaFiltro.split(",")) {
+                        String normalizado = par == null ? "" : par.trim();
+                        if (normalizado.isEmpty()) {
+                                continue;
+                        }
+
+                        String[] partes = normalizado.split("=", 2);
+                        if (partes.length != 2) {
+                                log.warn("   Restricao ignorada por formato invalido: '{}'", normalizado);
+                                continue;
+                        }
+
+                        String chave = normalizar(partes[0]);
+                        String valor = partes[1] != null ? partes[1].trim() : "";
+                        if (chave.isEmpty() || valor.isEmpty()) {
+                                log.warn("   Restricao ignorada por chave/valor vazio: '{}'", normalizado);
+                                continue;
+                        }
+
+                        restricoes.add(new String[]{chave, valor});
+                }
+                return restricoes;
+        }
+
+        private String normalizar(String valor) {
+                return valor == null ? "" : valor.trim().toLowerCase(Locale.ROOT);
         }
 
 }

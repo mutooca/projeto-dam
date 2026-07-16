@@ -68,7 +68,7 @@ public class KerberosService {
     }
     
     @Transactional
-public boolean validateTicketAndAuthenticator(String serializedTicket, 
+public ValidationResult validateTicketAndAuthenticator(String serializedTicket,
                                                String serializedAuthenticator) {
     System.out.println("═══════════════════════════════════════════════════════════");
     System.out.println("KERBEROS: Iniciando validação de ticket + autenticador");
@@ -96,7 +96,7 @@ public boolean validateTicketAndAuthenticator(String serializedTicket,
         System.out.println("FALHOU: Ticket expirado!");
         System.out.println("   Expira em: " + expiraEm);
         System.out.println("   Agora: " + agora);
-        return false;
+        return new ValidationResult(false, null);
     }
     System.out.println("Ticket válido (não expirado)");
 
@@ -121,7 +121,7 @@ public boolean validateTicketAndAuthenticator(String serializedTicket,
         System.out.println("FALHOU: Emails diferentes!");
         System.out.println("   Email do ticket: " + emailFromTicket);
         System.out.println("   Email do authenticator: " + emailFromAuth);
-        return false;
+        return new ValidationResult(false, null);
     }
     System.out.println(" Email corresponde: " + emailFromTicket);
 
@@ -149,7 +149,7 @@ public boolean validateTicketAndAuthenticator(String serializedTicket,
 
     if (!KerberosCryptoUtil.verifyMAC(dataForMAC, session.getSessionKey(), mac)) {
         System.out.println("FALHOU: MAC inválido!");
-        return false;
+        return new ValidationResult(false, null);
     }
     System.out.println("MAC válido");
 
@@ -168,7 +168,7 @@ public boolean validateTicketAndAuthenticator(String serializedTicket,
     if (authTime.isBefore(agoraVal.minusMinutes(5))) {
         System.out.println("FALHOU: Autenticador expirado! (limite 5 minutos)");
         System.out.println("   Diferença de " + minutesDiff + " minutos excede o limite de 5 minutos");
-        return false;
+        return new ValidationResult(false, null);
     }
     System.out.println("Timestamp válido (dentro do limite de 5 minutos)");
 
@@ -176,8 +176,8 @@ public boolean validateTicketAndAuthenticator(String serializedTicket,
     System.out.println("\n═══════════════════════════════════════════════════════════");
     System.out.println(" VALIDAÇÃO BEM SUCEDIDA!");
     System.out.println("═══════════════════════════════════════════════════════════\n");
-    
-    return true;
+
+    return new ValidationResult(true, emailFromTicket);
 }
     
     @Transactional
@@ -202,4 +202,7 @@ public boolean validateTicketAndAuthenticator(String serializedTicket,
     
     // Classe interna para retorno
     public record TicketData(String ticket, String sessionKey, String sessionId) {}
+
+    // Resultado da validação: valid=false implica email=null
+    public record ValidationResult(boolean valid, String email) {}
 }

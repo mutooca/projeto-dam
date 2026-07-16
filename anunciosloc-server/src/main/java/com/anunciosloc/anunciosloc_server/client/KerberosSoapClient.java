@@ -125,11 +125,13 @@ public class KerberosSoapClient {
     private String extractValidationResponse(SOAPMessage response) throws Exception {
         SOAPBody body = response.getSOAPBody();
         SOAPElement validateResponse = (SOAPElement) body.getChildElements().next();
-        
+
         String valid = getElementValue(validateResponse, "valid");
         String message = getElementValue(validateResponse, "message");
-        
-        return String.format("{\"valid\":%s,\"message\":\"%s\"}", valid, message);
+        // Campo aditivo: pode nao existir em respostas antigas, getElementValue devolve "" nesse caso.
+        String email = getElementValue(validateResponse, "email");
+
+        return String.format("{\"valid\":%s,\"message\":\"%s\",\"email\":\"%s\"}", valid, message, email);
     }
 
     private String extractLogoutResponse(SOAPMessage response) throws Exception {

@@ -1,6 +1,5 @@
 package com.anunciosloc.anunciosloc_server.uddi;
 
-import com.anunciosloc.anunciosloc_server.dto.PerfilItem;
 import com.anunciosloc.anunciosloc_server.uddi.dto.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -243,6 +242,26 @@ public class InfrastruturaSoapClient {
                 }
             }
 
+            @Override
+            public EditarLocalResponseSOAP editarLocal(EditarLocalRequestSOAP request) {
+                log.info(" SOAP: editarLocal - idLocal={}, nome={}, email={}",
+                        request.getIdLocal(), request.getNome(), request.getEmailUtilizador());
+                try {
+                    EditarLocalResponseSOAP response = port.editarLocal(request);
+                    if (response != null) {
+                        log.info(" Resposta editarLocal: sucesso={}, idLocal={}, mensagem={}",
+                                response.isSucesso(), response.getIdLocal(), response.getMensagem());
+                    }
+                    return response;
+                } catch (Exception e) {
+                    log.error(" Erro ao editar local: {}", e.getMessage(), e);
+                    return EditarLocalResponseSOAP.builder()
+                            .sucesso(false)
+                            .mensagem("Erro: " + e.getMessage())
+                            .build();
+                }
+            }
+
             public ListarLocaisResponse listarLocais(Double lat, Double lon) {
                 log.info(" SOAP: listarLocais - lat={}, lon={}", lat, lon);
                 try {
@@ -277,8 +296,30 @@ public class InfrastruturaSoapClient {
                 }
             }
 
-            public String postarAnuncio(PostarAnuncioRequestSOAP request) {
-                return port.postarAnuncio(request);
+            public PostarAnuncioResponseSOAP postarAnuncio(PostarAnuncioRequestSOAP request) {
+                log.info(" SOAP: postarAnuncio - autor={}, local={}, titulo={}",
+                        request.getEmailAutor(),
+                        request.getIdLocal(),
+                        request.getTitulo());
+                log.info(" SOAP: politica={}, filtro={}, visivelDe={}, visivelAte={}",
+                        request.getTipoPolitica(),
+                        request.getPoliticaFiltro(),
+                        request.getVisivelDe(),
+                        request.getVisivelAte());
+                try {
+                    PostarAnuncioResponseSOAP response = port.postarAnuncio(request);
+                    log.info(" Resposta SOAP postarAnuncio: sucesso={}, idAnuncio={}, mensagem={}",
+                            response != null ? response.isSucesso() : null,
+                            response != null ? response.getIdAnuncio() : null,
+                            response != null ? response.getMensagem() : null);
+                    return response;
+                } catch (Exception e) {
+                    log.error("Erro ao postar anuncio via SOAP: {}", e.getMessage(), e);
+                    return PostarAnuncioResponseSOAP.builder()
+                            .sucesso(false)
+                            .mensagem("Erro: " + e.getMessage())
+                            .build();
+                }
             }
 
             public ReceberAnunciosResponse receberAnuncios(ReceberAnunciosRequestSOAP request) {
@@ -385,74 +426,6 @@ public class InfrastruturaSoapClient {
                     return response;
                 } catch (Exception e) {
                     log.error("  Erro ao marcar como lido: {}", e.getMessage());
-                    return MensagemResponse.builder()
-                            .sucesso(false)
-                            .mensagem("Erro: " + e.getMessage())
-                            .build();
-                }
-            }
-
-            @Override
-            public MensagemResponse adicionarPerfil(String email, List<PerfilItem> perfil) {
-                log.info(" SOAP: adicionarPerfil - email={}, itens={}", email, perfil.size());
-                try {
-                    // Converter para o DTO do SOAP
-                    List<PerfilItemSOAP> perfilSOAP = perfil.stream()
-                            .map(item -> PerfilItemSOAP.builder()
-                                    .chave(item.getChave())
-                                    .valor(item.getValor())
-                                    .build())
-                            .collect(Collectors.toList());
-
-                    MensagemResponse response = port.adicionarPerfil(email, perfilSOAP);
-                    if (response != null) {
-                        log.info(" Resposta: sucesso={}, mensagem={}",
-                                response.isSucesso(), response.getMensagem());
-                    }
-                    return response;
-                } catch (Exception e) {
-                    log.error(" Erro ao adicionar perfil: {}", e.getMessage());
-                    return MensagemResponse.builder()
-                            .sucesso(false)
-                            .mensagem("Erro: " + e.getMessage())
-                            .build();
-                }
-            }
-
-            @Override
-            public List<PerfilItem> consultarPerfil(String email) {
-                log.info(" SOAP: consultarPerfil - email={}", email);
-                try {
-                    List<PerfilItemSOAP> response = port.consultarPerfil(email);
-
-                    if (response != null) {
-                        log.info(" Resposta: {} itens encontrados", response.size());
-                        return response.stream()
-                                .map(item -> PerfilItem.builder()
-                                        .chave(item.getChave())
-                                        .valor(item.getValor())
-                                        .build())
-                                .collect(Collectors.toList());
-                    }
-                    return List.of();
-                } catch (Exception e) {
-                    log.error(" Erro ao consultar perfil: {}", e.getMessage());
-                    return List.of();
-                }
-            }
-
-            @Override
-            public MensagemResponse removerChavePerfil(String email, String chave) {
-                log.info(" SOAP: removerChavePerfil - email={}, chave={}", email, chave);
-                try {
-                    MensagemResponse response = port.removerChavePerfil(email, chave);
-                    if (response != null) {
-                        log.info(" Resposta: sucesso={}, mensagem={}",
-                                response.isSucesso(), response.getMensagem());
-                    }
-                    return response;
-                } catch (Exception e) {
-                    log.error(" Erro ao remover chave: {}", e.getMessage());
                     return MensagemResponse.builder()
                             .sucesso(false)
                             .mensagem("Erro: " + e.getMessage())

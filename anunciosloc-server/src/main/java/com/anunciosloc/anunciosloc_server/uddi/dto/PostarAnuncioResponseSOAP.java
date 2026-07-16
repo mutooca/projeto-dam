@@ -5,14 +5,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ReceberAnunciosRequestSOAP {
-    private String email;
-    private String idLocal;
-    private List<PerfilItemSOAP> perfil;
+public class PostarAnuncioResponseSOAP {
+    private boolean sucesso;
+    private String idAnuncio;
+    private String mensagem;
 }

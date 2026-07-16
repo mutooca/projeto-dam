@@ -54,12 +54,13 @@ public class KerberosEndpoint {
     public ValidateTicketResponse validateTicket(@RequestPayload ValidateTicketRequest request) {
         ValidateTicketResponse response = new ValidateTicketResponse();
         try {
-            boolean isValid = kerberosService.validateTicketAndAuthenticator(
+            KerberosService.ValidationResult resultado = kerberosService.validateTicketAndAuthenticator(
                 request.getTicket(),
                 request.getAuthenticator()
             );
-            response.setValid(isValid);
-            response.setMessage(isValid ? "Autenticação válida" : "Autenticação inválida");
+            response.setValid(resultado.valid());
+            response.setMessage(resultado.valid() ? "Autenticação válida" : "Autenticação inválida");
+            response.setEmail(resultado.email());
         } catch (Exception e) {
             response.setValid(false);
             response.setMessage(e.getMessage());

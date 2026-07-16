@@ -1,19 +1,27 @@
 package com.anunciosloc.anunciosloc_server.security;
 
 import com.anunciosloc.anunciosloc_server.client.KerberosSoapClient;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+@Slf4j
 @Component
 public class KerberosAuthInterceptor implements HandlerInterceptor {
 
-    private final KerberosSoapClient kerberosClient;
+    public static final String ATTR_AUTHENTICATED_EMAIL = "authenticatedEmail";
 
-    KerberosAuthInterceptor(KerberosSoapClient kerberosClient) {
+    private final KerberosSoapClient kerberosClient;
+    private final ObjectMapper objectMapper;
+
+    KerberosAuthInterceptor(KerberosSoapClient kerberosClient, ObjectMapper objectMapper) {
         this.kerberosClient = kerberosClient;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -53,6 +61,14 @@ public class KerberosAuthInterceptor implements HandlerInterceptor {
             
             if (validationJson != null && validationJson.contains("\"valid\":true")) {
                 System.out.println(" Autenticação válida!");
+
+                String authenticatedEmail = extrairEmail(validationJson);
+                if (authenticatedEmail != null && !authenticatedEmail.isBlank()) {
+                    request.setAttribute(ATTR_AUTHENTICATED_EMAIL, authenticatedEmail);
+                    log.info("[KERBEROS-AUTH] Identidade autenticada resolvida: email={} path={}", authenticatedEmail, path);
+                } else {
+                    log.warn("[KERBEROS-AUTH] Kerberos validou o ticket mas não devolveu email (resposta antiga?). path={}", path);
+                }
                 return true;
             }
             System.out.println(" Autenticação inválida!");
@@ -66,6 +82,21 @@ public class KerberosAuthInterceptor implements HandlerInterceptor {
         }
     }
     
+    private String extrairEmail(String validationJson) {
+        try {
+            JsonNode node = objectMapper.readTree(validationJson);
+            JsonNode emailNode = node.get("email");
+            if (emailNode == null || emailNode.isNull()) {
+                return null;
+            }
+            String email = emailNode.asText();
+            return (email == null || email.isBlank()) ? null : email;
+        } catch (Exception e) {
+            log.warn("[KERBEROS-AUTH] Falha ao extrair email da resposta de validação: {}", e.getMessage());
+            return null;
+        }
+    }
+
     private boolean isPublicRoute(String path) {
         return path.startsWith("/api/auth/") ||
                path.startsWith("/api/infraestruturas/listar-todas") || 

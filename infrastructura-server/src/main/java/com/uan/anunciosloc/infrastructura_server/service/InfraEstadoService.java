@@ -37,6 +37,15 @@ public class InfraEstadoService {
     @Value("${infra.public-url:http://localhost:8091}")
     private String publicUrl;
 
+    @Value("${infra.latitude:-8.8368}")
+    private double latitudeConfig;
+
+    @Value("${infra.longitude:13.2343}")
+    private double longitudeConfig;
+
+    @Value("${infra.raio:1000000.0}")
+    private double raioConfig;
+
     @Value("${anunciosloc.server-url:http://localhost:8080}")
     private String anuncioslocUrl;
 
@@ -62,6 +71,8 @@ public class InfraEstadoService {
         log.info(" INFRA-SERVER: Inicializando...");
         log.info("   Nome: {}", infraNome);
         log.info("   URL: {}", publicUrl);
+        log.info("   Cobertura: lat={}, lon={}, raio={}m",
+                latitudeConfig, longitudeConfig, raioConfig);
 
         // Gerar ou usar ID fornecido
         UUID idInfra;
@@ -89,6 +100,9 @@ public class InfraEstadoService {
                     .idInfraestrutura(idInfra)
                     .nome(infraNome)
                     .urlEndpoint(publicUrl)
+                    .latitude(latitudeConfig)
+                    .longitude(longitudeConfig)
+                    .raio(raioConfig)
                     .capacidade(capacidadeConfig)
                     .bonusEntrega(bonusEntregaConfig)
                     .custoPost(custoPostConfig)
@@ -104,10 +118,23 @@ public class InfraEstadoService {
             log.info(" Infraestrutura criada com ID: {}", infraCache.getIdInfraestrutura());
 
         } else {
+            infraCache.setNome(infraNome);
+            infraCache.setUrlEndpoint(publicUrl);
+            infraCache.setLatitude(latitudeConfig);
+            infraCache.setLongitude(longitudeConfig);
+            infraCache.setRaio(raioConfig);
+            infraCache.setCapacidade(capacidadeConfig);
+            infraCache.setBonusEntrega(bonusEntregaConfig);
+            infraCache.setCustoPost(custoPostConfig);
+            infraCache.setAtiva(true);
+            infraCache = infraRepository.save(infraCache);
+
             log.info(" Infraestrutura carregada:");
             log.info("   ID: {}", infraCache.getIdInfraestrutura());
             log.info("   Nome: {}", infraCache.getNome());
             log.info("   Ativa: {}", infraCache.isAtiva());
+            log.info("   Cobertura: lat={}, lon={}, raio={}m",
+                    infraCache.getLatitude(), infraCache.getLongitude(), infraCache.getRaio());
         }
 
         registarNoUDDI();
@@ -201,6 +228,18 @@ public class InfraEstadoService {
 
     public int getCapacidade() {
         return infraCache.getCapacidade() != null ? infraCache.getCapacidade() : 100;
+    }
+
+    public double getLatitude() {
+        return infraCache.getLatitude() != null ? infraCache.getLatitude() : latitudeConfig;
+    }
+
+    public double getLongitude() {
+        return infraCache.getLongitude() != null ? infraCache.getLongitude() : longitudeConfig;
+    }
+
+    public double getRaio() {
+        return infraCache.getRaio() != null ? infraCache.getRaio() : raioConfig;
     }
 
     public int getBonusEntrega() {

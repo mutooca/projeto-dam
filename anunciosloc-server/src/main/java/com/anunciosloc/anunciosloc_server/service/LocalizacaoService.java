@@ -2,12 +2,10 @@ package com.anunciosloc.anunciosloc_server.service;
 
 import com.anunciosloc.anunciosloc_server.dto.LocalizacaoRequest;
 import com.anunciosloc.anunciosloc_server.dto.LocalizacaoResponse;
-import com.anunciosloc.anunciosloc_server.dto.PerfilItem; 
+import com.anunciosloc.anunciosloc_server.dto.PerfilItem;
+import com.anunciosloc.anunciosloc_server.dto.PerfilRequest;
 import com.anunciosloc.anunciosloc_server.model.Utilizador;
 import com.anunciosloc.anunciosloc_server.repository.UtilizadorRepository;
-import com.anunciosloc.anunciosloc_server.uddi.InfraProxy;
-import com.anunciosloc.anunciosloc_server.uddi.InfrastruturaSoapClient;
-import com.anunciosloc.anunciosloc_server.uddi.dto.MensagemResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,7 +20,6 @@ import java.util.List;
 public class LocalizacaoService {
 
     private final UtilizadorRepository utilizadorRepository;
-    private final InfrastruturaSoapClient soapClient;
     private final PerfilService perfilService;
 
     /**
@@ -48,7 +45,7 @@ public class LocalizacaoService {
 
             
             if (request.getPerfil() != null && !request.getPerfil().isEmpty()) {
-                enviarPerfilParaInfra(request.getEmail(), request.getPerfil());
+                guardarPerfil(request.getEmail(), request.getPerfil());
             }
 
             //enviarLocalizacaoParaInfra(request.getEmail(), request.getLatitude(), request.getLongitude());
@@ -77,27 +74,19 @@ public class LocalizacaoService {
     }
 
     /**
-     * Envia o perfil para o Infra-Server via SOAP
+     * Persiste o perfil enviado junto com a localização. O perfil vive na BD do
+     * anunciosloc-server (não na infrastructura-server), por isso é gravado directamente
+     * através do PerfilService, sem qualquer chamada SOAP.
      */
-    private void enviarPerfilParaInfra(String email, List<PerfilItem> perfil) {
-        log.info("   Enviando perfil para Infra-Server...");
-
-        List<InfraProxy> infras = soapClient.obterClientes();
-        if (infras.isEmpty()) {
-            log.warn("   Nenhuma infraestrutura disponível para enviar perfil");
-            return;
-        }
-
-        for (InfraProxy proxy : infras) {
-            try {
-                MensagemResponse response = proxy.adicionarPerfil(email, perfil);
-                if (response != null && response.isSucesso()) {
-                    log.info("  Perfil enviado para infra: {}", proxy.getServiceUrl());
-                    return;
-                }
-            } catch (Exception e) {
-                log.warn("   Falha ao enviar perfil para infra: {}", e.getMessage());
-            }
+    private void guardarPerfil(String email, List<PerfilItem> perfil) {
+        try {
+            perfilService.adicionarPerfil(PerfilRequest.builder()
+                    .email(email)
+                    .perfil(perfil)
+                    .build());
+            log.info("  Perfil guardado (via localização) para: {}", email);
+        } catch (Exception e) {
+            log.warn("   Falha ao guardar perfil recebido via localização: {}", e.getMessage());
         }
     }
 

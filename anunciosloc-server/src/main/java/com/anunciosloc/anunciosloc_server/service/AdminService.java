@@ -22,7 +22,6 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class AdminService {
 
     private final InfraestruturaRepository infraRepository;
@@ -48,7 +47,7 @@ public class AdminService {
 
         List<InfraestruturaAdminDTO> infrasStatus = verificarStatusInfraestruturas(infrasBD);
         long infraestruturasOnline = infrasStatus.stream()
-                .filter(InfraestruturaAdminDTO::getOnline)
+                .filter(dto -> dto.getOnline())
                 .count();
         long infraestruturasOffline = totalInfraestruturas - infraestruturasOnline;
         log.info(" Infras online: {}, offline: {}", infraestruturasOnline, infraestruturasOffline);
@@ -112,7 +111,7 @@ public class AdminService {
         List<Infraestrutura> infrasBD = infraRepository.findAll();
         List<UddiRecord> infrasUDDI = uddiClient.descobrirInfraestruturas();
         Set<String> urlsUDDI = infrasUDDI.stream()
-                .map(UddiRecord::getServiceUrl)
+                .map(r -> r.getServiceUrl())
                 .collect(Collectors.toSet());
 
         Map<String, Integer> conexoesPorInfra = new HashMap<>();
@@ -162,7 +161,7 @@ public class AdminService {
 
         List<UddiRecord> infrasUDDI = uddiClient.descobrirInfraestruturas();
         List<String> nomesBD = infraRepository.findAll().stream()
-                .map(Infraestrutura::getNome)
+                .map(i -> i.getNome())
                 .collect(Collectors.toList());
 
         List<InfraestruturaAdminDTO> result = new ArrayList<>();
@@ -298,7 +297,7 @@ public class AdminService {
         log.info("   Infras no UDDI: {}", infrasUDDI.size());
 
         Set<String> urlsUDDI = infrasUDDI.stream()
-                .map(UddiRecord::getServiceUrl)
+                .map(r -> r.getServiceUrl())
                 .collect(Collectors.toSet());
 
         for (Infraestrutura infra : infras) {
